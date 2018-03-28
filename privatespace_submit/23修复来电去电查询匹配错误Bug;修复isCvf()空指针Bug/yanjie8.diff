@@ -1,0 +1,240 @@
+diff --git a/src/com/transage/privatespace/activity/AdvancedSetup.java b/src/com/transage/privatespace/activity/AdvancedSetup.java
+index 6120871..28c0ff9 100755
+--- a/src/com/transage/privatespace/activity/AdvancedSetup.java
++++ b/src/com/transage/privatespace/activity/AdvancedSetup.java
+@@ -2,6 +2,7 @@ package com.transage.privatespace.activity;
+ 
+ import android.app.Activity;
+ import android.content.Intent;
++import android.content.SharedPreferences;
+ import android.os.Bundle;
+ import android.support.annotation.Nullable;
+ import android.view.View;
+@@ -11,6 +12,7 @@ import android.widget.CompoundButton;
+ import android.widget.Switch;
+ 
+ import com.transage.privatespace.R;
++import com.transage.privatespace.utils.ImportExportUtils;
+ import com.transage.privatespace.utils.Util_Often_Use;
+ 
+ import static com.transage.privatespace.activity.Login.ChangePrivateMarkFromAdvancedSetup;
+@@ -20,6 +22,8 @@ import static com.transage.privatespace.activity.Login.ChangePrivateMarkFromAdva
+  */
+ public class AdvancedSetup extends Activity implements View.OnClickListener, CompoundButton.OnCheckedChangeListener {
+ 
++    private SharedPreferences mVcfSP;
++
+     @Override
+     protected void onCreate(@Nullable Bundle savedInstanceState) {
+         super.onCreate(savedInstanceState);
+@@ -27,7 +31,9 @@ public class AdvancedSetup extends Activity implements View.OnClickListener, Com
+         requestWindowFeature(Window.FEATURE_NO_TITLE);//隐藏TitleBar
+         getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);//透明状态栏
+         setContentView(R.layout.activity_advance_setup);
+-
++        if (mVcfSP == null){
++            mVcfSP = getSharedPreferences(ImportExportUtils.SHARE_SAVEVCF, MODE_PRIVATE);
++        }
+         initView();
+     }
+ 
+@@ -66,11 +72,8 @@ public class AdvancedSetup extends Activity implements View.OnClickListener, Com
+         } else {
+             aSwitch4.setChecked(false);
+         }
+-        if (Login.sp.getBoolean("saveVcf", false)) {
+-            switchSaveVcf.setChecked(true);
+-        } else {
+-            switchSaveVcf.setChecked(false);
+-        }
++        
++        switchSaveVcf.setChecked(ImportExportUtils.isVcf(this));
+     }
+ 
+     // switch的CheckedChanged监听
+@@ -109,13 +112,10 @@ public class AdvancedSetup extends Activity implements View.OnClickListener, Com
+                 }
+                 Login.editor.commit();
+                 break;
+-            case R.id.switch_save_by_cvf: // 隐藏桌面图标 开关
+-                if (isChecked) {
+-                    Login.editor.putBoolean("saveVcf", true);
+-                } else {
+-                    Login.editor.putBoolean("saveVcf", false);
+-                }
+-                Login.editor.commit();
++            case R.id.switch_save_by_cvf: // 是否保存cvf 开关
++                SharedPreferences.Editor edit = mVcfSP.edit();
++                edit.putBoolean(ImportExportUtils.KEY_SHARE_SAVEVCF, isChecked);
++                edit.commit();
+                 break;
+         }
+ 
+diff --git a/src/com/transage/privatespace/database/DatabaseAdapter.java b/src/com/transage/privatespace/database/DatabaseAdapter.java
+index 88c80de..cab7681 100755
+--- a/src/com/transage/privatespace/database/DatabaseAdapter.java
++++ b/src/com/transage/privatespace/database/DatabaseAdapter.java
+@@ -103,7 +103,8 @@ public class DatabaseAdapter {
+         ContentValues values = new ContentValues();
+         values.put(PsDatabaseHelper.ContactsColumns.RAWCONTACT_ID, people.getRawContactId());
+         values.put(PsDatabaseHelper.ContactsColumns.CONTACT_NAME, people.getDisplayName());
+-        values.put(PsDatabaseHelper.ContactsColumns.CONTACT_NUMBER, people.getPhoneNum());
++        values.put(PsDatabaseHelper.ContactsColumns.CONTACT_NUMBER, people.getPhoneNum()
++                .replaceAll(" ", "").replaceAll("-", "").trim());
+         insert(PsDatabaseHelper.Tables.CONTACTS, null, values);
+     }
+ 
+@@ -165,6 +166,7 @@ public class DatabaseAdapter {
+                     people.setRawContactId(cursor.getInt(1));
+                     people.setDisplayName(cursor.getString(2));
+                     people.setPhoneNum(cursor.getString(3));
++                    Log.i(TAG, "[getContacts] people.toString = " + people.toString());
+                     list.add(people);
+                 }
+             } catch (Exception e) {
+@@ -194,7 +196,7 @@ public class DatabaseAdapter {
+                 PsDatabaseHelper.ContactsColumns.CONTACT_NUMBER + " FROM " +
+                 PsDatabaseHelper.Tables.CONTACTS + " WHERE " +
+                 selection;
+-        return query(sql, selectionArgs);
++        return query(sql, new String[]{selectionArgs[0].replaceAll(" ", "").replaceAll("-", "").trim()});
+     }
+ 
+     public Cursor getContactCursor(String selection, String[] selectionArgs, boolean isVcf) {
+@@ -213,7 +215,8 @@ public class DatabaseAdapter {
+                 PsDatabaseHelper.ContactsColumns.CONTACT_NUMBER};
+         MatrixCursor cursor = new MatrixCursor(columnNames);
+         for (People people : contacts) {
+-            if (people.getPhoneNum().replace(" ", "").trim().equals(arg.replace(" ", "").trim())){
++            if (people.getPhoneNum().replaceAll(" ", "").replaceAll("-", "").trim()
++                    .equals(arg.replaceAll(" ", "").replaceAll("-", "").trim())){
+                 Log.e(TAG, "getCursorByPeoples: arg = " + arg);
+                 cursor.addRow(people.getColumnData());
+             }
+@@ -323,7 +326,8 @@ public class DatabaseAdapter {
+     }
+ 
+     public void deleteCallRecordByNum(String number) {
+-        delete(PsDatabaseHelper.Tables.CALLRECORD, PsDatabaseHelper.CallRecordClumns.NUMBER + "=?", new String[]{number.replaceAll(" ", "").trim()});
++        delete(PsDatabaseHelper.Tables.CALLRECORD, PsDatabaseHelper.CallRecordClumns.NUMBER + "=?",
++                new String[]{number.replaceAll(" ", "").replaceAll("-", "").trim()});
+     }
+ 
+     public List<CallRecord> getCallRecordsByNum(String phone) {
+@@ -338,7 +342,7 @@ public class DatabaseAdapter {
+                 PsDatabaseHelper.CallRecordClumns.NUMBER + "=?";
+         Log.i(TAG, "sql = " + sql);
+         List<CallRecord> list = new ArrayList<>();
+-        Cursor cursor = query(sql, new String[]{phone.replaceAll(" ", "").trim()});
++        Cursor cursor = query(sql, new String[]{phone.replaceAll(" ", "").replaceAll("-", "").trim()});
+         try {
+             if (cursor.moveToFirst()) {
+                 do {
+diff --git a/src/com/transage/privatespace/fragment/FG_PrivatePeople.java b/src/com/transage/privatespace/fragment/FG_PrivatePeople.java
+index 2bfbd96..8dbfc14 100755
+--- a/src/com/transage/privatespace/fragment/FG_PrivatePeople.java
++++ b/src/com/transage/privatespace/fragment/FG_PrivatePeople.java
+@@ -120,7 +120,7 @@ public class FG_PrivatePeople extends BaseFragment implements AdapterView.OnItem
+     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
+     private void initData() {
+         listPrivatePeople.clear();// 先清空,避免数据积累
+-        listPrivatePeople.addAll(mDb.getContacts(ImportExportUtils.isVcf()));
++        listPrivatePeople.addAll(mDb.getContacts(ImportExportUtils.isVcf(getContext())));
+         /*SSStry {
+             String contactNumber = null;
+             String contactName;
+diff --git a/src/com/transage/privatespace/loader/PrivateSpaceLoader.java b/src/com/transage/privatespace/loader/PrivateSpaceLoader.java
+index 58d5fe4..c0f0854 100755
+--- a/src/com/transage/privatespace/loader/PrivateSpaceLoader.java
++++ b/src/com/transage/privatespace/loader/PrivateSpaceLoader.java
+@@ -95,7 +95,7 @@ public class PrivateSpaceLoader {
+                         //还原联系人到系统中
+                         addContacts2Db(activity, people);
+                         //删除私密联系人
+-                        databaseAdapter.deleteContactsByPhone(people.getPhoneNum(), ImportExportUtils.isVcf());
++                        databaseAdapter.deleteContactsByPhone(people.getPhoneNum(), ImportExportUtils.isVcf(activity));
+                         mHandler.sendEmptyMessage(REFRESHE_CONTACT);
+                     }
+                 });
+@@ -129,7 +129,7 @@ public class PrivateSpaceLoader {
+                 @Override
+                 public void run() {
+                     //添加联系人到私密
+-                    databaseAdapter.addContacts(list_selectedPeople, ImportExportUtils.isVcf());
++                    databaseAdapter.addContacts(list_selectedPeople, ImportExportUtils.isVcf(activity));
+                     for (People people : list_selectedPeople) {
+                         //删除联系人元数据
+                         activity.getContentResolver().delete(ContactsContract.RawContacts.CONTENT_URI,
+@@ -176,7 +176,7 @@ public class PrivateSpaceLoader {
+                 databaseAdapter.addCallRecord(callRecord);
+                 //删除通话记录到私密
+                 activity.getContentResolver().delete(CallLog.Calls.CONTENT_URI, CallLog.Calls.NUMBER + "=?",
+-                        new String[]{callRecord.getPhoneNum().replaceAll(" ", "").trim()});
++                        new String[]{callRecord.getPhoneNum().replaceAll(" ", "").replaceAll("-", "").trim()});
+             }
+         }
+ 
+@@ -208,7 +208,7 @@ public class PrivateSpaceLoader {
+                             CallLog.Calls.DURATION,// 通话时长
+                             CallLog.Calls.TYPE}// 通话类型
+                     , CallLog.Calls.NUMBER + "= ?",
+-                    new String[]{phone.replaceAll(" ", "").trim()},
++                    new String[]{phone.replaceAll(" ", "").replaceAll("-", "").trim()},
+                     CallLog.Calls.DEFAULT_SORT_ORDER// 按照时间逆序排列，最近打的最先显示
+             );
+             if (recordCursor != null && recordCursor.moveToFirst()) {
+diff --git a/src/com/transage/privatespace/provider/PrivateProvider.java b/src/com/transage/privatespace/provider/PrivateProvider.java
+index 4b396d7..672f60d 100755
+--- a/src/com/transage/privatespace/provider/PrivateProvider.java
++++ b/src/com/transage/privatespace/provider/PrivateProvider.java
+@@ -30,8 +30,8 @@ public class PrivateProvider extends ContentProvider{
+ 
+     @Override
+     public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs, String sortOrder) {
+-        android.util.Log.i(TAG, "query uri = " + uri.toString());
+-        return mDbAdapter.getContactCursor(selection, selectionArgs, ImportExportUtils.isVcf());
++        android.util.Log.i(TAG, "query uri = " + uri.toString() + "selectionArgs" + selectionArgs[0]);
++        return mDbAdapter.getContactCursor(selection, selectionArgs, ImportExportUtils.isVcf(getContext()));
+     }
+ 
+     @Override
+diff --git a/src/com/transage/privatespace/utils/ImportExportUtils.java b/src/com/transage/privatespace/utils/ImportExportUtils.java
+index 44281c9..66de9dc 100755
+--- a/src/com/transage/privatespace/utils/ImportExportUtils.java
++++ b/src/com/transage/privatespace/utils/ImportExportUtils.java
+@@ -1,5 +1,7 @@
+ package com.transage.privatespace.utils;
+ 
++import android.content.Context;
++import android.content.SharedPreferences;
+ import android.os.Environment;
+ import android.util.Log;
+ 
+@@ -28,6 +30,11 @@ import com.transage.privatespace.vcard.pim.vcard.VCardParser;
+ 
+ public class ImportExportUtils {
+     private static final String TAG = "ImportExportUtils";
++
++    public static final String SHARE_SAVEVCF = "savevcf";
++    public static final String KEY_SHARE_SAVEVCF = "isSaveVcf";
++
++
+     /**
+      * 是否保存数据到vcf文件
+      */
+@@ -110,10 +117,11 @@ public class ImportExportUtils {
+         }
+     }
+ 
+-    public static boolean isVcf(){
+-        boolean saveVcf = Login.sp.getBoolean("saveVcf", false);
+-        Log.i(TAG, "[isVcf] saveVcf = " + saveVcf);
+-        return saveVcf;
++    public static boolean isVcf(Context context){
++        SharedPreferences savevcf = context.getSharedPreferences(SHARE_SAVEVCF, Context.MODE_PRIVATE);
++        boolean isSaveVcf = savevcf.getBoolean(KEY_SHARE_SAVEVCF, false);
++        Log.i(TAG, "[isVcf] isSaveVcf = " + isSaveVcf);
++        return isSaveVcf;
+     }
+ 
+ //    try{

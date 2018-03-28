@@ -1,0 +1,1405 @@
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index 698fcdd..6c02131 100755
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -104,6 +104,9 @@
+             android:name=".gallery.activity.PrivateAlbum"
+             android:screenOrientation="portrait"/>
+         <activity
++            android:name=".gallery.videozoom.PrivateVideoAlbum"
++            android:screenOrientation="portrait"/>
++        <activity
+             android:name=".gallery.activity.GalleryMainActivity"
+             android:screenOrientation="portrait"/>
+         <activity
+diff --git a/res/layout/activity_private_album.xml b/res/layout/activity_private_album.xml
+index e3bea4b..fcfea77 100755
+--- a/res/layout/activity_private_album.xml
++++ b/res/layout/activity_private_album.xml
+@@ -14,6 +14,7 @@
+         <ImageButton
+             android:id="@+id/button_back"
+             android:layout_width="44dp"
++            android:onClick="onClick"
+             android:layout_height="match_parent"
+             android:background="@drawable/selector0"
+             android:src="@mipmap/button_back"/>
+@@ -32,6 +33,7 @@
+             android:layout_height="wrap_content"
+             android:layout_alignParentEnd="true"
+             android:layout_centerVertical="true"
++            android:onClick="onClick"
+             android:layout_marginEnd="15dp"
+             android:button="@null"
+             android:clickable="true"
+@@ -69,6 +71,7 @@
+             android:layout_gravity="bottom"
+             android:layout_marginBottom="10dp"
+             android:layout_marginEnd="70dp"
++            android:onClick="onClick"
+             android:layout_marginStart="70dp"
+             android:textSize="16sp"
+             android:text="@string/decrypt"/>
+diff --git a/res/layout/item_private_album_gridview.xml b/res/layout/item_private_album_gridview.xml
+index 1bbee69..73de77f 100755
+--- a/res/layout/item_private_album_gridview.xml
++++ b/res/layout/item_private_album_gridview.xml
+@@ -22,4 +22,16 @@
+         android:layout_alignParentTop="true"
+         android:layout_alignParentEnd="true"/>
+ 
++    <ImageView
++        android:id="@+id/image_play"
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"
++        android:layout_alignParentStart="true"
++        android:layout_centerVertical="true"
++        android:layout_marginBottom="20dp"
++        android:layout_marginTop="20dp"
++        android:scaleType="centerCrop"
++        android:src="@mipmap/ic_video_thumb"
++        android:visibility="gone"/>
++
+ </RelativeLayout>
+\ No newline at end of file
+diff --git a/res/values/strings.xml b/res/values/strings.xml
+index 91bde4c..3954c34 100755
+--- a/res/values/strings.xml
++++ b/res/values/strings.xml
+@@ -68,6 +68,7 @@
+     <string name="private_video_album">私密视频</string>
+     <string name="add_private_video">添加私密视频</string>
+     <string name="select_video">选择视频</string>
++    <string name="no_video">没 有 视 频</string>
+ 
+ 
+ </resources>
+diff --git a/src/com/transage/privatespace/activity/AdvancedSetup.java b/src/com/transage/privatespace/activity/AdvancedSetup.java
+index 31f665e..7ab9c45 100755
+--- a/src/com/transage/privatespace/activity/AdvancedSetup.java
++++ b/src/com/transage/privatespace/activity/AdvancedSetup.java
+@@ -7,10 +7,10 @@ import android.support.annotation.Nullable;
+ import android.view.View;
+ import android.widget.CompoundButton;
+ import android.widget.Switch;
++import android.widget.Toast;
+ 
+ import com.transage.privatespace.R;
+ import com.transage.privatespace.utils.ImportExportUtils;
+-import com.transage.privatespace.utils.Util_Often_Use;
+ 
+ import static com.transage.privatespace.activity.Login.ChangePrivateMarkFromAdvancedSetup;
+ 
+@@ -120,7 +120,7 @@ public class AdvancedSetup extends BaseActivity implements View.OnClickListener,
+     public void onClick(View v) {
+         switch (v.getId()) {
+             case R.id.tv4: // 更改指纹
+-                Util_Often_Use.toastShort(this, "更改指纹");
++                Toast.makeText(this, "更改指纹", Toast.LENGTH_SHORT).show();
+                 break;
+             case R.id.tv5: // 更改密码
+                 startActivity(new Intent(AdvancedSetup.this, Login.class)
+@@ -130,7 +130,7 @@ public class AdvancedSetup extends BaseActivity implements View.OnClickListener,
+                 startActivity(new Intent(AdvancedSetup.this, SecurityQuestion.class));
+                 break;
+             case R.id.tv7: // 使用帮助
+-                Util_Often_Use.toastShort(this, "使用帮助");
++                Toast.makeText(this, "使用帮助", Toast.LENGTH_SHORT).show();
+                 break;
+         }
+     }
+diff --git a/src/com/transage/privatespace/activity/Login.java b/src/com/transage/privatespace/activity/Login.java
+index fc86c2e..d847ee1 100755
+--- a/src/com/transage/privatespace/activity/Login.java
++++ b/src/com/transage/privatespace/activity/Login.java
+@@ -23,8 +23,6 @@ import android.text.method.PasswordTransformationMethod;
+ import android.view.KeyEvent;
+ import android.view.LayoutInflater;
+ import android.view.View;
+-import android.view.Window;
+-import android.view.WindowManager;
+ import android.view.inputmethod.EditorInfo;
+ import android.view.inputmethod.InputMethodManager;
+ import android.widget.CheckBox;
+@@ -36,7 +34,6 @@ import android.widget.TextView;
+ import android.widget.Toast;
+ 
+ import com.transage.privatespace.R;
+-import com.transage.privatespace.utils.Util_Often_Use;
+ 
+ import java.io.UnsupportedEncodingException;
+ import java.security.MessageDigest;
+@@ -221,17 +218,17 @@ public class Login extends BaseActivity implements View.OnClickListener, Compoun
+                     finish();
+                 }
+             } else { // 验证失败
+-                Util_Often_Use.toastLong(this, getString(R.string.wrong_private_mark));
++                Toast.makeText(this, getString(R.string.wrong_private_mark), Toast.LENGTH_LONG).show();
+                 editText1.setText(null);
+             }
+         } else if (!isFirstRun && isChangePrivateMark) { // 日常修改密码
+             Settings.Global.putString(contentResolver,PRIVATE_SPACE_PWD,md5(md5(editText1.getText().toString().trim())));
+             isChangePrivateMark = false;
+-            Util_Often_Use.toastShort(this, getString(R.string.successful_reset_private_mark));
++            Toast.makeText(this, getString(R.string.successful_reset_private_mark), Toast.LENGTH_SHORT).show();
+             finish();// finish()后露出第一个登录界面 或 高级设置界面
+         } else if (isFirstRun) { // 第一次运行app
+             Settings.Global.putString(contentResolver,PRIVATE_SPACE_PWD,md5(md5(editText1.getText().toString().trim())));
+-            Util_Often_Use.toastShort(this, getString(R.string.successful_set_private_mark));
++            Toast.makeText(this, getString(R.string.successful_set_private_mark), Toast.LENGTH_SHORT).show();
+             startActivity(new Intent(Login.this, SecurityQuestion.class));
+             finish();
+         }
+@@ -245,26 +242,26 @@ public class Login extends BaseActivity implements View.OnClickListener, Compoun
+     public boolean checkInput() {
+         if (!isFirstRun && !isChangePrivateMark) { // 登录输入检验
+             if (TextUtils.isEmpty(editText1.getText().toString().trim())) {
+-                Util_Often_Use.toastLong(this, getString(R.string.password_cant_be_empty));
++                Toast.makeText(this, getString(R.string.password_cant_be_empty), Toast.LENGTH_LONG).show();
+                 return false;
+             }
+             if (editText1.getText().toString().trim().length() < 6) {
+-                Util_Often_Use.toastLong(this, getString(R.string.the_length_of_password_must_be_6));
++                Toast.makeText(this, getString(R.string.the_length_of_password_must_be_6), Toast.LENGTH_LONG).show();
+                 return false;
+             }
+         } else { // 修改密码输入检验
+             if (TextUtils.isEmpty(editText1.getText().toString().trim())
+                     || TextUtils.isEmpty(editText2.getText().toString().trim())) {
+-                Util_Often_Use.toastLong(this, getString(R.string.password_cant_be_empty));
++                Toast.makeText(this, getString(R.string.password_cant_be_empty), Toast.LENGTH_LONG).show();
+                 return false;
+             }
+             if (editText1.getText().toString().trim().length() < 6
+                     || editText2.getText().toString().trim().length() < 6) {
+-                Util_Often_Use.toastLong(this, getString(R.string.the_length_of_password_must_be_6));
++                Toast.makeText(this, getString(R.string.the_length_of_password_must_be_6), Toast.LENGTH_LONG).show();
+                 return false;
+             }
+             if (!TextUtils.equals(editText1.getText().toString().trim(), editText2.getText().toString().trim())) {
+-                Util_Often_Use.toastLong(this, getString(R.string.two_different_input));
++                Toast.makeText(this, getString(R.string.two_different_input), Toast.LENGTH_LONG).show();
+                 return false;
+             }
+         }
+diff --git a/src/com/transage/privatespace/activity/SecurityQuestion.java b/src/com/transage/privatespace/activity/SecurityQuestion.java
+index 5f2ba66..f7f2b33 100755
+--- a/src/com/transage/privatespace/activity/SecurityQuestion.java
++++ b/src/com/transage/privatespace/activity/SecurityQuestion.java
+@@ -12,9 +12,9 @@ import android.widget.ArrayAdapter;
+ import android.widget.Button;
+ import android.widget.EditText;
+ import android.widget.Spinner;
++import android.widget.Toast;
+ 
+ import com.transage.privatespace.R;
+-import com.transage.privatespace.utils.Util_Often_Use;
+ 
+ import java.util.ArrayList;
+ 
+@@ -100,7 +100,7 @@ public class SecurityQuestion extends BaseActivity implements View.OnClickListen
+                         spinner.setSelection(list.size() - 2);
+                         alertDialog.dismiss();
+                     } else {
+-                        Util_Often_Use.toastShort(SecurityQuestion.this, R.string.question_cant_be_empty);
++                        Toast.makeText(SecurityQuestion.this, R.string.question_cant_be_empty,Toast.LENGTH_SHORT).show();
+                     }
+                 }
+             });
+@@ -116,7 +116,7 @@ public class SecurityQuestion extends BaseActivity implements View.OnClickListen
+     @Override
+     public void onClick(View v) {
+         if (TextUtils.isEmpty(editText.getText().toString().trim())) {
+-            Util_Often_Use.toastShort(this, getString(R.string.answer_cant_be_empty));
++            Toast.makeText(this, getString(R.string.answer_cant_be_empty), Toast.LENGTH_SHORT).show();
+             return;
+         }
+         // 非第一次运行app
+@@ -131,7 +131,7 @@ public class SecurityQuestion extends BaseActivity implements View.OnClickListen
+                         Login.ChangePrivateMarkFromSecurityQuestionActivity, true));
+                 finish();
+             } else { // 密保匹配失败
+-                Util_Often_Use.toastLong(this, getString(R.string.answer_is_wrong));
++                Toast.makeText(this, getString(R.string.answer_is_wrong), Toast.LENGTH_LONG).show();
+             }
+         }
+         // 第一次运行app
+@@ -140,7 +140,7 @@ public class SecurityQuestion extends BaseActivity implements View.OnClickListen
+             Login.editor.putInt(SelectedPosition, spinner.getSelectedItemPosition());// 记录选择的密保问题的位置
+             Login.editor.putBoolean(Login.FirstRun, false);
+             Login.editor.commit();
+-            Util_Often_Use.toastLong(this, getString(R.string.successful_set_private_question));
++            Toast.makeText(this, getString(R.string.successful_set_private_question), Toast.LENGTH_LONG).show();
+             startActivity(new Intent(SecurityQuestion.this, Main.class));
+             finish();
+         }
+diff --git a/src/com/transage/privatespace/database/DatabaseAdapter.java b/src/com/transage/privatespace/database/DatabaseAdapter.java
+index 8e6ce16..98067fa 100755
+--- a/src/com/transage/privatespace/database/DatabaseAdapter.java
++++ b/src/com/transage/privatespace/database/DatabaseAdapter.java
+@@ -5,21 +5,20 @@ import android.content.Context;
+ import android.content.pm.ActivityInfo;
+ import android.content.pm.PackageManager;
+ import android.database.Cursor;
++import android.database.MatrixCursor;
++import android.provider.ContactsContract;
++import android.util.Log;
+ 
+ import com.transage.privatespace.bean.AppInfo;
+ import com.transage.privatespace.bean.CallRecord;
+ import com.transage.privatespace.bean.ContactInfo;
+ import com.transage.privatespace.bean.SmsInfo;
+ import com.transage.privatespace.gallery.photozoom.ImageItem;
+-import com.transage.privatespace.utils.ImportExportUtils;
++import com.transage.privatespace.gallery.videozoom.VideoItem;
+ 
+ import java.util.ArrayList;
+ import java.util.List;
+ 
+-import android.database.MatrixCursor;
+-import android.provider.ContactsContract;
+-import android.util.Log;
+-
+ /**
+  * Created by yanjie.xu on 2017/7/5.
+  * 本地数据库操作帮助类
+@@ -715,7 +714,7 @@ public class DatabaseAdapter {
+ 
+ 
+     /**
+-     * 获取私密数据库中图片数据的操作
++     * 以下三个方法：是私密图片数据的 查、增、删 方法 add by dongrp 20170727
+      */
+     public ArrayList<ImageItem> getPhoto() {
+         String sql = "SELECT * " + " FROM " + PsDatabaseHelper.Tables.FILES + " ORDER BY " + PsDatabaseHelper.FilesClumns._ID + " DESC ";
+@@ -757,6 +756,49 @@ public class DatabaseAdapter {
+     }
+ 
+     /**
++     * 以下三个方法是：是私密视频数据的 查、增、删 方法 add by dongrp 20170913
++     */
++    public ArrayList<VideoItem> getVideo() {
++        String sql = "SELECT * " + " FROM " + PsDatabaseHelper.Tables.Video + " ORDER BY " + PsDatabaseHelper.VideoClumns._ID + " DESC ";
++        Log.i(TAG, "sql = " + sql);
++        ArrayList<VideoItem> list = new ArrayList<>();
++        Cursor cursor = query(sql, null);
++        try {
++            if (cursor.moveToFirst()) {
++                do {
++                    VideoItem videoItem = new VideoItem();
++                    videoItem.setId(cursor.getString(0));
++                    videoItem.setPath(cursor.getString(1));
++                    videoItem.setDisplayName(cursor.getString(2));
++                    videoItem.setSize(cursor.getString(3));
++                    videoItem.setMimeType(cursor.getString(4));
++                    videoItem.setDateAdded(cursor.getString(5));
++                    videoItem.setTitle(cursor.getString(6));
++                    videoItem.setAlbum(cursor.getString(7));
++                    videoItem.setBucketId(cursor.getString(8));
++                    videoItem.setBucketDisplayName(cursor.getString(9));
++                    videoItem.setWidth(cursor.getString(10));
++                    videoItem.setHeight(cursor.getString(11));
++                    list.add(videoItem);
++                } while (cursor.moveToNext());
++            }
++        } catch (Exception e) {
++            e.printStackTrace();
++        } finally {
++            cursor.close();
++        }
++        return list;
++    }
++
++    public void insertVideo(ContentValues contentValues) {
++        insert(PsDatabaseHelper.Tables.Video, null, contentValues);
++    }
++
++    public void deleteVideo(String id) {
++        delete(PsDatabaseHelper.Tables.Video, PsDatabaseHelper.VideoClumns._ID + "=?", new String[]{id});
++    }
++
++    /**
+      * 统一封装数据库接口
+      */
+     private long insert(String table, String nullColumnHack, ContentValues values) {
+diff --git a/src/com/transage/privatespace/database/PsDatabaseHelper.java b/src/com/transage/privatespace/database/PsDatabaseHelper.java
+index cd63f02..8713b35 100755
+--- a/src/com/transage/privatespace/database/PsDatabaseHelper.java
++++ b/src/com/transage/privatespace/database/PsDatabaseHelper.java
+@@ -81,7 +81,7 @@ public class PsDatabaseHelper extends SQLiteOpenHelper {
+             CallRecordClumns.DURATION + " INTEGER " +
+             ");";
+ 
+-    //执行创建私密文件表 add by dongrp for CreateFilesTable  20170727
++    //执行创建私密文件表的Sql语句 add by dongrp for 20170727
+     private static final String SQL_CREATE_FILES_TABLE = "CREATE TABLE IF NOT EXISTS " + Tables.FILES + " (" +
+             FilesClumns._ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
+             FilesClumns._DATA + " TEXT, " +
+@@ -97,6 +97,22 @@ public class PsDatabaseHelper extends SQLiteOpenHelper {
+             FilesClumns.HEIGHT + " INTEGER " +
+             ");";
+ 
++    //执行创建私密视频表的Sql语句 add by dongrp 20170913
++    private static final String SQL_CREATE_VIDEO_TABLE = "CREATE TABLE IF NOT EXISTS " + Tables.Video + " (" +
++            VideoClumns._ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
++            VideoClumns.DATA + " TEXT, " +
++            VideoClumns.DISPLAY_NAME + " TEXT, " +
++            VideoClumns.SIZE + " INTEGER, " +
++            VideoClumns.MIME_TYPE + " TEXT, " +
++            VideoClumns.DATE_ADDED + " INTEGER, " +
++            VideoClumns.TITLE + " TEXT, " +
++            VideoClumns.ALBUM + " TEXT, " +
++            VideoClumns.BUCKET_ID + " TEXT, " +
++            VideoClumns.BUCKET_DISPLAY_NAME + " TEXT, " +
++            VideoClumns.WIDTH + " INTEGER, " +
++            VideoClumns.HEIGHT + " INTEGER " +
++            ");";
++
+     private final static int VERSION = 1;
+     private final static String DB_NAME = "privatespace.db";
+     private Context mContext;
+@@ -110,6 +126,7 @@ public class PsDatabaseHelper extends SQLiteOpenHelper {
+         public static final String SMS = "sms";//wangmeng 20170707 add mms
+         public static final String CALLRECORD = "call_record";
+         public static final String FILES = "files";//add by dongrp 20170727
++        public static final String Video = "video";//add by dongrp 20170913
+     }
+ 
+     public interface AppsColumns {
+@@ -192,6 +209,21 @@ public class PsDatabaseHelper extends SQLiteOpenHelper {
+         public static final String WIDTH = "width";
+         public static final String HEIGHT = "height";
+     }
++    //add VideosClumns by dongrp 20170913
++    public interface VideoClumns {
++        public static final String _ID = "_id";
++        public static final String DATA = "_data";
++        public static final String DISPLAY_NAME = "_display_name";
++        public static final String SIZE = "_size";
++        public static final String MIME_TYPE = "mime_type";
++        public static final String DATE_ADDED = "date_added";
++        public static final String TITLE = "title";
++        public static final String ALBUM = "album";
++        public static final String BUCKET_ID = "bucket_id";
++        public static final String BUCKET_DISPLAY_NAME = "bucket_display_name";
++        public static final String WIDTH = "width";
++        public static final String HEIGHT = "height";
++    }
+ 
+     public PsDatabaseHelper(Context context, String name, SQLiteDatabase.CursorFactory factory, int version) {
+         super(context, name, factory, version);
+@@ -238,6 +270,9 @@ public class PsDatabaseHelper extends SQLiteOpenHelper {
+ 
+         //执行创建私密文件表 add by dongrp for CreateFilesTable  20170727
+         sqLiteDatabase.execSQL(SQL_CREATE_FILES_TABLE);
++
++        //执行创建私视频表 add by dongrp for CreateVideosTable  20170913
++        sqLiteDatabase.execSQL(SQL_CREATE_VIDEO_TABLE);
+     }
+ 
+     @Override
+diff --git a/src/com/transage/privatespace/gallery/activity/GalleryMainActivity.java b/src/com/transage/privatespace/gallery/activity/GalleryMainActivity.java
+index 26f9030..d16fdd7 100755
+--- a/src/com/transage/privatespace/gallery/activity/GalleryMainActivity.java
++++ b/src/com/transage/privatespace/gallery/activity/GalleryMainActivity.java
+@@ -11,6 +11,7 @@ import android.view.View;
+ import com.transage.privatespace.R;
+ import com.transage.privatespace.activity.BaseActivity;
+ import com.transage.privatespace.gallery.photozoom.Folders;
++import com.transage.privatespace.gallery.videozoom.PrivateVideoAlbum;
+ import com.transage.privatespace.gallery.videozoom.VideoAlbum;
+ 
+ /**
+@@ -61,7 +62,7 @@ public class GalleryMainActivity extends BaseActivity implements View.OnClickLis
+                 startActivity(new Intent(GalleryMainActivity.this, Folders.class));
+                 break;
+             case R.id.button_priv_video_album:
+-//                startActivity(new Intent(GalleryMainActivity.this, PrivateAlbum.class));
++                startActivity(new Intent(GalleryMainActivity.this, PrivateVideoAlbum.class));
+                 break;
+             case R.id.button_add_priv_video:
+                 startActivity(new Intent(GalleryMainActivity.this, VideoAlbum.class));
+diff --git a/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java b/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
+index f873e0b..e4e9d29 100755
+--- a/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
++++ b/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
+@@ -79,13 +79,9 @@ public class PrivateAlbum extends BaseActivity implements View.OnClickListener,
+      * 组件、适配器等各项初始化
+      */
+     public void init() {
+-        findViewById(R.id.checkbox_select_all).setOnClickListener(this);
+-        findViewById(R.id.button_back).setOnClickListener(this);
+-        findViewById(R.id.button_min).setOnClickListener(this);
+         tvNoPicture = (TextView) findViewById(R.id.tv_no_picture);
+-
+ //        dateList = databaseAdapter.getPhoto();//数据
+-        Log.d("PrivateAlbum", "dateList.size():" + dateList.size());
++        Log.d("PrivateVideoAlbum", "dateList.size():" + dateList.size());
+         gridView = (GridView) findViewById(R.id.album_GridView);//组件
+         privateAlbumGridViewAdapter = new PrivateAlbumGridViewAdapter(PrivateAlbum.this, dateList);//适配器
+         gridView.setAdapter(privateAlbumGridViewAdapter);//绑定适配器
+diff --git a/src/com/transage/privatespace/gallery/util/XorEncryptionUtil.java b/src/com/transage/privatespace/gallery/util/XorEncryptionUtil.java
+new file mode 100755
+index 0000000..a763587
+--- /dev/null
++++ b/src/com/transage/privatespace/gallery/util/XorEncryptionUtil.java
+@@ -0,0 +1,176 @@
++package com.transage.privatespace.gallery.util;
++
++import android.graphics.Bitmap;
++import android.media.ThumbnailUtils;
++import android.provider.MediaStore;
++import android.util.Log;
++
++import java.io.File;
++import java.io.FileInputStream;
++import java.io.FileNotFoundException;
++import java.io.FileOutputStream;
++import java.io.IOException;
++import java.io.RandomAccessFile;
++import java.nio.MappedByteBuffer;
++import java.nio.channels.FileChannel;
++
++/**
++ * Created by ruipan.dong on 2017/9/13.
++ */
++
++public class XorEncryptionUtil {
++
++    private static int REVERSE_LENGTH = 86;
++
++    /**
++     * 大文件 加、解密的一种方案：通过内存映射文件MappedByteBuffer对文件的前REVERSE_LENGTH长度的字节与下标做异或运算
++     * 加密完成后，将私密文件copy到私密目录下
++     * @param sourceFilePath 原文件绝对路径
++     * @param destFilePath   目标文件绝对路径
++     * @return
++     */
++    public static boolean encrypt(String sourceFilePath,String destFilePath) {
++        int len = REVERSE_LENGTH;
++        try {
++            File f = new File(sourceFilePath);
++            RandomAccessFile raf = new RandomAccessFile(f, "rw");
++            long totalLen = raf.length();
++
++            if (totalLen < REVERSE_LENGTH)
++                len = (int) totalLen;
++
++            FileChannel channel = raf.getChannel();
++            MappedByteBuffer buffer = channel.map(FileChannel.MapMode.READ_WRITE, 0, REVERSE_LENGTH);
++            byte tmp;
++            for (int i = 0; i < len; ++i) {
++                byte rawByte = buffer.get(i);
++                tmp = (byte) (rawByte ^ i);
++                buffer.put(i, tmp);
++            }
++            buffer.force();
++            buffer.clear();
++            channel.close();
++            raf.close();
++            //上面的加密步骤完成后，将加密后的文件copy到私密目录下
++            return copyFile(sourceFilePath,destFilePath);
++        } catch (Exception e) {
++            e.printStackTrace();
++            return false;
++        }
++    }
++
++
++    /**
++     * 复制文件(以超快的速度复制文件：FileChannel的transferTo()方法比一般的文件复制速度快很多)
++     * @return 实际复制的字节数，如果文件、目录不存在、文件为null或者发生IO异常，返回-1
++     */
++    public static boolean copyFile(String srcFilePath, String destFilePath) {
++        long size = 0;//真实复制的字节长度
++        long length = -1;//原文件的字节长度
++        File srcFile = new File(srcFilePath);
++        File destFile = new File(destFilePath);
++        File destDir = new File(destFile.getParent());//根据destFile
++        try {
++            RandomAccessFile raf = new RandomAccessFile(srcFile, "rw");
++             length = raf.length();
++        } catch (IOException e) {
++            e.printStackTrace();
++        }
++
++        if (!srcFile.exists()) {
++            System.out.println("源文件不存在");
++            return false;
++        } else if (!destDir.exists()) {
++            System.out.println("创建目标目录");
++            destDir.mkdirs();
++        } else {
++            try {
++                FileChannel fcin = new FileInputStream(srcFile).getChannel();
++                FileChannel fcout = new FileOutputStream(new File(destDir, srcFile.getName())).getChannel();
++                size = fcin.size();
++                fcin.transferTo(0, fcin.size(), fcout);
++                fcin.close();
++                fcout.close();
++            } catch (FileNotFoundException e) {
++                e.printStackTrace();
++            } catch (IOException e) {
++                e.printStackTrace();
++            }
++        }
++        Log.d("XorEncryptionUtil", "length%%%%%%%%%:" + length);
++        Log.d("XorEncryptionUtil", "size%%%%%%%%%%%:" + size);
++        return length == size;
++    }
++
++
++    /**
++     * 获取私密视频缩略图的方法（解密-->获取缩略图-->再加密好，相当于：开保险柜-->拿东西-->再锁好保险柜）
++     * @param sourceFilePath 原文件绝对路径
++     * @return
++     */
++    public static Bitmap decryptVideoForThumb(String sourceFilePath) {
++        int len = REVERSE_LENGTH;
++        try {
++            File f = new File(sourceFilePath);
++            RandomAccessFile raf = new RandomAccessFile(f, "rw");
++            long totalLen = raf.length();
++
++            if (totalLen < REVERSE_LENGTH)
++                len = (int) totalLen;
++
++            FileChannel channel = raf.getChannel();
++            MappedByteBuffer buffer = channel.map(FileChannel.MapMode.READ_WRITE, 0, REVERSE_LENGTH);
++            byte tmp;
++            for (int i = 0; i < len; ++i) {
++                byte rawByte = buffer.get(i);
++                tmp = (byte) (rawByte ^ i);
++                buffer.put(i, tmp);
++            }
++            buffer.force();
++            buffer.clear();
++            channel.close();
++            raf.close();
++            //解密视频后，拿到视频的缩略图
++            Bitmap videoThumbnail = ThumbnailUtils.createVideoThumbnail(sourceFilePath, MediaStore.Images.Thumbnails.MINI_KIND);
++            //马上再将视频加密上
++            encrypt(sourceFilePath);
++            return videoThumbnail;
++        } catch (Exception e) {
++            e.printStackTrace();
++            return null;
++        }
++    }
++
++
++    //在一个文件原文件的基础上进行加密（不copy副本）
++    public static boolean encrypt(String sourceFilePath) {
++        int len = REVERSE_LENGTH;
++        try {
++            File f = new File(sourceFilePath);
++            RandomAccessFile raf = new RandomAccessFile(f, "rw");
++            long totalLen = raf.length();
++
++            if (totalLen < REVERSE_LENGTH)
++                len = (int) totalLen;
++
++            FileChannel channel = raf.getChannel();
++            MappedByteBuffer buffer = channel.map(FileChannel.MapMode.READ_WRITE, 0, REVERSE_LENGTH);
++            byte tmp;
++            for (int i = 0; i < len; ++i) {
++                byte rawByte = buffer.get(i);
++                tmp = (byte) (rawByte ^ i);
++                buffer.put(i, tmp);
++            }
++            buffer.force();
++            buffer.clear();
++            channel.close();
++            raf.close();
++            return true;
++        } catch (Exception e) {
++            e.printStackTrace();
++            return false;
++        }
++    }
++
++
++}
+diff --git a/src/com/transage/privatespace/gallery/videozoom/PrivateVideoAlbum.java b/src/com/transage/privatespace/gallery/videozoom/PrivateVideoAlbum.java
+new file mode 100755
+index 0000000..66a2a05
+--- /dev/null
++++ b/src/com/transage/privatespace/gallery/videozoom/PrivateVideoAlbum.java
+@@ -0,0 +1,375 @@
++package com.transage.privatespace.gallery.videozoom;
++
++import android.app.ProgressDialog;
++import android.content.ContentResolver;
++import android.content.ContentValues;
++import android.graphics.Bitmap;
++import android.os.AsyncTask;
++import android.os.Bundle;
++import android.provider.MediaStore;
++import android.support.annotation.Nullable;
++import android.util.Log;
++import android.view.View;
++import android.widget.AbsListView;
++import android.widget.CheckBox;
++import android.widget.GridView;
++import android.widget.ImageView;
++import android.widget.TextView;
++import android.widget.Toast;
++
++import com.transage.privatespace.R;
++import com.transage.privatespace.activity.BaseActivity;
++import com.transage.privatespace.database.DatabaseAdapter;
++import com.transage.privatespace.gallery.photozoom.Bimp;
++import com.transage.privatespace.gallery.util.XorEncryptionUtil;
++
++import java.io.File;
++import java.util.ArrayList;
++import java.util.List;
++import java.util.concurrent.Callable;
++import java.util.concurrent.ExecutionException;
++import java.util.concurrent.ExecutorService;
++import java.util.concurrent.Executors;
++import java.util.concurrent.Future;
++
++/**
++ * Created by dongrp on 2017/7/13.
++ * 私密相册界面
++ */
++
++public class PrivateVideoAlbum extends BaseActivity implements View.OnClickListener, AbsListView.OnScrollListener {
++    private GridView gridView;
++    public static ArrayList<VideoItem> dateList;
++    private PrivateVideoAlbumGridViewAdapter privateVideoAlbumGridViewAdapter;
++    private ExecutorService executorService; //线程池
++    private int mFirstVisibleItem, mVisibleItemCount, mTotalItemCount;
++    private VisibleVideoDecryptionTask visibleVideoDecryptionTask;
++    private static DatabaseAdapter databaseAdapter;
++    private ProgressDialog progressDialog;
++    private static TextView tvNoPicture;
++
++    @Override
++    protected void onCreate(@Nullable Bundle savedInstanceState) {
++        super.onCreate(savedInstanceState);
++        setContentView(R.layout.activity_private_album);
++        executorService = Executors.newCachedThreadPool();//创建一个缓存线程池
++        databaseAdapter = new DatabaseAdapter(PrivateVideoAlbum.this);//数据库操作工具类
++        //为实现onResume后还能记住选中的照片，所以必须在onResume之前初始化数据
++        // 这样Bimp.tempSelectVideo 和 dateList操作的就是同一批数据
++        dateList = databaseAdapter.getVideo();
++    }
++
++    @Override
++    protected void onResume() {
++        super.onResume();
++        init();
++    }
++
++    @Override
++    protected void onDestroy() {
++        super.onDestroy();
++        Bimp.tempSelectVideo.clear();
++        clearCacheDirectory(new File("/data/data/" + getPackageName() + "/files/cache/"));
++    }
++
++    /**
++     * 组件、适配器等各项初始化
++     */
++    public void init() {
++        tvNoPicture = (TextView) findViewById(R.id.tv_no_picture);
++        Log.d("PrivateVideoAlbum", "dateList.size():" + dateList.size());
++        gridView = (GridView) findViewById(R.id.album_GridView);//组件
++        privateVideoAlbumGridViewAdapter = new PrivateVideoAlbumGridViewAdapter(PrivateVideoAlbum.this, dateList);//适配器
++        gridView.setAdapter(privateVideoAlbumGridViewAdapter);//绑定适配器
++        gridView.setOnScrollListener(this);//设置滑动监听
++        //由于滑动才会加载数据，所以刚进入页面的时候，需要主动加载第一页的数据
++        loadFirstScreenVideo();
++
++    }
++
++    //无图片时，展示提示语
++    public static void showNoPictureTip() {
++        tvNoPicture.setText(R.string.no_video);
++        tvNoPicture.setVisibility(View.VISIBLE);
++    }
++
++    /**
++     * 加载首屏数据的方法
++     */
++    public void loadFirstScreenVideo() {
++        gridView.post(new Runnable() {
++            public void run() {
++                int firstVisiblePosition = gridView.getFirstVisiblePosition();
++                int lastVisiblePosition = gridView.getLastVisiblePosition();
++                List<VideoItem> listVideoItem = dateList.subList(firstVisiblePosition, lastVisiblePosition + 1);
++                ArrayList<Bitmap> thumbBitmaps = decryptVideosForThumb(listVideoItem);
++                for (int i = 0; i < thumbBitmaps.size(); i++) {
++                    ImageView imageView = (ImageView) gridView.getChildAt(i).findViewById(R.id.image_view);
++                    imageView.setImageBitmap(thumbBitmaps.get(i));
++//                    Glide.with(PrivateVideoAlbum.this).load(thumbBitmaps.get(i)).placeholder(R.color.greytext).into(imageView);
++                }
++            }
++        });
++    }
++
++    public void onScrollStateChanged(AbsListView view, int scrollState) {
++        if (scrollState == SCROLL_STATE_IDLE) {
++            List<VideoItem> listVideoItem = dateList.subList(mFirstVisibleItem, (mFirstVisibleItem + mVisibleItemCount));
++
++            visibleVideoDecryptionTask = new VisibleVideoDecryptionTask(listVideoItem);
++            visibleVideoDecryptionTask.execute();
++        } else if (scrollState == SCROLL_STATE_TOUCH_SCROLL) {
++            if (null != visibleVideoDecryptionTask && !visibleVideoDecryptionTask.isCancelled()
++                    && visibleVideoDecryptionTask.getStatus() == AsyncTask.Status.RUNNING) {
++                visibleVideoDecryptionTask.cancel(true);//设置异步任务的cancle状态为true
++                visibleVideoDecryptionTask = null;
++            }
++        }
++    }
++
++    public void onScroll(AbsListView view, int firstVisibleItem, int visibleItemCount, int totalItemCount) {
++        mFirstVisibleItem = firstVisibleItem;
++        mVisibleItemCount = visibleItemCount;
++        mTotalItemCount = totalItemCount;
++    }
++
++    /**
++     * 当前屏幕可见图片的异步解密任务
++     */
++    public class VisibleVideoDecryptionTask extends AsyncTask<Void, Void, ArrayList<Bitmap>> {
++        List<VideoItem> lists;
++
++        public VisibleVideoDecryptionTask(List<VideoItem> list) {
++            lists = list;
++        }
++
++        @Override
++        protected void onPreExecute() {
++            super.onPreExecute();
++            if (visibleVideoDecryptionTask.isCancelled()) {
++                return;
++            }
++        }
++
++        @Override
++        protected ArrayList<Bitmap> doInBackground(Void... voids) {
++            if (visibleVideoDecryptionTask.isCancelled()) {
++                return null;
++            }
++            ArrayList<Bitmap> thumbBitmaps = decryptVideosForThumb(lists);
++            return thumbBitmaps;
++        }
++
++        @Override
++        protected void onProgressUpdate(Void... values) {
++            super.onProgressUpdate(values);
++            if (visibleVideoDecryptionTask.isCancelled()) {
++                return;
++            }
++        }
++
++        @Override
++        protected void onPostExecute(ArrayList<Bitmap> thumbBitmaps) {
++            super.onPostExecute(thumbBitmaps);
++            for (int i = 0; i < mVisibleItemCount; i++) {
++                ImageView imageView = (ImageView) gridView.getChildAt(i).findViewById(R.id.image_view);
++//                Glide.with(PrivateVideoAlbum.this).load(thumbBitmaps.get(i)).placeholder(R.color.greytext).into(imageView);
++                imageView.setImageBitmap(thumbBitmaps.get(i));
++            }
++        }
++    }
++
++    /**
++     * 获取当前屏幕私密视频的缩略图
++     */
++    public ArrayList<Bitmap> decryptVideosForThumb(final List<VideoItem> arrayList) {
++        ArrayList<Bitmap> list = new ArrayList<>();
++        list.clear();
++        List<Future<Bitmap>> listFuture = new ArrayList<>();
++        listFuture.clear();
++
++        for (VideoItem item : arrayList) {
++            final String privVideoPath = item.getPath();
++            String fileName = privVideoPath.substring(privVideoPath.lastIndexOf("/") + 1);
++            final String imagePath = "/data/data/" + getPackageName() + "/files/cache/" + fileName;
++
++/*            File file = new File(imagePath);
++            if (file.exists()) {
++                list.add(file);
++                continue;
++            }*/
++
++            Future<Bitmap> future = executorService.submit(new Callable<Bitmap>() {
++                @Override
++                public Bitmap call() throws Exception {
++                    Bitmap bitmap = XorEncryptionUtil.decryptVideoForThumb(privVideoPath);
++                    return bitmap;
++                }
++            });
++            listFuture.add(future);
++        }
++
++        for (Future<Bitmap> fileFuture : listFuture) {
++            try {
++                list.add(fileFuture.get());
++            } catch (InterruptedException e) {
++                e.printStackTrace();
++            } catch (ExecutionException e) {
++                e.printStackTrace();
++            }
++        }
++        return list;
++    }
++
++    //清空缓存文件夹
++    private void clearCacheDirectory(File file) {
++        File flist[] = file.listFiles();
++        if (flist == null || flist.length == 0) {
++            return;
++        }
++        for (File f : flist) {
++            if (f.isDirectory()) {
++                //这里将列出所有的文件夹
++                clearCacheDirectory(f);
++            } else {
++                //这里将列出所有的文件
++                //Log.d("PrivateAlbumGridViewAda", f.getAbsolutePath());
++                f.delete();//删除文件
++            }
++        }
++        return;
++    }
++
++    @Override
++    public void onClick(View view) {
++        switch (view.getId()) {
++            case R.id.button_back:
++                finish();
++                break;
++            case R.id.checkbox_select_all:
++                ((CheckBox) view).setText(((CheckBox) view).isChecked() ? "取消全选" : "全选");
++                privateVideoAlbumGridViewAdapter.selectAll(((CheckBox) view).isChecked());
++                break;
++            case R.id.button_min:
++                if (Bimp.tempSelectVideo.size() == 0) {
++                    Toast.makeText(this, "请至少选择一个视频", Toast.LENGTH_SHORT).show();
++                    break;
++                }
++                DecryptionTask decryptionTask = new DecryptionTask(Bimp.tempSelectVideo);
++                decryptionTask.execute();
++                break;
++            default:
++                break;
++
++        }
++    }
++
++    /**
++     * 批量解密异步任务
++     */
++    public class DecryptionTask extends AsyncTask<Void, Void, Boolean> {
++        private ArrayList<VideoItem> listPrivFliePath;
++        int startSize;
++
++        public DecryptionTask(ArrayList<VideoItem> listPrivFliePath) {
++            this.listPrivFliePath = listPrivFliePath;
++            progressDialog = new ProgressDialog(PrivateVideoAlbum.this);
++            progressDialog.setCancelable(false);
++        }
++
++        @Override
++        protected void onPreExecute() {
++            super.onPreExecute();
++            startSize = getApplicationContext().getContentResolver()
++                    .query(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, null, null, null, null).getCount();
++            progressDialog.setMessage("正在解密，请稍后...");
++            progressDialog.show();
++        }
++
++        @Override
++        protected Boolean doInBackground(Void... params) {
++            boolean result = false;
++            result = decryptFileList(listPrivFliePath); //解密文件集合
++            int totalTime = 0;
++            while (result && getApplicationContext().getContentResolver().
++                    query(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, null, null, null, null).getCount()
++                    != (startSize + listPrivFliePath.size()) && totalTime < listPrivFliePath.size() / 2) {
++                try {
++                    Thread.sleep(2000);
++                    totalTime += 2;
++                    //Log.d("DecryptionTask", "totalTime:" + totalTime);
++                } catch (InterruptedException e) {
++                    e.printStackTrace();
++                }
++            }
++            return result;
++        }
++
++        @Override
++        protected void onPostExecute(Boolean result) {
++            super.onPostExecute(result);
++            privateVideoAlbumGridViewAdapter.refreshDataAfterDecrypt();
++            loadFirstScreenVideo();
++            String showMessage = result ? "解密成功" : "部分文件解密失败！";
++            Toast.makeText(PrivateVideoAlbum.this, showMessage, Toast.LENGTH_SHORT).show();
++            progressDialog.dismiss();
++        }
++    }
++
++
++    boolean result = true;
++
++    /**
++     * 解密文件集合
++     */
++    public boolean decryptFileList(final ArrayList<VideoItem> arrayList) {
++        for (final VideoItem item : arrayList) {
++            final String privVideoPath = item.getPath(); //这个私密文件的绝对路径
++            Log.d("PrivateVideoAlbum", privVideoPath);
++            //解密后：文件原来的路径
++            final String videoPath = privVideoPath.replaceFirst("/data/data/" + getPackageName() + "/files/storage/emulated/0", "/storage/emulated/0");
++            executorService.submit(new Runnable() {
++                @Override
++                public void run() {
++                    boolean b = XorEncryptionUtil.encrypt(privVideoPath,videoPath);
++                    if (b) {//解密成功，删除私密文件
++                        delete(item, videoPath, getContentResolver());
++                        Log.d("PrivateVideoAlbum", "解密成功");
++                    } else {//解密失败，设置结果为false
++                        result = b;
++                    }
++                }
++            });
++        }
++        return result;
++    }
++
++
++    /**
++     * 密文件删除、私密数据库记录删除、还原文件条目到系统数据库
++     */
++    public static void delete(VideoItem item, String videoPath, ContentResolver contentResolver) {
++        //删除密文件
++        new File(item.getPath()).delete();
++        //删除私密数据库中该条文件记录
++        databaseAdapter.deleteVideo(item.getId());
++        //还原文件条目到系统数据库中
++        ContentValues contentValues = new ContentValues();
++        contentValues.put(MediaStore.Video.Media._ID, item.getId());
++        contentValues.put(MediaStore.Video.Media.DATA, videoPath);
++        contentValues.put(MediaStore.Video.Media.DISPLAY_NAME, item.getDisplayName());
++        contentValues.put(MediaStore.Video.Media.SIZE, item.getSize());
++        contentValues.put(MediaStore.Video.Media.MIME_TYPE, item.getMimeType());
++        contentValues.put(MediaStore.Video.Media.DATE_ADDED, item.getDateAdded());
++        contentValues.put(MediaStore.Video.Media.TITLE, item.getTitle());
++        contentValues.put(MediaStore.Video.Media.ALBUM, item.getAlbum());
++        contentValues.put(MediaStore.Video.Media.BUCKET_ID, item.getBucketId());
++        contentValues.put(MediaStore.Video.Media.BUCKET_DISPLAY_NAME, item.getBucketDisplayName());
++        contentValues.put(MediaStore.Video.Media.WIDTH, item.getWidth());
++        contentValues.put(MediaStore.Video.Media.HEIGHT, item.getHeight());
++        contentResolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, contentValues);
++    }
++
++
++
++}
+diff --git a/src/com/transage/privatespace/gallery/videozoom/PrivateVideoAlbumGridViewAdapter.java b/src/com/transage/privatespace/gallery/videozoom/PrivateVideoAlbumGridViewAdapter.java
+new file mode 100755
+index 0000000..d36d4ac
+--- /dev/null
++++ b/src/com/transage/privatespace/gallery/videozoom/PrivateVideoAlbumGridViewAdapter.java
+@@ -0,0 +1,152 @@
++package com.transage.privatespace.gallery.videozoom;
++
++import android.content.Context;
++import android.view.LayoutInflater;
++import android.view.View;
++import android.view.ViewGroup;
++import android.widget.BaseAdapter;
++import android.widget.CheckBox;
++import android.widget.ImageView;
++
++import com.transage.privatespace.R;
++import com.transage.privatespace.gallery.photozoom.Bimp;
++
++import java.util.ArrayList;
++
++/**
++ * Created by dongrp on 2017/7/13.
++ */
++
++public class PrivateVideoAlbumGridViewAdapter extends BaseAdapter {
++
++    private ArrayList<VideoItem> listPrivFlies = new ArrayList<>();
++    private ArrayList<VideoItem> selectedDataList = new ArrayList<>();
++    private Context mContext;
++    //private BitmapCache cache;
++    //private DisplayMetrics dm;
++
++    public PrivateVideoAlbumGridViewAdapter(Context c, ArrayList<VideoItem> list) {
++        mContext = c;
++        listPrivFlies = list;
++        //cache = new BitmapCache();
++        //dm = new DisplayMetrics();
++        //((Activity) mContext).getWindowManager().getDefaultDisplay().getMetrics(dm);
++    }
++
++    /**
++     * 适配器 数据全选、取消全选 的方法
++     * @param isSelectedAll
++     */
++    public void selectAll(boolean isSelectedAll){
++        Bimp.tempSelectVideo.clear();
++        if (isSelectedAll){
++            Bimp.tempSelectVideo.addAll(listPrivFlies);
++        }
++        notifyDataSetChanged();
++    }
++
++    /**
++     * 适配器 获取全部数据集 的方法
++     * @return
++     */
++    public ArrayList<VideoItem> getDataList(){
++        return listPrivFlies;
++    }
++
++    /**
++     * 适配器 获取已选数据集 的方法
++     * @return
++     */
++    public ArrayList<VideoItem> getSelectedData(){
++        return Bimp.tempSelectVideo;
++    }
++
++    /**
++     * 解密完成后，刷新适配器的方法
++     */
++    public void refreshDataAfterDecrypt(){
++        listPrivFlies.removeAll(Bimp.tempSelectVideo);
++        notifyDataSetChanged();
++        Bimp.tempSelectVideo.clear();
++    }
++
++
++    public int getCount() {
++        if (listPrivFlies.size() == 0){
++            PrivateVideoAlbum.showNoPictureTip();
++        }
++        return listPrivFlies.size();
++    }
++
++    public VideoItem getItem(int position) {
++        return listPrivFlies.get(position);
++    }
++
++    public long getItemId(int position) {
++        return position;
++    }
++
++    public View getView(final int position, View convertView, ViewGroup parent) {
++        final PrivateVideoAlbumGridViewAdapter.ViewHolder viewHolder;
++        if (convertView == null) {
++            viewHolder = new PrivateVideoAlbumGridViewAdapter.ViewHolder();
++            convertView = LayoutInflater.from(mContext).inflate(R.layout.item_private_album_gridview, parent, false);
++            viewHolder.imageView = (ImageView) convertView.findViewById(R.id.image_view);
++            viewHolder.checkBox = (CheckBox) convertView.findViewById(R.id.checkBox);
++            viewHolder.imagePlay = (ImageView) convertView.findViewById(R.id.image_play);
++            viewHolder.imagePlay.setVisibility(View.VISIBLE);
++            convertView.setTag(viewHolder);
++        } else {
++            viewHolder = (PrivateVideoAlbumGridViewAdapter.ViewHolder) convertView.getTag();
++        }
++
++/*        String privVideoPath = listPrivFlies.get(position).getPath();
++        String fileName = privVideoPath.substring(privVideoPath.lastIndexOf("/") + 1);
++        String imagePath = "/data/data/" + mContext.getPackageName() + "/files/cache/" + fileName;
++        File file = new File(imagePath);
++        if (file.exists()){
++            Glide.with(mContext).load(file).into(viewHolder.imageView);
++        }else {
++            viewHolder.imageView.setImageResource(R.color.greytext);
++        }*/
++        viewHolder.imageView.setImageResource(R.color.greytext);
++        viewHolder.checkBox.setOnClickListener(new View.OnClickListener() {
++            @Override
++            public void onClick(View view) {
++                if (viewHolder.checkBox.isChecked()){
++                    Bimp.tempSelectVideo.add(listPrivFlies.get(position));
++                }else {
++                    Bimp.tempSelectVideo.remove(listPrivFlies.get(position));
++                }
++            }
++        });
++        //防止滑动的时候由于控件复用而导致数据错乱，所以控件的适配必须有数据源中的内容决定
++        if (Bimp.tempSelectVideo.contains(listPrivFlies.get(position))) {
++            viewHolder.checkBox.setChecked(true);
++        } else {
++            viewHolder.checkBox.setChecked(false);
++        }
++        //点击item进入Gallery进行单张查看
++        viewHolder.imageView.setOnClickListener(new View.OnClickListener() {
++            @Override
++            public void onClick(View v) {
++/*                Uri uri = Uri.parse(dataList.get(position).getPath());
++                Intent intent = new Intent(Intent.ACTION_VIEW);
++                intent.setDataAndType(uri, "video*//*");
++                context.startActivity(intent);*/
++            }
++        });
++        return convertView;
++    }
++
++    /**
++     * 存放列表项控件句柄
++     */
++    public class ViewHolder {
++        public ImageView imageView;
++        public CheckBox checkBox;
++        public ImageView imagePlay;
++    }
++
++
++}
+diff --git a/src/com/transage/privatespace/gallery/videozoom/VideoAlbum.java b/src/com/transage/privatespace/gallery/videozoom/VideoAlbum.java
+index ccdf957..03040b9 100755
+--- a/src/com/transage/privatespace/gallery/videozoom/VideoAlbum.java
++++ b/src/com/transage/privatespace/gallery/videozoom/VideoAlbum.java
+@@ -1,35 +1,44 @@
+ package com.transage.privatespace.gallery.videozoom;
+ 
+ import android.app.ProgressDialog;
++import android.content.ContentResolver;
++import android.content.ContentValues;
++import android.os.AsyncTask;
+ import android.os.Bundle;
++import android.provider.MediaStore;
++import android.util.Log;
+ import android.view.View;
+ import android.view.View.OnClickListener;
+ import android.widget.CheckBox;
+ import android.widget.GridView;
+ import android.widget.TextView;
++import android.widget.Toast;
+ 
+ import com.transage.privatespace.R;
+ import com.transage.privatespace.activity.BaseActivity;
+ import com.transage.privatespace.database.DatabaseAdapter;
++import com.transage.privatespace.database.PsDatabaseHelper;
+ import com.transage.privatespace.gallery.photozoom.AlbumHelper;
+ import com.transage.privatespace.gallery.photozoom.Bimp;
++import com.transage.privatespace.gallery.util.XorEncryptionUtil;
+ 
++import java.io.File;
+ import java.util.ArrayList;
+ import java.util.concurrent.ExecutorService;
+ import java.util.concurrent.Executors;
+ 
+ 
+ /**
+- * 这个类用于：将ImageFolders中选定的Folder(含图片的文件夹)中所有图片 以GridView的形式 展示出来
++ * 这个类用于：系统视频展示界面
+  *
+  * @author Tom
+  */
+ public class VideoAlbum extends BaseActivity implements OnClickListener {
+     private GridView gridView;
+-    private VideoAlbumGridViewAdapter gridImageAdapter;
++    private VideoAlbumGridViewAdapter gridVideoAdapter;
+     //这个静态 成员变量 在FolderGirdViewAdapter的item点击事件中 就已经赋值了
+     public static ArrayList<VideoItem> videoList;
+-//    private EncryptionTask mTask = null;
++    private EncryptionTask mTask = null;
+     public static ExecutorService executorService; //线程池
+     private static DatabaseAdapter databaseAdapter;
+ 
+@@ -57,8 +66,8 @@ public class VideoAlbum extends BaseActivity implements OnClickListener {
+         videoList = AlbumHelper.getSystemVideoList(VideoAlbum.this);
+         //创建gridView并绑定适配器
+         gridView = (GridView) findViewById(R.id.album_GridView);
+-        gridImageAdapter = new VideoAlbumGridViewAdapter(this,videoList);
+-        gridView.setAdapter(gridImageAdapter);
++        gridVideoAdapter = new VideoAlbumGridViewAdapter(this,videoList);
++        gridView.setAdapter(gridVideoAdapter);
+     }
+ 
+     @Override
+@@ -83,19 +92,19 @@ public class VideoAlbum extends BaseActivity implements OnClickListener {
+                 break;
+             case R.id.checkbox_select_all:
+                 ((CheckBox) view).setText(((CheckBox) view).isChecked() ? "取消全选" : "全选");
+-                gridImageAdapter.selectAll(((CheckBox) view).isChecked());
++                gridVideoAdapter.selectAll(((CheckBox) view).isChecked());
+                 break;
+-/*            case R.id.button_add:
+-                if (Bimp.tempSelectBitmap.size() == 0){
+-                    Toast.makeText(this, "请至少选择一张图片", Toast.LENGTH_SHORT).show();
++            case R.id.button_add:
++                if (Bimp.tempSelectVideo.size() == 0){
++                    Toast.makeText(this, "请至少选择一个视频", Toast.LENGTH_SHORT).show();
+                     break;
+                 }
+                 if (mTask != null) {
+                     mTask.cancel(true);
+                 }
+-                mTask = new EncryptionTask(Bimp.tempSelectBitmap);
++                mTask = new EncryptionTask(Bimp.tempSelectVideo);
+                 mTask.execute();
+-                break;*/
++                break;
+             default:
+                 break;
+         }
+@@ -107,12 +116,12 @@ public class VideoAlbum extends BaseActivity implements OnClickListener {
+      */
+     public ProgressDialog progressDialog;
+ 
+-/*    public class EncryptionTask extends AsyncTask<Void, Void, Boolean> {
+-        private ArrayList<ImageItem> mImageArrayList;
++    public class EncryptionTask extends AsyncTask<Void, Void, Boolean> {
++        private ArrayList<VideoItem> mVideoArrayList;
+         int startSize;
+ 
+-        public EncryptionTask(ArrayList<ImageItem> imageArrayList) {
+-            this.mImageArrayList = imageArrayList;
++        public EncryptionTask(ArrayList<VideoItem> videoArrayList) {
++            mVideoArrayList = videoArrayList;
+             progressDialog = new ProgressDialog(VideoAlbum.this);
+             progressDialog.setCancelable(false);
+         }
+@@ -128,9 +137,9 @@ public class VideoAlbum extends BaseActivity implements OnClickListener {
+         @Override
+         protected Boolean doInBackground(Void... params) {
+             boolean result = false;
+-            result = encryptFileList(mImageArrayList); //加密文件集合
++            result = encryptFileList(mVideoArrayList); //加密视频集合
+             int totalTime = 0;
+-            while (result && databaseAdapter.getPhoto().size() != (startSize + mImageArrayList.size()) && totalTime < mImageArrayList.size()) {
++            while (result && databaseAdapter.getPhoto().size() != (startSize + mVideoArrayList.size()) && totalTime < mVideoArrayList.size()) {
+                 try {
+                     Thread.sleep(2000);
+                     totalTime += 2;
+@@ -145,13 +154,13 @@ public class VideoAlbum extends BaseActivity implements OnClickListener {
+         @Override
+         protected void onPostExecute(Boolean result) {
+             super.onPostExecute(result);
+-            gridImageAdapter.refreshDataAfterEncrypt();
++            gridVideoAdapter.refreshDataAfterEncrypt();
+             String showMessage = result ? "加密成功" : "部分文件加密失败！";
+             Toast.makeText(VideoAlbum.this, showMessage, Toast.LENGTH_SHORT).show();
+             progressDialog.dismiss();
+         }
+ 
+-    }*/
++    }
+ 
+     /**
+      * 加密文件集合
+@@ -161,17 +170,18 @@ public class VideoAlbum extends BaseActivity implements OnClickListener {
+      */
+     boolean result = true;//最后返回的加密结果
+ 
+-/*    public boolean encryptFileList(ArrayList<ImageItem> arrayList) {
++    public boolean encryptFileList(ArrayList<VideoItem> arrayList) {
+         long l2 = System.currentTimeMillis();
+-        for (final ImageItem item : arrayList) {
+-            final String imagePath = item.getImagePath();
+-            final String privImagePath = imagePath.replaceFirst("/storage/emulated/0", "/data/data/" + getPackageName() + "/files/storage/emulated/0");
++        for (final VideoItem item : arrayList) {
++            final String videoPath = item.getPath();
++            final String privVideoPath = videoPath.replaceFirst("/storage/emulated/0", "/data/data/" + getPackageName() + "/files/storage/emulated/0");
++            Log.d("VideoAlbum", privVideoPath);
+             executorService.submit(new Runnable() {
+                 @Override
+                 public void run() {
+-                    boolean b = AESEncryptionUtil.encryptFile(imagePath, privImagePath);
+-                    if (b) {//加密成功，删除源文件
+-                        delete(item,privImagePath,getContentResolver());
++                    boolean b = XorEncryptionUtil.encrypt(videoPath,privVideoPath);
++                    if (b) {//加密成功，移动视频文件到私密路径
++                        deletVideoFile(item,privVideoPath,getContentResolver());
+                     } else { //加密失败，设置结果为false
+                         result = b;
+                     }
+@@ -181,40 +191,39 @@ public class VideoAlbum extends BaseActivity implements OnClickListener {
+         long l = System.currentTimeMillis();
+         Log.d("dongrp", "加密for循环耗时:" + (l - l2) + " ms");
+         return result;
+-    }*/
+-
++    }
+ 
+     /**
+      * 明文件删除、明文件数据库条目删除、私密数据库插入
+      * @param item
+      */
+-/*    public static void delete(ImageItem item, String privImagePath,ContentResolver contentResolver) {
+-        //删除明文件
+-        File file = new File(item.getImagePath());
+-        file.delete();
++    public static void deletVideoFile(VideoItem item, String privVideoPath,ContentResolver contentResolver) {
++        //删除原文件
++        new File(item.getPath()).delete();
+         //删除系统数据库中该条明文件记录
+-        Uri baseUri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+-        contentResolver.delete(baseUri, "_id=?", new String[]{item.getImageId()});
++        contentResolver.delete(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, "_id=?", new String[]{item.getId()});
+         //将加密后的文件条目插入私密数据库
+         Log.d("VideoAlbum", item.toString());
+         ContentValues contentValues = new ContentValues();
+-        contentValues.put(PsDatabaseHelper.FilesClumns._ID,Integer.valueOf(item.getImageId()));
+-        contentValues.put(PsDatabaseHelper.FilesClumns._DATA,privImagePath);
+-        contentValues.put(PsDatabaseHelper.FilesClumns._SOURCE_DATA,item.getImagePath());
+-        contentValues.put(PsDatabaseHelper.FilesClumns._SIZE,Integer.valueOf(item.getSize()));
+-        contentValues.put(PsDatabaseHelper.FilesClumns._DISPLAY_NAME,item.getDisplayName());
+-        contentValues.put(PsDatabaseHelper.FilesClumns.TITLE,item.getTitle());
+-        contentValues.put(PsDatabaseHelper.FilesClumns.DATE_ADDED,Long.valueOf(item.getDateAdded()));
+-        contentValues.put(PsDatabaseHelper.FilesClumns.MIME_TYPE,item.getMimeType());
+-        contentValues.put(PsDatabaseHelper.FilesClumns.BUCKET_ID,item.getBucketId());
+-        contentValues.put(PsDatabaseHelper.FilesClumns.BUCKET_DISPLAY_NAME,item.getBucket_display_name());
++        contentValues.put(PsDatabaseHelper.VideoClumns._ID,Integer.valueOf(item.getId()));
++        contentValues.put(PsDatabaseHelper.VideoClumns.DATA,privVideoPath);
++        contentValues.put(PsDatabaseHelper.VideoClumns.DISPLAY_NAME,item.getDisplayName());
++        contentValues.put(PsDatabaseHelper.VideoClumns.SIZE,Integer.valueOf(item.getSize()));
++        contentValues.put(PsDatabaseHelper.VideoClumns.MIME_TYPE,item.getMimeType());
++        contentValues.put(PsDatabaseHelper.VideoClumns.DATE_ADDED,Long.valueOf(item.getDateAdded()));
++        contentValues.put(PsDatabaseHelper.VideoClumns.TITLE,item.getDateAdded());
++        contentValues.put(PsDatabaseHelper.VideoClumns.ALBUM,item.getAlbum());
++        contentValues.put(PsDatabaseHelper.VideoClumns.BUCKET_ID,item.getBucketId());
++        contentValues.put(PsDatabaseHelper.VideoClumns.BUCKET_DISPLAY_NAME,item.getBucketDisplayName());
+         try {
+-            contentValues.put(PsDatabaseHelper.FilesClumns.WIDTH,Integer.valueOf(item.getWidth()));
+-            contentValues.put(PsDatabaseHelper.FilesClumns.HEIGHT,Integer.valueOf(item.getHeight()));
++            contentValues.put(PsDatabaseHelper.VideoClumns.WIDTH,Integer.valueOf(item.getWidth()));
++            contentValues.put(PsDatabaseHelper.VideoClumns.HEIGHT,Integer.valueOf(item.getHeight()));
+         } catch (NumberFormatException e) {
+             e.printStackTrace();
+         }
+-        databaseAdapter.insertPhoto(contentValues);
+-    }*/
++        databaseAdapter.insertVideo(contentValues);
++    }
++
++
+ 
+ }
+diff --git a/src/com/transage/privatespace/gallery/videozoom/VideoAlbumGridViewAdapter.java b/src/com/transage/privatespace/gallery/videozoom/VideoAlbumGridViewAdapter.java
+index 499daad..6ed10b8 100755
+--- a/src/com/transage/privatespace/gallery/videozoom/VideoAlbumGridViewAdapter.java
++++ b/src/com/transage/privatespace/gallery/videozoom/VideoAlbumGridViewAdapter.java
+@@ -145,8 +145,6 @@ public class VideoAlbumGridViewAdapter extends BaseAdapter {
+ 		//点击viewHolder.imageView 开始播放视频
+ 		viewHolder.imageView.setOnClickListener(new OnClickListener() {
+ 			public void onClick(View v) {
+-//				context.startActivity(new Intent(context,Gallery.class).putExtra("position",position).putExtra("isFromPrivateAlbum",false));
+-//				Toast.makeText(context, "播放视频", Toast.LENGTH_SHORT).show();
+ 				Uri uri = Uri.parse(dataList.get(position).getPath());
+ 				Intent intent = new Intent(Intent.ACTION_VIEW);
+ 				intent.setDataAndType(uri, "video/*");
+@@ -156,8 +154,4 @@ public class VideoAlbumGridViewAdapter extends BaseAdapter {
+ 		return convertView;
+ 	}
+ 
+-/*	public int dipToPx(int dip) {
+-		return (int) (dip * dm.density + 0.5f);
+-	}*/
+-
+ }

@@ -1,0 +1,365 @@
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index 907d753..da01bc4 100755
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -60,6 +60,9 @@
+         <activity
+             android:name=".activity.PrivateContactsActivity"
+             android:screenOrientation="portrait"/>
++        <provider
++            android:authorities="com.transage.privatespace.provider.PrivateProvider"
++            android:name=".provider.PrivateProvider"/>
+     </application>
+ 
+ </manifest>
+\ No newline at end of file
+diff --git a/res/layout/item_call_record.xml b/res/layout/item_call_record.xml
+index cf27a84..e8a7e45 100755
+--- a/res/layout/item_call_record.xml
++++ b/res/layout/item_call_record.xml
+@@ -22,6 +22,15 @@
+         android:src="@mipmap/ic_launcher" />
+ 
+     <TextView
++        android:id="@+id/call_record_count"
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"
++        android:layout_marginStart="10dp"
++        android:textColor="@color/greytext"
++        android:layout_toEndOf="@id/ivCallType"
++        android:textSize="14sp" />
++
++    <TextView
+         android:id="@+id/tvPhoneNum"
+         android:layout_width="wrap_content"
+         android:layout_height="wrap_content"
+diff --git a/src/com/transage/privatespace/activity/PrivateContacts.java b/src/com/transage/privatespace/activity/PrivateContacts.java
+index 86577de..0def6b3 100755
+--- a/src/com/transage/privatespace/activity/PrivateContacts.java
++++ b/src/com/transage/privatespace/activity/PrivateContacts.java
+@@ -166,7 +166,7 @@ public class PrivateContacts extends FragmentActivity implements View.OnClickLis
+ 
+ 
+     @Override
+-    public void onLoad(LoadTag loadTag) {
++    public void onLoadComplete(LoadTag loadTag) {
+         listFragment.get(loadTag.getValue()).refresh();
+     }
+ }
+diff --git a/src/com/transage/privatespace/adapter/CallRecordListViewAdapter.java b/src/com/transage/privatespace/adapter/CallRecordListViewAdapter.java
+index 593301e..b8e4dc0 100755
+--- a/src/com/transage/privatespace/adapter/CallRecordListViewAdapter.java
++++ b/src/com/transage/privatespace/adapter/CallRecordListViewAdapter.java
+@@ -20,22 +20,22 @@ import java.util.List;
+  */
+ public class CallRecordListViewAdapter extends BaseAdapter {
+     private Context context;
+-    private List<CallRecord> mCallRecordList;
++    private List<List<CallRecord>> listCallRecordList;
+ 
+ 
+-    public CallRecordListViewAdapter(Context context, List<CallRecord> callRecordList) {
++    public CallRecordListViewAdapter(Context context, List<List<CallRecord>> listCallRecordList) {
+         this.context = context;
+-        this.mCallRecordList = callRecordList;
++        this.listCallRecordList = listCallRecordList;
+     }
+ 
+     @Override
+     public int getCount() {
+-        return mCallRecordList.size();
++        return listCallRecordList.size();
+     }
+ 
+     @Override
+     public Object getItem(int position) {
+-        return mCallRecordList.get(position);
++        return listCallRecordList.get(position).get(listCallRecordList.get(position).size()-1);
+     }
+ 
+     @Override
+@@ -53,30 +53,29 @@ public class CallRecordListViewAdapter extends BaseAdapter {
+             viewHolder.tvName = (TextView) convertView.findViewById(R.id.tvName);
+             viewHolder.tvPhoneNum = (TextView) convertView.findViewById(R.id.tvPhoneNum);
+             viewHolder.tvDate = (TextView) convertView.findViewById(R.id.tvCallDate);
++            viewHolder.tvCallCounts = (TextView) convertView.findViewById(R.id.call_record_count);
+             convertView.setTag(viewHolder);
+         } else {
+             viewHolder = (ViewHolder) convertView.getTag();
+         }
+         //数据适配
+         //最新的通话记录是list的最后一项
+-        CallRecord callRecord = mCallRecordList.get(position);
+-        if (callRecord.getType() == CallLog.Calls.INCOMING_TYPE) { //呼入
++        if (listCallRecordList.get(position).get(listCallRecordList.get(position).size()-1).getType() == CallLog.Calls.INCOMING_TYPE) { //呼入
+             viewHolder.ivCallType.setImageResource(R.mipmap.dial_in);
+-        } else if (callRecord.getType() == CallLog.Calls.OUTGOING_TYPE) { //呼出
++        } else if (listCallRecordList.get(position).get(listCallRecordList.get(position).size()-1).getType() == CallLog.Calls.OUTGOING_TYPE) { //呼出
+             viewHolder.ivCallType.setImageResource(R.mipmap.dial_out);
+-        } else if (callRecord.getType() == CallLog.Calls.MISSED_TYPE) { //未接
++        } else if (listCallRecordList.get(position).get(listCallRecordList.get(position).size()-1).getType() == CallLog.Calls.MISSED_TYPE) { //未接
+             viewHolder.ivCallType.setImageResource(R.mipmap.missed_call);
+         }
+-        viewHolder.tvName.setText(callRecord.getName());
+-        viewHolder.tvPhoneNum.setText(callRecord.getPhoneNum());
+-        viewHolder.tvDate.setText(PrivateSpaceLoader.formartDate(callRecord.getDate()));
++        viewHolder.tvName.setText(listCallRecordList.get(position).get(listCallRecordList.get(position).size()-1).getName());
++        viewHolder.tvPhoneNum.setText(listCallRecordList.get(position).get(listCallRecordList.get(position).size()-1).getPhoneNum());
++        viewHolder.tvDate.setText(PrivateSpaceLoader.formartDate(listCallRecordList.get(position).get(listCallRecordList.get(position).size()-1).getDate()));
++        viewHolder.tvCallCounts.setText("(" + listCallRecordList.get(position).size() + ")");
+         return convertView;
+     }
+ 
+     class ViewHolder {
+-        TextView tvName, tvPhoneNum, tvDate;
++        TextView tvName, tvPhoneNum, tvDate, tvCallCounts;
+         ImageView ivCallType;
+     }
+-
+-
+ }
+diff --git a/src/com/transage/privatespace/database/DatabaseAdapter.java b/src/com/transage/privatespace/database/DatabaseAdapter.java
+index 87b3ebb..8793f8d 100755
+--- a/src/com/transage/privatespace/database/DatabaseAdapter.java
++++ b/src/com/transage/privatespace/database/DatabaseAdapter.java
+@@ -14,6 +14,7 @@ import com.transage.privatespace.bean.Sms;
+ import java.util.ArrayList;
+ import java.util.List;
+ 
++import android.net.Uri;
+ import android.util.Log;
+ 
+ /**
+@@ -135,6 +136,17 @@ public class DatabaseAdapter {
+         return list;
+     }
+ 
++    public Cursor getContactCursor(String selection, String[] selectionArgs) {
++        String sql = "SELECT " +
++                PsDatabaseHelper.ContactsColumns._ID + "," +
++                PsDatabaseHelper.ContactsColumns.RAWCONTACT_ID + "," +
++                PsDatabaseHelper.ContactsColumns.CONTACT_NAME + "," +
++                PsDatabaseHelper.ContactsColumns.CONTACT_NUMBER + " FROM " +
++                PsDatabaseHelper.Tables.CONTACTS + " WHERE " +
++                selection;
++        return query(sql, selectionArgs);
++    }
++
+     /**
+      * sms操作 20170707 add by wangmeng
+      */
+@@ -222,7 +234,7 @@ public class DatabaseAdapter {
+         List<CallRecord> list = new ArrayList<>();
+         Cursor cursor = query(sql, new String[]{phone.replaceAll(" ", "").trim()});
+         try {
+-            if (cursor.moveToFirst()){
++            if (cursor.moveToFirst()) {
+                 do {
+                     CallRecord callRecord = new CallRecord();
+                     callRecord.setId(cursor.getInt(0));
+@@ -232,7 +244,7 @@ public class DatabaseAdapter {
+                     callRecord.setDuration(cursor.getInt(4));
+                     callRecord.setType(cursor.getInt(5));
+                     list.add(callRecord);
+-                }while (cursor.moveToNext());
++                } while (cursor.moveToNext());
+             }
+         } catch (Exception e) {
+             e.printStackTrace();
+@@ -255,15 +267,17 @@ public class DatabaseAdapter {
+         List<CallRecord> list = new ArrayList<>();
+         Cursor cursor = query(sql, null);
+         try {
+-            while (cursor.moveToNext()) {
+-                CallRecord callRecord = new CallRecord();
+-                callRecord.setId(cursor.getInt(0));
+-                callRecord.setName(cursor.getString(1));
+-                callRecord.setPhoneNum(cursor.getString(2));
+-                callRecord.setDate(cursor.getLong(3));
+-                callRecord.setDuration(cursor.getInt(4));
+-                callRecord.setType(cursor.getInt(5));
+-                list.add(callRecord);
++            if (cursor.moveToFirst()) {
++                do {
++                    CallRecord callRecord = new CallRecord();
++                    callRecord.setId(cursor.getInt(0));
++                    callRecord.setName(cursor.getString(1));
++                    callRecord.setPhoneNum(cursor.getString(2));
++                    callRecord.setDate(cursor.getLong(3));
++                    callRecord.setDuration(cursor.getInt(4));
++                    callRecord.setType(cursor.getInt(5));
++                    list.add(callRecord);
++                } while (cursor.moveToNext());
+             }
+         } catch (Exception e) {
+             e.printStackTrace();
+@@ -273,6 +287,10 @@ public class DatabaseAdapter {
+         return list;
+     }
+ 
++    public void insertCallLog(ContentValues contentValues) {
++        insert(PsDatabaseHelper.Tables.CALLRECORD, null, contentValues);
++    }
++
+     /**
+      * 统一封装数据库接口
+      */
+diff --git a/src/com/transage/privatespace/fragment/FG_PrivateCallRecords.java b/src/com/transage/privatespace/fragment/FG_PrivateCallRecords.java
+index 7ca8a2c..92b081d 100755
+--- a/src/com/transage/privatespace/fragment/FG_PrivateCallRecords.java
++++ b/src/com/transage/privatespace/fragment/FG_PrivateCallRecords.java
+@@ -34,7 +34,7 @@ public class FG_PrivateCallRecords extends BaseFragment {
+     private View view;
+     private CallRecordListViewAdapter callRecordListViewAdapter;
+     //    private ArrayList<ArrayList<CallRecord>> listCallRecordList = new ArrayList<ArrayList<CallRecord>>(); // 该list存放每个私密联系人的通话记录
+-    private List<CallRecord> list_callRecord = new ArrayList<>();
++    private List<List<CallRecord>> list_callRecord = new ArrayList<>();
+ 
+ 
+ 
+@@ -62,7 +62,7 @@ public class FG_PrivateCallRecords extends BaseFragment {
+         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+             @Override
+             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+-                PeopleListViewAdapter.callPhoneOrSendSms(getActivity(), 1, list_callRecord.get(position).getPhoneNum());
++                PeopleListViewAdapter.callPhoneOrSendSms(getActivity(), 1, list_callRecord.get(position).get(0).getPhoneNum());
+             }
+         });
+     }
+@@ -72,7 +72,35 @@ public class FG_PrivateCallRecords extends BaseFragment {
+      */
+     public void initData() {
+         list_callRecord.clear();
+-        list_callRecord.addAll(new DatabaseAdapter(getActivity()).getCallRecords());
++        List<CallRecord> callRecords = new DatabaseAdapter(getActivity()).getCallRecords();
++        Log.i(TAG, "callRecords.size = " + callRecords.size());
++
++        if (callRecords.size()>0){
++            List<CallRecord> callRecordsCache = null;
++
++            for (int i = 0; i<callRecords.size(); i++) {
++                if (callRecordsCache == null){
++                    callRecordsCache = new ArrayList<>();
++                }
++                if (callRecordsCache.size()>0){
++                    if (callRecords.get(i).getPhoneNum().equals(callRecordsCache.get(callRecordsCache.size()-1).getPhoneNum())){
++                        callRecordsCache.add(callRecords.get(i));
++                        if (i == callRecords.size()-1){
++                            list_callRecord.add(callRecordsCache);
++                            callRecordsCache = null;
++                            Log.i(TAG, "添加一个童话记录");
++                        }
++                        Log.i(TAG, "i = " + i + "  records = " + callRecords.get(i).toString());
++                    }else{
++                        list_callRecord.add(callRecordsCache);
++                        callRecordsCache = null;
++                    }
++                }else {
++                    callRecordsCache.add(callRecords.get(i));
++                }
++            }
++        }
++
+ //        // 1.先获取到所有私密联系人
+ //        ArrayList<People> listPrivatePeople = new ArrayList<People>();
+ //        listPrivatePeople.addAll(new DatabaseAdapter(getContext()).getContacts());
+diff --git a/src/com/transage/privatespace/loader/OnLoadListener.java b/src/com/transage/privatespace/loader/OnLoadListener.java
+index e525975..7662f12 100755
+--- a/src/com/transage/privatespace/loader/OnLoadListener.java
++++ b/src/com/transage/privatespace/loader/OnLoadListener.java
+@@ -18,5 +18,5 @@ public interface OnLoadListener {
+             return mValue;
+         }
+     }
+-    public void onLoad(LoadTag loadTag);
++    public void onLoadComplete(LoadTag loadTag);
+ }
+diff --git a/src/com/transage/privatespace/loader/PrivateSpaceLoader.java b/src/com/transage/privatespace/loader/PrivateSpaceLoader.java
+index 34623cf..8635ed8 100755
+--- a/src/com/transage/privatespace/loader/PrivateSpaceLoader.java
++++ b/src/com/transage/privatespace/loader/PrivateSpaceLoader.java
+@@ -42,7 +42,7 @@ public class PrivateSpaceLoader {
+     private static final int REFRESHE_CONTACT = 1102;
+     private static final int REFRESHE_SMS = 1103;
+ 
+-    //数据变动监听器
++    //数据加载监听器
+     private static PrivateContacts mLoadListener;
+ 
+     private Handler mHandler = new Handler() {
+@@ -61,13 +61,12 @@ public class PrivateSpaceLoader {
+                 default:
+                     break;
+             }
+-            mLoadListener.onLoad(tag);
++            mLoadListener.onLoadComplete(tag);
+         }
+     };
+ 
+     public PrivateSpaceLoader(PrivateContacts mLoadListener) {
+         this.mLoadListener = mLoadListener;
+-
+     }
+ 
+     /**
+diff --git a/src/com/transage/privatespace/provider/PrivateProvider.java b/src/com/transage/privatespace/provider/PrivateProvider.java
+new file mode 100755
+index 0000000..6cc660d
+--- /dev/null
++++ b/src/com/transage/privatespace/provider/PrivateProvider.java
+@@ -0,0 +1,55 @@
++package com.transage.privatespace.provider;
++
++import android.content.ContentProvider;
++import android.content.ContentValues;
++import android.database.Cursor;
++import android.net.Uri;
++import android.util.Log;
++
++import com.transage.privatespace.database.DatabaseAdapter;
++
++/**
++ * Created by yanjie.xu on 2017/7/24.
++ *
++ * used in "com.android.server.telecom.CallLogManager.onCallStateChanged()"
++ */
++
++public class PrivateProvider extends ContentProvider{
++    private static final String TAG = "PrivateProvider";
++    DatabaseAdapter mDbAdapter;
++
++    @Override
++    public boolean onCreate() {
++        if (mDbAdapter == null){
++            mDbAdapter = new DatabaseAdapter(getContext());
++        }
++        return false;
++    }
++
++    @Override
++    public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs, String sortOrder) {
++        return mDbAdapter.getContactCursor(selection, selectionArgs);
++    }
++
++    @Override
++    public String getType(Uri uri) {
++        return null;
++    }
++
++    @Override
++    public Uri insert(Uri uri, ContentValues contentValues) {
++        android.util.Log.i(TAG, "insert contentValues = " + contentValues.toString());
++        mDbAdapter.insertCallLog(contentValues);
++        return uri;
++    }
++
++    @Override
++    public int delete(Uri uri, String s, String[] strings) {
++        return 0;
++    }
++
++    @Override
++    public int update(Uri uri, ContentValues contentValues, String s, String[] strings) {
++        return 0;
++    }
++}

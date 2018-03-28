@@ -1,0 +1,118 @@
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index 39185fd..e5c23aa 100755
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -29,17 +29,14 @@
+         <activity
+             android:name=".activity.Main"
+             android:screenOrientation="portrait"/>
+-
+         <activity
+             android:name=".activity.AdvancedSetup"
+             android:screenOrientation="portrait"/>
+-
+         <activity
+             android:name=".activity.Login"
+             android:screenOrientation="portrait"
+             android:theme="@style/AppStartLoad"
+-            android:windowSoftInputMode="stateVisible">
+-            <!-- android:windowSoftInputMode="adjustPan"  -->
++            android:windowSoftInputMode="stateAlwaysVisible">
+             <intent-filter>
+                 <action android:name="android.intent.action.MAIN"/>
+ 
+@@ -49,26 +46,35 @@
+         <activity
+             android:name=".activity.AddApp"
+             android:screenOrientation="portrait"/>
+-        <activity android:name=".gallery.photozoom.Album"/>
+-        <activity android:name=".gallery.photozoom.Folders"/>
+-        <activity android:name=".gallery.photozoom.Gallery"/>
+-        <activity android:name=".gallery.activity.PrivateAlbum"/>
+-		<activity android:name=".gallery.activity.GalleryMainActivity"/>
+         <activity
+-            android:name=".activity.SecurityQuestion"
++            android:name=".gallery.photozoom.Album"
+             android:screenOrientation="portrait"/>
+         <activity
+-            android:name=".activity.PrivateContacts"
++            android:name=".gallery.photozoom.Folders"
+             android:screenOrientation="portrait"/>
+         <activity
+-            android:name=".activity.AddPeople"
++            android:name=".gallery.photozoom.Gallery"
+             android:screenOrientation="portrait"/>
+         <activity
+-            android:name=".activity.PrivateContactsActivity"
++            android:name=".gallery.activity.PrivateAlbum"
+             android:screenOrientation="portrait"/>
++        <activity
++            android:name=".gallery.activity.GalleryMainActivity"
++            android:screenOrientation="portrait"/>
++        <activity
++            android:name=".activity.SecurityQuestion"
++            android:screenOrientation="portrait"
++            android:windowSoftInputMode="stateAlwaysVisible"/>
++        <activity
++            android:name=".activity.PrivateContacts"
++            android:screenOrientation="portrait"/>
++        <activity
++            android:name=".activity.AddPeople"
++            android:screenOrientation="portrait"/>
++
+         <provider
+-            android:authorities="com.transage.privatespace.provider.PrivateProvider"
+-            android:name=".provider.PrivateProvider"/>
++            android:name=".provider.PrivateProvider"
++            android:authorities="com.transage.privatespace.provider.PrivateProvider"/>
+     </application>
+ 
+ </manifest>
+\ No newline at end of file
+diff --git a/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java b/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
+index 8d8d50d..fc438ec 100755
+--- a/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
++++ b/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
+@@ -54,28 +54,34 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+     protected void onCreate(@Nullable Bundle savedInstanceState) {
+         super.onCreate(savedInstanceState);
+         setContentView(R.layout.activity_private_album);
+-
+         executorService = Executors.newCachedThreadPool();//创建一个缓存线程池
+         databaseAdapter = new DatabaseAdapter(PrivateAlbum.this);//数据库操作工具类
++        init();
++    }
+ 
++    /**
++     * 组件、适配器等各项初始化
++     */
++    public void init(){
+         findViewById(R.id.checkbox_select_all).setOnClickListener(this);
+         findViewById(R.id.button_back).setOnClickListener(this);
+         findViewById(R.id.button_min).setOnClickListener(this);
+ 
+-//        String PRIV_CAMERA_PATH = "/data/data/" + getPackageName() + "/files/storage/emulated/0/DCIM/Camera/";
+-//        dateList = getDirectoryFiles(new File(PRIV_CAMERA_PATH));
+-
+         dateList = databaseAdapter.getPhoto();//数据
+         Log.d("PrivateAlbum", "dateList.size():" + dateList.size());
+-
+         gridView = (GridView) findViewById(R.id.album_GridView);//组件
+         privateAlbumGridViewAdapter = new PrivateAlbumGridViewAdapter(PrivateAlbum.this, dateList);//适配器
+         gridView.setAdapter(privateAlbumGridViewAdapter);//绑定适配器
+-        gridView.setOnScrollListener(this);
+-
++        gridView.setOnScrollListener(this);//设置滑动监听
++        //由于滑动才会加载数据，所以刚进入页面的时候，需要主动加载第一页的数据
++        List<ImageItem> listImageItem = dateList.subList(0, 21);
++        ArrayList<File> files = decryptFileListForCache(listImageItem);
++        for (int i=0 ; i<files.size();i++){
++            ImageView imageView = (ImageView) gridView.getChildAt(i).findViewById(R.id.image_view);
++            Glide.with(PrivateAlbum.this).load(files.get(i)).into(imageView);
++        }
+     }
+ 
+-
+     public void onScrollStateChanged(AbsListView view, int scrollState) {
+ 
+         if (scrollState == SCROLL_STATE_IDLE){

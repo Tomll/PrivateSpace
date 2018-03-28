@@ -1,0 +1,257 @@
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index 27940a0..5e5cd34 100755
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -17,6 +17,7 @@
+     <uses-permission android:name="android.permission.WRITE_CALL_LOG"/>
+     <uses-permission android:name="android.permission.SEND_SMS"/>
+     <uses-permission android:name="android.permission.READ_SMS"/>
++	<uses-permission android:name="android.permission.USE_FINGERPRINT"/>
+ 
+     <application
+         android:allowBackup="true"
+@@ -36,7 +37,7 @@
+             android:name=".activity.Login"
+             android:screenOrientation="portrait"
+             android:theme="@style/AppStartLoad"
+-            android:windowSoftInputMode="stateAlwaysVisible">
++            android:windowSoftInputMode="stateHidden|stateAlwaysHidden">
+             <intent-filter>
+                 <action android:name="android.intent.action.MAIN"/>
+ 
+diff --git a/src/com/transage/privatespace/activity/Login.java b/src/com/transage/privatespace/activity/Login.java
+index 98bd29a..ba2a964 100755
+--- a/src/com/transage/privatespace/activity/Login.java
++++ b/src/com/transage/privatespace/activity/Login.java
+@@ -3,10 +3,14 @@ package com.transage.privatespace.activity;
+ import android.annotation.SuppressLint;
+ import android.annotation.TargetApi;
+ import android.app.Activity;
++import android.content.Context;
+ import android.content.Intent;
+ import android.content.SharedPreferences;
++import android.hardware.fingerprint.FingerprintManager;
+ import android.os.Build;
+ import android.os.Bundle;
++import android.os.CancellationSignal;
++import android.os.Handler;
+ import android.support.annotation.Nullable;
+ import android.support.v7.app.AppCompatActivity;
+ import android.support.v7.widget.DefaultItemAnimator;
+@@ -15,14 +19,19 @@ import android.support.v7.widget.RecyclerView;
+ import android.text.TextUtils;
+ import android.text.method.HideReturnsTransformationMethod;
+ import android.text.method.PasswordTransformationMethod;
++import android.view.KeyEvent;
+ import android.view.View;
+ import android.view.Window;
+ import android.view.WindowManager;
++import android.view.inputmethod.EditorInfo;
++import android.view.inputmethod.InputMethodManager;
+ import android.widget.CheckBox;
+ import android.widget.CompoundButton;
+ import android.widget.EditText;
+ import android.widget.FrameLayout;
+ import android.widget.TextView;
++import android.widget.Toast;
++import android.os.UserHandle;
+ 
+ import com.transage.privatespace.R;
+ import com.transage.privatespace.utils.Util_Often_Use;
+@@ -31,7 +40,8 @@ import com.transage.privatespace.utils.Util_Often_Use;
+  * Created by dongrp on 2016/8/16. 登录界面
+  */
+ @SuppressLint("NewApi")
+-public class Login extends Activity implements View.OnClickListener, CompoundButton.OnCheckedChangeListener {
++public class Login extends Activity implements View.OnClickListener, CompoundButton.OnCheckedChangeListener,EditText.OnEditorActionListener {
++    private static String TAG = "Login";
+     private TextView textView1, textView2, textView3;
+     private FrameLayout frameLayout2;
+     private EditText editText1, editText2;
+@@ -47,6 +57,8 @@ public class Login extends Activity implements View.OnClickListener, CompoundBut
+     private boolean resetPrivateMarkFromAdvancedSetup = false; // AdvancedSetupActivity发送过来的是否修改密码的标志
+     private boolean resetPrivateMarkFromSecurityQuestion = false; // SecurityQuestionActivity发送过来的是否修改密码的标志
+ 
++    private FingerprintManager mFingerprintManager;
++
+     @Override
+     protected void onCreate(@Nullable Bundle savedInstanceState) {
+         super.onCreate(savedInstanceState);
+@@ -54,9 +66,12 @@ public class Login extends Activity implements View.OnClickListener, CompoundBut
+         requestWindowFeature(Window.FEATURE_NO_TITLE);//隐藏TitleBar
+         getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);//透明状态栏
+         setContentView(R.layout.activity_login);
+-
++        mFingerprintManager = (FingerprintManager) getSystemService(Context.FINGERPRINT_SERVICE);
+         initData();
+         initView();
++        if(!isFirstRun && sp.getBoolean("enterByPrivateFingerprint",false)){
++            retryFingerprint();
++        }
+     }
+ 
+     /**
+@@ -85,6 +100,8 @@ public class Login extends Activity implements View.OnClickListener, CompoundBut
+         frameLayout2 = (FrameLayout) findViewById(R.id.frame_layout2);
+         editText1 = (EditText) findViewById(R.id.editText1);
+         editText2 = (EditText) findViewById(R.id.editText2);
++        editText1.setOnEditorActionListener(this);
++        editText2.setOnEditorActionListener(this);
+         editText1.setHintTextColor(getColor(R.color.lightgrey));
+         editText2.setHintTextColor(getColor(R.color.lightgrey));
+         checkBox1 = (CheckBox) findViewById(R.id.checkBox1);
+@@ -121,6 +138,22 @@ public class Login extends Activity implements View.OnClickListener, CompoundBut
+     }
+ 
+     /**
++     * 点击软键盘DONE按钮，同样执行提交逻辑
++     */
++    @Override
++    public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
++        if (actionId == EditorInfo.IME_ACTION_DONE) {
++            InputMethodManager imm = (InputMethodManager)v.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
++            imm.hideSoftInputFromWindow(v.getWindowToken(), 0);
++            if (checkInput()) {
++                loginOrResetPwd(); // 执行主业务逻辑
++            }
++            return true;
++        }
++        return false;
++    }
++
++    /**
+      * 点击“提交”按钮后的主要业务逻辑：处理日常登录业务 和 密码修改业务
+      */
+     public void loginOrResetPwd() {
+@@ -227,4 +260,131 @@ public class Login extends Activity implements View.OnClickListener, CompoundBut
+         }
+     }
+ 
++    @Override
++    public void onStop(){
++        super.onStop();
++        stopFingerprint();//停止指纹监听
++    }
++
++    /**
++     * 以下内容为指纹解锁功能
++     */
++
++    private static final int MSG_FINGER_AUTH_SUCCESS = 1001;
++    private static final int MSG_FINGER_AUTH_FAIL = 1002;
++    private static final int MSG_FINGER_AUTH_ERROR = 1003;
++    private static final int MSG_FINGER_AUTH_HELP = 1004;
++    private static final long LOCKOUT_DURATION = 30000;//需要等待30S
++
++    private CancellationSignal mFingerprintCancel;
++    private Boolean mInFingerprintLockout = false;//判断是否失败5次，指纹上锁
++
++    /**
++     * 处理指纹返回事件
++     */
++    private Handler mHandler = new Handler() {
++        @Override
++        public void handleMessage(android.os.Message msg) {
++            switch (msg.what) {
++                case MSG_FINGER_AUTH_SUCCESS:
++                    startActivity(new Intent(Login.this, Main.class));
++                    finish();
++                    break;
++                case MSG_FINGER_AUTH_FAIL:
++                    // No action required... fingerprint will allow up to 5 of these
++                    break;
++                case MSG_FINGER_AUTH_ERROR:
++                    handleError(msg.arg1 /* errMsgId */, (CharSequence) msg.obj /* errStr */ );
++                    break;
++                case MSG_FINGER_AUTH_HELP: {
++                    // Not used
++                }
++                break;
++            }
++        };
++    };
++
++    /**
++     * 指纹错误或已上锁
++     */
++    protected void handleError(int errMsgId, CharSequence msg) {
++        mFingerprintCancel = null;
++        switch (errMsgId) {
++            case FingerprintManager.FINGERPRINT_ERROR_CANCELED:
++                return; // Only happens if we get preempted by another activity. Ignored.
++            case FingerprintManager.FINGERPRINT_ERROR_LOCKOUT:
++                mInFingerprintLockout = true;
++                // We've been locked out.  Reset after 30s.
++                if (!mHandler.hasCallbacks(mFingerprintLockoutReset)) {
++                    mHandler.postDelayed(mFingerprintLockoutReset,
++                            LOCKOUT_DURATION);
++               }
++                // Fall through to show message
++            default:
++                // Activity can be null on a screen rotation.
++               Toast.makeText(this, msg , Toast.LENGTH_SHORT);
++                break;
++        }
++        retryFingerprint(); // start again
++    }
++
++    /**
++     * 解锁失败5次,等待30s
++     */
++    private final Runnable mFingerprintLockoutReset = new Runnable() {
++        @Override
++        public void run() {
++            mInFingerprintLockout = false;
++            retryFingerprint();
++        }
++    };
++
++    /**
++     * 指纹callback
++     */
++    private FingerprintManager.AuthenticationCallback mAuthCallback = new FingerprintManager.AuthenticationCallback() {
++        @Override
++        public void onAuthenticationSucceeded(FingerprintManager.AuthenticationResult result) {
++            mHandler.obtainMessage(MSG_FINGER_AUTH_SUCCESS).sendToTarget();
++        }
++
++        @Override
++        public void onAuthenticationFailed() {
++            mHandler.obtainMessage(MSG_FINGER_AUTH_FAIL).sendToTarget();
++        };
++
++        @Override
++        public void onAuthenticationError(int errMsgId, CharSequence errString) {
++            mHandler.obtainMessage(MSG_FINGER_AUTH_ERROR, errMsgId, 0, errString)
++                    .sendToTarget();
++        }
++
++        @Override
++        public void onAuthenticationHelp(int helpMsgId, CharSequence helpString) {
++            mHandler.obtainMessage(MSG_FINGER_AUTH_HELP, helpMsgId, 0, helpString)
++                    .sendToTarget();
++        }
++    };
++
++    /**
++     * 开启指纹监听
++     */
++    private void retryFingerprint() {
++        if (!mInFingerprintLockout) {
++            mFingerprintCancel = new CancellationSignal();
++            mFingerprintManager.authenticate(null, mFingerprintCancel, 0 /* flags */,
++                    mAuthCallback, null, UserHandle.myUserId());
++        }
++    }
++
++    /**
++     * 停止指纹监听
++     */
++    private void stopFingerprint() {
++        if (mFingerprintCancel != null && !mFingerprintCancel.isCanceled()) {
++            mFingerprintCancel.cancel();
++        }
++        mFingerprintCancel = null;
++    }
++
+ }

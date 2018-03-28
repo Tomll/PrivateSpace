@@ -1,0 +1,687 @@
+diff --git a/res/layout/activity_private_album.xml b/res/layout/activity_private_album.xml
+index fcfea77..489815b 100755
+--- a/res/layout/activity_private_album.xml
++++ b/res/layout/activity_private_album.xml
+@@ -20,6 +20,7 @@
+             android:src="@mipmap/button_back"/>
+ 
+         <TextView
++            android:id="@+id/title"
+             android:layout_width="wrap_content"
+             android:layout_height="wrap_content"
+             android:layout_centerInParent="true"
+diff --git a/res/layout/item_private_album_gridview.xml b/res/layout/item_private_album_gridview.xml
+index 73de77f..5162e66 100755
+--- a/res/layout/item_private_album_gridview.xml
++++ b/res/layout/item_private_album_gridview.xml
+@@ -1,6 +1,7 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                 android:layout_width="match_parent"
++                android:background="@color/greytext"
+                 android:layout_height="300px">
+ 
+     <ImageView
+diff --git a/src/com/transage/privatespace/gallery/photozoom/Gallery.java b/src/com/transage/privatespace/gallery/photozoom/Gallery.java
+index f0fe340..a81d079 100755
+--- a/src/com/transage/privatespace/gallery/photozoom/Gallery.java
++++ b/src/com/transage/privatespace/gallery/photozoom/Gallery.java
+@@ -65,7 +65,7 @@ public class Gallery extends BaseActivity implements OnClickListener, OnPageChan
+                         | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                         | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION // hide nav bar
+                         | View.SYSTEM_UI_FLAG_FULLSCREEN // hide status bar
+-                        | View.SYSTEM_UI_FLAG_IMMERSIVE);
++                        | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+     }
+ 
+     /**
+diff --git a/src/com/transage/privatespace/gallery/util/XorEncryptionUtil.java b/src/com/transage/privatespace/gallery/util/XorEncryptionUtil.java
+index a763587..df049dc 100755
+--- a/src/com/transage/privatespace/gallery/util/XorEncryptionUtil.java
++++ b/src/com/transage/privatespace/gallery/util/XorEncryptionUtil.java
+@@ -3,7 +3,6 @@ package com.transage.privatespace.gallery.util;
+ import android.graphics.Bitmap;
+ import android.media.ThumbnailUtils;
+ import android.provider.MediaStore;
+-import android.util.Log;
+ 
+ import java.io.File;
+ import java.io.FileInputStream;
+@@ -25,11 +24,12 @@ public class XorEncryptionUtil {
+     /**
+      * 大文件 加、解密的一种方案：通过内存映射文件MappedByteBuffer对文件的前REVERSE_LENGTH长度的字节与下标做异或运算
+      * 加密完成后，将私密文件copy到私密目录下
++     *
+      * @param sourceFilePath 原文件绝对路径
+      * @param destFilePath   目标文件绝对路径
+      * @return
+      */
+-    public static boolean encrypt(String sourceFilePath,String destFilePath) {
++    public static boolean encrypt(String sourceFilePath, String destFilePath) {
+         int len = REVERSE_LENGTH;
+         try {
+             File f = new File(sourceFilePath);
+@@ -52,7 +52,8 @@ public class XorEncryptionUtil {
+             channel.close();
+             raf.close();
+             //上面的加密步骤完成后，将加密后的文件copy到私密目录下
+-            return copyFile(sourceFilePath,destFilePath);
++            boolean b = copyFile(sourceFilePath, destFilePath);
++            return b;
+         } catch (Exception e) {
+             e.printStackTrace();
+             return false;
+@@ -61,10 +62,12 @@ public class XorEncryptionUtil {
+ 
+ 
+     /**
+-     * 复制文件(以超快的速度复制文件：FileChannel的transferTo()方法比一般的文件复制速度快很多)
++     * 复制文件(FileChannel的transferTo()方法比一般的文件复制速度快很多)
++     *
+      * @return 实际复制的字节数，如果文件、目录不存在、文件为null或者发生IO异常，返回-1
+      */
+     public static boolean copyFile(String srcFilePath, String destFilePath) {
++        //long l = System.currentTimeMillis();
+         long size = 0;//真实复制的字节长度
+         long length = -1;//原文件的字节长度
+         File srcFile = new File(srcFilePath);
+@@ -72,7 +75,7 @@ public class XorEncryptionUtil {
+         File destDir = new File(destFile.getParent());//根据destFile
+         try {
+             RandomAccessFile raf = new RandomAccessFile(srcFile, "rw");
+-             length = raf.length();
++            length = raf.length();
+         } catch (IOException e) {
+             e.printStackTrace();
+         }
+@@ -97,14 +100,17 @@ public class XorEncryptionUtil {
+                 e.printStackTrace();
+             }
+         }
+-        Log.d("XorEncryptionUtil", "length%%%%%%%%%:" + length);
+-        Log.d("XorEncryptionUtil", "size%%%%%%%%%%%:" + size);
++        //Log.d("XorEncryptionUtil", "length%%%%%%%%%:" + length);
++        //Log.d("XorEncryptionUtil", "size%%%%%%%%%%%:" + size);
++        //long l1 = System.currentTimeMillis();
++        //Log.d("XorEncryptionUtil", "copy 文件耗时(l1-l):" + (l1 - l));
+         return length == size;
+     }
+ 
+ 
+     /**
+      * 获取私密视频缩略图的方法（解密-->获取缩略图-->再加密好，相当于：开保险柜-->拿东西-->再锁好保险柜）
++     *
+      * @param sourceFilePath 原文件绝对路径
+      * @return
+      */
+@@ -142,7 +148,9 @@ public class XorEncryptionUtil {
+     }
+ 
+ 
+-    //在一个文件原文件的基础上进行加密（不copy副本）
++    /**
++     * 对一个文件的原数据进行加密（不copy副本）
++     */
+     public static boolean encrypt(String sourceFilePath) {
+         int len = REVERSE_LENGTH;
+         try {
+diff --git a/src/com/transage/privatespace/gallery/videozoom/PrivateVideoAlbum.java b/src/com/transage/privatespace/gallery/videozoom/PrivateVideoAlbum.java
+index 66a2a05..47ebf80 100755
+--- a/src/com/transage/privatespace/gallery/videozoom/PrivateVideoAlbum.java
++++ b/src/com/transage/privatespace/gallery/videozoom/PrivateVideoAlbum.java
+@@ -34,17 +34,17 @@ import java.util.concurrent.Future;
+ 
+ /**
+  * Created by dongrp on 2017/7/13.
+- * 私密相册界面
++ * 私密视频集界面
+  */
+ 
+ public class PrivateVideoAlbum extends BaseActivity implements View.OnClickListener, AbsListView.OnScrollListener {
+     private GridView gridView;
+     public static ArrayList<VideoItem> dateList;
+     private PrivateVideoAlbumGridViewAdapter privateVideoAlbumGridViewAdapter;
+-    private ExecutorService executorService; //线程池
+     private int mFirstVisibleItem, mVisibleItemCount, mTotalItemCount;
+     private VisibleVideoDecryptionTask visibleVideoDecryptionTask;
+-    private static DatabaseAdapter databaseAdapter;
++    private static DatabaseAdapter databaseAdapter;//私密数据库管理器
++    private ExecutorService executorService; //线程池
+     private ProgressDialog progressDialog;
+     private static TextView tvNoPicture;
+ 
+@@ -69,13 +69,14 @@ public class PrivateVideoAlbum extends BaseActivity implements View.OnClickListe
+     protected void onDestroy() {
+         super.onDestroy();
+         Bimp.tempSelectVideo.clear();
+-        clearCacheDirectory(new File("/data/data/" + getPackageName() + "/files/cache/"));
+     }
+ 
+     /**
+      * 组件、适配器等各项初始化
+      */
+     public void init() {
++        TextView tvTitle = (TextView) findViewById(R.id.title);
++        tvTitle.setText(R.string.private_video_album);
+         tvNoPicture = (TextView) findViewById(R.id.tv_no_picture);
+         Log.d("PrivateVideoAlbum", "dateList.size():" + dateList.size());
+         gridView = (GridView) findViewById(R.id.album_GridView);//组件
+@@ -84,7 +85,6 @@ public class PrivateVideoAlbum extends BaseActivity implements View.OnClickListe
+         gridView.setOnScrollListener(this);//设置滑动监听
+         //由于滑动才会加载数据，所以刚进入页面的时候，需要主动加载第一页的数据
+         loadFirstScreenVideo();
+-
+     }
+ 
+     //无图片时，展示提示语
+@@ -105,8 +105,8 @@ public class PrivateVideoAlbum extends BaseActivity implements View.OnClickListe
+                 ArrayList<Bitmap> thumbBitmaps = decryptVideosForThumb(listVideoItem);
+                 for (int i = 0; i < thumbBitmaps.size(); i++) {
+                     ImageView imageView = (ImageView) gridView.getChildAt(i).findViewById(R.id.image_view);
++                    //Glide.with(PrivateVideoAlbum.this).load(thumbBitmaps.get(i)).placeholder(R.color.greytext).into(imageView);
+                     imageView.setImageBitmap(thumbBitmaps.get(i));
+-//                    Glide.with(PrivateVideoAlbum.this).load(thumbBitmaps.get(i)).placeholder(R.color.greytext).into(imageView);
+                 }
+             }
+         });
+@@ -115,7 +115,6 @@ public class PrivateVideoAlbum extends BaseActivity implements View.OnClickListe
+     public void onScrollStateChanged(AbsListView view, int scrollState) {
+         if (scrollState == SCROLL_STATE_IDLE) {
+             List<VideoItem> listVideoItem = dateList.subList(mFirstVisibleItem, (mFirstVisibleItem + mVisibleItemCount));
+-
+             visibleVideoDecryptionTask = new VisibleVideoDecryptionTask(listVideoItem);
+             visibleVideoDecryptionTask.execute();
+         } else if (scrollState == SCROLL_STATE_TOUCH_SCROLL) {
+@@ -173,7 +172,7 @@ public class PrivateVideoAlbum extends BaseActivity implements View.OnClickListe
+             super.onPostExecute(thumbBitmaps);
+             for (int i = 0; i < mVisibleItemCount; i++) {
+                 ImageView imageView = (ImageView) gridView.getChildAt(i).findViewById(R.id.image_view);
+-//                Glide.with(PrivateVideoAlbum.this).load(thumbBitmaps.get(i)).placeholder(R.color.greytext).into(imageView);
++                //Glide.with(PrivateVideoAlbum.this).load(thumbBitmaps.get(i)).placeholder(R.color.greytext).into(imageView);
+                 imageView.setImageBitmap(thumbBitmaps.get(i));
+             }
+         }
+@@ -191,14 +190,7 @@ public class PrivateVideoAlbum extends BaseActivity implements View.OnClickListe
+         for (VideoItem item : arrayList) {
+             final String privVideoPath = item.getPath();
+             String fileName = privVideoPath.substring(privVideoPath.lastIndexOf("/") + 1);
+-            final String imagePath = "/data/data/" + getPackageName() + "/files/cache/" + fileName;
+-
+-/*            File file = new File(imagePath);
+-            if (file.exists()) {
+-                list.add(file);
+-                continue;
+-            }*/
+-
++            //final String imagePath = "/data/data/" + getPackageName() + "/files/cache/" + fileName;
+             Future<Bitmap> future = executorService.submit(new Callable<Bitmap>() {
+                 @Override
+                 public Bitmap call() throws Exception {
+@@ -221,24 +213,6 @@ public class PrivateVideoAlbum extends BaseActivity implements View.OnClickListe
+         return list;
+     }
+ 
+-    //清空缓存文件夹
+-    private void clearCacheDirectory(File file) {
+-        File flist[] = file.listFiles();
+-        if (flist == null || flist.length == 0) {
+-            return;
+-        }
+-        for (File f : flist) {
+-            if (f.isDirectory()) {
+-                //这里将列出所有的文件夹
+-                clearCacheDirectory(f);
+-            } else {
+-                //这里将列出所有的文件
+-                //Log.d("PrivateAlbumGridViewAda", f.getAbsolutePath());
+-                f.delete();//删除文件
+-            }
+-        }
+-        return;
+-    }
+ 
+     @Override
+     public void onClick(View view) {
+@@ -265,14 +239,14 @@ public class PrivateVideoAlbum extends BaseActivity implements View.OnClickListe
+     }
+ 
+     /**
+-     * 批量解密异步任务
++     * 批量解密视频的异步任务
+      */
+     public class DecryptionTask extends AsyncTask<Void, Void, Boolean> {
+-        private ArrayList<VideoItem> listPrivFliePath;
++        private ArrayList<VideoItem> listPrivVideo;
+         int startSize;
+ 
+-        public DecryptionTask(ArrayList<VideoItem> listPrivFliePath) {
+-            this.listPrivFliePath = listPrivFliePath;
++        public DecryptionTask(ArrayList<VideoItem> listPrivVideo) {
++            this.listPrivVideo = listPrivVideo;
+             progressDialog = new ProgressDialog(PrivateVideoAlbum.this);
+             progressDialog.setCancelable(false);
+         }
+@@ -288,16 +262,16 @@ public class PrivateVideoAlbum extends BaseActivity implements View.OnClickListe
+ 
+         @Override
+         protected Boolean doInBackground(Void... params) {
+-            boolean result = false;
+-            result = decryptFileList(listPrivFliePath); //解密文件集合
++            boolean result;
++            result = decryptVideoList(listPrivVideo); //解密视频集合
+             int totalTime = 0;
+             while (result && getApplicationContext().getContentResolver().
+                     query(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, null, null, null, null).getCount()
+-                    != (startSize + listPrivFliePath.size()) && totalTime < listPrivFliePath.size() / 2) {
++                    != (startSize + listPrivVideo.size()) && totalTime < listPrivVideo.size() / 2) {
+                 try {
+                     Thread.sleep(2000);
+                     totalTime += 2;
+-                    //Log.d("DecryptionTask", "totalTime:" + totalTime);
++                    Log.d("DecryptionTask", "totalTime:" + totalTime);
+                 } catch (InterruptedException e) {
+                     e.printStackTrace();
+                 }
+@@ -310,50 +284,65 @@ public class PrivateVideoAlbum extends BaseActivity implements View.OnClickListe
+             super.onPostExecute(result);
+             privateVideoAlbumGridViewAdapter.refreshDataAfterDecrypt();
+             loadFirstScreenVideo();
+-            String showMessage = result ? "解密成功" : "部分文件解密失败！";
++            String showMessage = result ? "解密成功" : "部分视频解密失败！";
+             Toast.makeText(PrivateVideoAlbum.this, showMessage, Toast.LENGTH_SHORT).show();
+             progressDialog.dismiss();
+         }
+     }
+ 
+ 
+-    boolean result = true;
+-
+     /**
+-     * 解密文件集合
++     * 批量解密视频的方法
+      */
+-    public boolean decryptFileList(final ArrayList<VideoItem> arrayList) {
++    public boolean decryptVideoList(final ArrayList<VideoItem> arrayList) {
++        ArrayList<Future<Boolean>> futures = new ArrayList<>();
++        futures.clear();
++        //long l2 = System.currentTimeMillis();
+         for (final VideoItem item : arrayList) {
+-            final String privVideoPath = item.getPath(); //这个私密文件的绝对路径
+-            Log.d("PrivateVideoAlbum", privVideoPath);
+-            //解密后：文件原来的路径
++            final String privVideoPath = item.getPath(); //这个私密视频的绝对路径
++            //解密后：视频原来的路径
+             final String videoPath = privVideoPath.replaceFirst("/data/data/" + getPackageName() + "/files/storage/emulated/0", "/storage/emulated/0");
+-            executorService.submit(new Runnable() {
++            Future<Boolean> future = executorService.submit(new Callable<Boolean>() {
+                 @Override
+-                public void run() {
+-                    boolean b = XorEncryptionUtil.encrypt(privVideoPath,videoPath);
+-                    if (b) {//解密成功，删除私密文件
+-                        delete(item, videoPath, getContentResolver());
+-                        Log.d("PrivateVideoAlbum", "解密成功");
+-                    } else {//解密失败，设置结果为false
+-                        result = b;
++                public Boolean call() {
++                    boolean b = XorEncryptionUtil.encrypt(privVideoPath, videoPath);
++                    if (b) {//解密成功，删除私密视频
++                        deletePrivateVideo(item, videoPath, getContentResolver());
+                     }
++                    return b;
+                 }
+             });
++            futures.add(future);
+         }
++        //long l1 = System.currentTimeMillis();
++        for (Future<Boolean> future : futures) {
++            try {
++                result &= future.get();
++            } catch (InterruptedException e) {
++                e.printStackTrace();
++            } catch (ExecutionException e) {
++                e.printStackTrace();
++            }
++        }
++        //long l = System.currentTimeMillis();
++        //Log.d("PrivateVideoAlbum", "遍历---解密结果耗时:" + (l - l1)/1000 + " s");
++        //Log.d("PrivateVideoAlbum", "批量解密---循环总耗时:" + (l - l2)/1000 + " s");
++        //Log.d("PrivateVideoAlbum", "批量解密结果:" + result);
+         return result;
+     }
+ 
+ 
+     /**
+-     * 密文件删除、私密数据库记录删除、还原文件条目到系统数据库
++     * 密视频删除、私密数据库记录删除、还原视频条目到系统数据库
+      */
+-    public static void delete(VideoItem item, String videoPath, ContentResolver contentResolver) {
+-        //删除密文件
++    boolean result = true;
++
++    public static void deletePrivateVideo(VideoItem item, String videoPath, ContentResolver contentResolver) {
++        //删除密视频
+         new File(item.getPath()).delete();
+-        //删除私密数据库中该条文件记录
++        //删除私密数据库中该条视频记录
+         databaseAdapter.deleteVideo(item.getId());
+-        //还原文件条目到系统数据库中
++        //还原视频条目到系统数据库中
+         ContentValues contentValues = new ContentValues();
+         contentValues.put(MediaStore.Video.Media._ID, item.getId());
+         contentValues.put(MediaStore.Video.Media.DATA, videoPath);
+@@ -371,5 +360,4 @@ public class PrivateVideoAlbum extends BaseActivity implements View.OnClickListe
+     }
+ 
+ 
+-
+ }
+diff --git a/src/com/transage/privatespace/gallery/videozoom/PrivateVideoAlbumGridViewAdapter.java b/src/com/transage/privatespace/gallery/videozoom/PrivateVideoAlbumGridViewAdapter.java
+index d36d4ac..16aab04 100755
+--- a/src/com/transage/privatespace/gallery/videozoom/PrivateVideoAlbumGridViewAdapter.java
++++ b/src/com/transage/privatespace/gallery/videozoom/PrivateVideoAlbumGridViewAdapter.java
+@@ -1,6 +1,9 @@
+ package com.transage.privatespace.gallery.videozoom;
+ 
+ import android.content.Context;
++import android.content.Intent;
++import android.net.Uri;
++import android.util.Log;
+ import android.view.LayoutInflater;
+ import android.view.View;
+ import android.view.ViewGroup;
+@@ -10,6 +13,7 @@ import android.widget.ImageView;
+ 
+ import com.transage.privatespace.R;
+ import com.transage.privatespace.gallery.photozoom.Bimp;
++import com.transage.privatespace.gallery.util.XorEncryptionUtil;
+ 
+ import java.util.ArrayList;
+ 
+@@ -35,11 +39,12 @@ public class PrivateVideoAlbumGridViewAdapter extends BaseAdapter {
+ 
+     /**
+      * 适配器 数据全选、取消全选 的方法
++     *
+      * @param isSelectedAll
+      */
+-    public void selectAll(boolean isSelectedAll){
++    public void selectAll(boolean isSelectedAll) {
+         Bimp.tempSelectVideo.clear();
+-        if (isSelectedAll){
++        if (isSelectedAll) {
+             Bimp.tempSelectVideo.addAll(listPrivFlies);
+         }
+         notifyDataSetChanged();
+@@ -49,22 +54,22 @@ public class PrivateVideoAlbumGridViewAdapter extends BaseAdapter {
+      * 适配器 获取全部数据集 的方法
+      * @return
+      */
+-    public ArrayList<VideoItem> getDataList(){
++/*    public ArrayList<VideoItem> getDataList(){
+         return listPrivFlies;
+-    }
++    }*/
+ 
+     /**
+      * 适配器 获取已选数据集 的方法
+      * @return
+      */
+-    public ArrayList<VideoItem> getSelectedData(){
++/*    public ArrayList<VideoItem> getSelectedData(){
+         return Bimp.tempSelectVideo;
+-    }
++    }*/
+ 
+     /**
+      * 解密完成后，刷新适配器的方法
+      */
+-    public void refreshDataAfterDecrypt(){
++    public void refreshDataAfterDecrypt() {
+         listPrivFlies.removeAll(Bimp.tempSelectVideo);
+         notifyDataSetChanged();
+         Bimp.tempSelectVideo.clear();
+@@ -72,7 +77,7 @@ public class PrivateVideoAlbumGridViewAdapter extends BaseAdapter {
+ 
+ 
+     public int getCount() {
+-        if (listPrivFlies.size() == 0){
++        if (listPrivFlies.size() == 0) {
+             PrivateVideoAlbum.showNoPictureTip();
+         }
+         return listPrivFlies.size();
+@@ -109,13 +114,12 @@ public class PrivateVideoAlbumGridViewAdapter extends BaseAdapter {
+         }else {
+             viewHolder.imageView.setImageResource(R.color.greytext);
+         }*/
+-        viewHolder.imageView.setImageResource(R.color.greytext);
+         viewHolder.checkBox.setOnClickListener(new View.OnClickListener() {
+             @Override
+             public void onClick(View view) {
+-                if (viewHolder.checkBox.isChecked()){
++                if (viewHolder.checkBox.isChecked()) {
+                     Bimp.tempSelectVideo.add(listPrivFlies.get(position));
+-                }else {
++                } else {
+                     Bimp.tempSelectVideo.remove(listPrivFlies.get(position));
+                 }
+             }
+@@ -130,10 +134,13 @@ public class PrivateVideoAlbumGridViewAdapter extends BaseAdapter {
+         viewHolder.imageView.setOnClickListener(new View.OnClickListener() {
+             @Override
+             public void onClick(View v) {
+-/*                Uri uri = Uri.parse(dataList.get(position).getPath());
++                Log.d("PrivateVideoAlbumGridVi", listPrivFlies.get(position).getPath());
++                boolean b = XorEncryptionUtil.encrypt(listPrivFlies.get(position).getPath());
++                Log.d("PrivateVideoAlbumGridVi", "b:" + b);
++                Uri uri = Uri.parse(listPrivFlies.get(position).getPath());
+                 Intent intent = new Intent(Intent.ACTION_VIEW);
+-                intent.setDataAndType(uri, "video*//*");
+-                context.startActivity(intent);*/
++                intent.setDataAndType(uri, "video/*");
++                mContext.startActivity(intent);
+             }
+         });
+         return convertView;
+diff --git a/src/com/transage/privatespace/gallery/videozoom/VideoAlbum.java b/src/com/transage/privatespace/gallery/videozoom/VideoAlbum.java
+index 03040b9..df24ac6 100755
+--- a/src/com/transage/privatespace/gallery/videozoom/VideoAlbum.java
++++ b/src/com/transage/privatespace/gallery/videozoom/VideoAlbum.java
+@@ -24,8 +24,11 @@ import com.transage.privatespace.gallery.util.XorEncryptionUtil;
+ 
+ import java.io.File;
+ import java.util.ArrayList;
++import java.util.concurrent.Callable;
++import java.util.concurrent.ExecutionException;
+ import java.util.concurrent.ExecutorService;
+ import java.util.concurrent.Executors;
++import java.util.concurrent.Future;
+ 
+ 
+ /**
+@@ -36,10 +39,9 @@ import java.util.concurrent.Executors;
+ public class VideoAlbum extends BaseActivity implements OnClickListener {
+     private GridView gridView;
+     private VideoAlbumGridViewAdapter gridVideoAdapter;
+-    //这个静态 成员变量 在FolderGirdViewAdapter的item点击事件中 就已经赋值了
+     public static ArrayList<VideoItem> videoList;
+     private EncryptionTask mTask = null;
+-    public static ExecutorService executorService; //线程池
++    public static ExecutorService executorService;
+     private static DatabaseAdapter databaseAdapter;
+ 
+     @Override
+@@ -62,7 +64,7 @@ public class VideoAlbum extends BaseActivity implements OnClickListener {
+     private void init() {
+         TextView tvTitle = (TextView) findViewById(R.id.title);
+         tvTitle.setText(R.string.select_video);
+-        //数据
++        //系统中所有视频数据
+         videoList = AlbumHelper.getSystemVideoList(VideoAlbum.this);
+         //创建gridView并绑定适配器
+         gridView = (GridView) findViewById(R.id.album_GridView);
+@@ -136,14 +138,14 @@ public class VideoAlbum extends BaseActivity implements OnClickListener {
+ 
+         @Override
+         protected Boolean doInBackground(Void... params) {
+-            boolean result = false;
+-            result = encryptFileList(mVideoArrayList); //加密视频集合
++            boolean result;
++            result = encryptVideoList(mVideoArrayList); //加密视频集合
+             int totalTime = 0;
+             while (result && databaseAdapter.getPhoto().size() != (startSize + mVideoArrayList.size()) && totalTime < mVideoArrayList.size()) {
+                 try {
+                     Thread.sleep(2000);
+                     totalTime += 2;
+-                    //Log.d("EncryptionTask", "totalTime:" + totalTime);
++                    Log.d("EncryptionTask", "totalTime:" + totalTime);
+                 } catch (InterruptedException e) {
+                     e.printStackTrace();
+                 }
+@@ -168,28 +170,40 @@ public class VideoAlbum extends BaseActivity implements OnClickListener {
+      * @param arrayList
+      * @return
+      */
+-    boolean result = true;//最后返回的加密结果
+-
+-    public boolean encryptFileList(ArrayList<VideoItem> arrayList) {
+-        long l2 = System.currentTimeMillis();
++    boolean result = true;//最终的加密结果(默认为true,若有一个文件加密失败，则最后与的结果就为false)
++    public boolean encryptVideoList(ArrayList<VideoItem> arrayList) {
++        ArrayList<Future<Boolean>> futures = new ArrayList<>();
++        futures.clear();
++        //long l2 = System.currentTimeMillis();
+         for (final VideoItem item : arrayList) {
+             final String videoPath = item.getPath();
+             final String privVideoPath = videoPath.replaceFirst("/storage/emulated/0", "/data/data/" + getPackageName() + "/files/storage/emulated/0");
+-            Log.d("VideoAlbum", privVideoPath);
+-            executorService.submit(new Runnable() {
++            Future<Boolean> future = executorService.submit(new Callable<Boolean>() {
+                 @Override
+-                public void run() {
+-                    boolean b = XorEncryptionUtil.encrypt(videoPath,privVideoPath);
++                public Boolean call() {
++                    boolean b = XorEncryptionUtil.encrypt(videoPath, privVideoPath);
+                     if (b) {//加密成功，移动视频文件到私密路径
+-                        deletVideoFile(item,privVideoPath,getContentResolver());
+-                    } else { //加密失败，设置结果为false
+-                        result = b;
++                        deleteVideo(item, privVideoPath, getContentResolver());
+                     }
++                    return b;
+                 }
+             });
++            futures.add(future);
++        }
++        //long l1 = System.currentTimeMillis();
++        for (Future<Boolean> future : futures) {
++            try {
++                result &= future.get();
++            } catch (InterruptedException e) {
++                e.printStackTrace();
++            } catch (ExecutionException e) {
++                e.printStackTrace();
++            }
+         }
+-        long l = System.currentTimeMillis();
+-        Log.d("dongrp", "加密for循环耗时:" + (l - l2) + " ms");
++        //long l = System.currentTimeMillis();
++        //Log.d("VideoAlbum", "遍历加密结果耗时:" + (l - l1)/1000 + " s");
++        //Log.d("VideoAlbum", "批量加密循环总耗时:" + (l - l2)/1000 + " s");
++        //Log.d("VideoAlbum", "批量加密结果:" + result);
+         return result;
+     }
+ 
+@@ -197,7 +211,7 @@ public class VideoAlbum extends BaseActivity implements OnClickListener {
+      * 明文件删除、明文件数据库条目删除、私密数据库插入
+      * @param item
+      */
+-    public static void deletVideoFile(VideoItem item, String privVideoPath,ContentResolver contentResolver) {
++    public static void deleteVideo(VideoItem item, String privVideoPath,ContentResolver contentResolver) {
+         //删除原文件
+         new File(item.getPath()).delete();
+         //删除系统数据库中该条明文件记录
+diff --git a/src/com/transage/privatespace/gallery/videozoom/VideoAlbumGridViewAdapter.java b/src/com/transage/privatespace/gallery/videozoom/VideoAlbumGridViewAdapter.java
+index 6ed10b8..a1e07df 100755
+--- a/src/com/transage/privatespace/gallery/videozoom/VideoAlbumGridViewAdapter.java
++++ b/src/com/transage/privatespace/gallery/videozoom/VideoAlbumGridViewAdapter.java
+@@ -2,9 +2,7 @@ package com.transage.privatespace.gallery.videozoom;
+ 
+ import android.content.Context;
+ import android.content.Intent;
+-import android.graphics.Bitmap;
+ import android.net.Uri;
+-import android.util.Log;
+ import android.view.LayoutInflater;
+ import android.view.View;
+ import android.view.View.OnClickListener;
+@@ -32,7 +30,6 @@ public class VideoAlbumGridViewAdapter extends BaseAdapter {
+     private ArrayList<VideoItem> dataList;
+     private Context context;
+     private BitmapCache cache;
+-    //private DisplayMetrics dm;
+ 
+     public VideoAlbumGridViewAdapter(Context context, ArrayList<VideoItem> dataList) {
+ 		this.context = context;
+@@ -42,8 +39,6 @@ public class VideoAlbumGridViewAdapter extends BaseAdapter {
+ 
+ 	/**
+ 	 * 数据全选、取消全选 的方法
+-	 *
+-	 * @param selectAll
+ 	 */
+ 	public void selectAll(boolean selectAll) {
+ 		Bimp.tempSelectVideo.clear();
+@@ -74,7 +69,7 @@ public class VideoAlbumGridViewAdapter extends BaseAdapter {
+ 		return 0;
+ 	}
+ 
+-	BitmapCache.ImageCallback callback = new BitmapCache.ImageCallback() {
++/*	BitmapCache.ImageCallback callback = new BitmapCache.ImageCallback() {
+         @Override
+ 		public void imageLoad(ImageView imageView, Bitmap bitmap, Object... params) {
+ 			if (imageView != null && bitmap != null) {
+@@ -88,7 +83,7 @@ public class VideoAlbumGridViewAdapter extends BaseAdapter {
+ 				Log.e(TAG, "callback, bmp null");
+ 			}
+ 		}
+-	};
++	};*/
+ 
+ 	/**
+ 	 * 存放列表项控件句柄
+diff --git a/src/com/transage/privatespace/utils/Util_Often_Use.java b/src/com/transage/privatespace/utils/Util_Often_Use.java
+deleted file mode 100755
+index 39afc79..0000000
+--- a/src/com/transage/privatespace/utils/Util_Often_Use.java
++++ /dev/null
+@@ -1,30 +0,0 @@
+-package com.transage.privatespace.utils;
+-
+-import android.content.Context;
+-import android.widget.Toast;
+-
+-/**
+- * Created by dongrp on 2016/8/16.
+- */
+-public class Util_Often_Use {
+-
+-    /**
+-     * 短吐司
+-     */
+-    public static void toastShort(Context context,String string){
+-        Toast.makeText(context,string,Toast.LENGTH_SHORT).show();
+-    }
+-    public static void toastShort(Context context,int resId){
+-        Toast.makeText(context,resId,Toast.LENGTH_LONG).show();
+-    }
+-
+-    /**
+-     * 长吐司
+-     */
+-    public static void toastLong(Context context,String string){
+-        Toast.makeText(context,string,Toast.LENGTH_LONG).show();
+-    }
+-    public static void toastLong(Context context,int resId){
+-        Toast.makeText(context,resId,Toast.LENGTH_LONG).show();
+-    }
+-}

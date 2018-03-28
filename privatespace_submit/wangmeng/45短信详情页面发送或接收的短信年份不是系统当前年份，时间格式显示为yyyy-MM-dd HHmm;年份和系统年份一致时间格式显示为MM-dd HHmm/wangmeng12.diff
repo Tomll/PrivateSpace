@@ -1,0 +1,47 @@
+diff --git a/src/com/transage/privatespace/adapter/AddSmsListViewAdapter.java b/src/com/transage/privatespace/adapter/AddSmsListViewAdapter.java
+index e1e6e78..811533f 100755
+--- a/src/com/transage/privatespace/adapter/AddSmsListViewAdapter.java
++++ b/src/com/transage/privatespace/adapter/AddSmsListViewAdapter.java
+@@ -1,13 +1,11 @@
+ package com.transage.privatespace.adapter;
+ 
+ import android.content.Context;
+-import android.view.Gravity;
+ import android.view.LayoutInflater;
+ import android.view.View;
+ import android.view.ViewGroup;
+ import android.widget.BaseAdapter;
+ import android.widget.ImageView;
+-import android.widget.LinearLayout;
+ import android.widget.TextView;
+ 
+ import com.transage.privatespace.R;
+@@ -15,6 +13,7 @@ import com.transage.privatespace.bean.SmsInfo;
+ 
+ import java.text.SimpleDateFormat;
+ import java.util.ArrayList;
++import java.util.Calendar;
+ import java.util.Date;
+ import java.util.Locale;
+ 
+@@ -68,9 +67,19 @@ public class AddSmsListViewAdapter extends BaseAdapter {
+             viewHolder = (ViewHolder) convertView.getTag();
+         }
+         //数据适配
++        SimpleDateFormat simpleDateFormat1 = new SimpleDateFormat("yyyy", Locale.getDefault());
++        SimpleDateFormat simpleDateFormat2 = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault());
+         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("MM-dd HH:mm", Locale.getDefault());
++        String date1 = simpleDateFormat1.format(new Date(listSmslist.get(position).getDate()));
++        String date2 = simpleDateFormat2.format(new Date(listSmslist.get(position).getDate()));
+         String date = simpleDateFormat.format(new Date(listSmslist.get(position).getDate()));
+-        viewHolder.textView2.setText(date);
++        //获取系统年份
++        String year = simpleDateFormat1.format(new Date());
++        if(year.equals(date1)){
++            viewHolder.textView2.setText(date);
++        }else{
++            viewHolder.textView2.setText(date2);
++        }
+         viewHolder.textView1.setText(listSmslist.get(position).getBody());
+         return convertView;
+     }

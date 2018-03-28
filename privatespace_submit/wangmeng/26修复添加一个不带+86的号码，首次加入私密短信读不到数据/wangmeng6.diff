@@ -1,0 +1,16 @@
+diff --git a/src/com/transage/privatespace/loader/PrivateSpaceLoader.java b/src/com/transage/privatespace/loader/PrivateSpaceLoader.java
+index 0acf6bb..1e14bba 100755
+--- a/src/com/transage/privatespace/loader/PrivateSpaceLoader.java
++++ b/src/com/transage/privatespace/loader/PrivateSpaceLoader.java
+@@ -250,9 +250,9 @@ public class PrivateSpaceLoader {
+     public String formatNumber(String number){
+         String phoneNumStr = null;
+         if(number.contains("+86")){
+-            phoneNumStr = number.replace("+86","").trim();
++            phoneNumStr = number.replace("+86","").replaceAll(" ", "").replaceAll("-", "").trim();
+         }else{
+-            phoneNumStr = number.trim();
++            phoneNumStr = number.replaceAll(" ", "").replaceAll("-", "").trim();
+         }
+         return phoneNumStr;
+     }

@@ -1,0 +1,383 @@
+diff --git a/res/layout/activity_add_sms.xml b/res/layout/activity_add_sms.xml
+index 704ccc4..f14388a 100755
+--- a/res/layout/activity_add_sms.xml
++++ b/res/layout/activity_add_sms.xml
+@@ -1,13 +1,36 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+-              android:orientation="vertical"
+               android:layout_width="match_parent"
+-              android:layout_height="match_parent">
++              android:layout_height="match_parent"
++              android:orientation="vertical">
++
++    <LinearLayout
++        android:layout_width="match_parent"
++        android:layout_height="50dp"
++        android:orientation="horizontal"
++        android:gravity="center_vertical"
++        android:background="@color/lightblack">
++        <ImageView
++            android:id="@+id/sms_back"
++            android:layout_width="wrap_content"
++            android:layout_height="wrap_content"
++            android:src="@mipmap/ic_cancel"/>
++        <TextView
++            android:id="@+id/sms_tv"
++            android:paddingLeft="10dp"
++            android:layout_width="wrap_content"
++            android:layout_height="wrap_content"
++            android:textColor="@color/white"
++            android:textSize="18sp"
++            />
++    </LinearLayout>
++
+     <ListView
+-        android:id="@+id/list_sms"
++        android:id="@+id/list_sms_recv"
+         android:layout_width="match_parent"
+-        android:layout_height="match_parent">
++        android:layout_height="wrap_content"
++        android:divider="#00000000"
++        android:dividerHeight="0dip">
+ 
+     </ListView>
+-
+ </LinearLayout>
+\ No newline at end of file
+diff --git a/res/layout/item_all_sms.xml b/res/layout/item_all_sms.xml
+deleted file mode 100755
+index 19b2755..0000000
+--- a/res/layout/item_all_sms.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+-              android:layout_width="match_parent"
+-              android:layout_height="match_parent"
+-              android:orientation="vertical"
+-              android:padding="10dp" >
+-
+-    <TextView
+-        android:id="@+id/textView1"
+-        android:layout_width="wrap_content"
+-        android:layout_height="wrap_content" />
+-
+-    <TextView
+-        android:id="@+id/textView2"
+-        android:layout_width="wrap_content"
+-        android:layout_height="wrap_content"
+-        android:layout_marginTop="10dp"
+-        android:ellipsize="end"
+-        android:singleLine="true" />
+-
+-</LinearLayout>
+\ No newline at end of file
+diff --git a/res/layout/item_all_sms_recv.xml b/res/layout/item_all_sms_recv.xml
+new file mode 100755
+index 0000000..92b4d9c
+--- /dev/null
++++ b/res/layout/item_all_sms_recv.xml
+@@ -0,0 +1,32 @@
++<?xml version="1.0" encoding="utf-8"?>
++<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
++              android:layout_width="fill_parent"
++              android:layout_height="fill_parent"
++              android:orientation="vertical"
++              android:padding="10dp"
++              >
++    <LinearLayout
++        android:id="@+id/list_item_recv"
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"
++        android:background="@mipmap/incoming_pressed"
++        android:orientation="vertical">
++
++    <TextView
++        android:id="@+id/textView1_recv"
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"/>
++    <LinearLayout
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"
++        android:orientation="horizontal"
++        android:paddingTop="10dp"
++        android:layout_gravity="center_vertical">
++
++    <TextView
++        android:id="@+id/textView2_recv"
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"/>
++    </LinearLayout>
++    </LinearLayout>
++</LinearLayout>
+\ No newline at end of file
+diff --git a/res/layout/item_all_sms_send.xml b/res/layout/item_all_sms_send.xml
+new file mode 100755
+index 0000000..25e1bcd
+--- /dev/null
++++ b/res/layout/item_all_sms_send.xml
+@@ -0,0 +1,39 @@
++<?xml version="1.0" encoding="utf-8"?>
++<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
++              android:layout_width="fill_parent"
++              android:layout_height="fill_parent"
++              android:orientation="vertical"
++              android:padding="10dp"
++              android:gravity="right"
++              >
++    <LinearLayout
++        android:id="@+id/list_item_send"
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"
++        android:background="@mipmap/outgoing"
++        android:orientation="vertical"
++        >
++
++    <TextView
++        android:id="@+id/textView1_send"
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"/>
++    <LinearLayout
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"
++        android:orientation="horizontal"
++        android:paddingTop="10dp"
++        android:layout_gravity="center_vertical">
++        <TextView
++            android:id="@+id/textView2_send"
++            android:layout_width="wrap_content"
++            android:layout_height="wrap_content"/>
++        <ImageView
++            android:id="@+id/send_ok"
++            android:layout_width="wrap_content"
++            android:layout_height="wrap_content"
++            android:src="@mipmap/im_meg_status_out"
++            />
++    </LinearLayout>
++    </LinearLayout>
++</LinearLayout>
+\ No newline at end of file
+diff --git a/res/layout/item_sms.xml b/res/layout/item_sms.xml
+index f9f0c84..57f0702 100755
+--- a/res/layout/item_sms.xml
++++ b/res/layout/item_sms.xml
+@@ -2,8 +2,18 @@
+ <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+     android:layout_width="match_parent"
+     android:layout_height="match_parent"
+-    android:orientation="vertical"
++    android:orientation="horizontal"
+     android:padding="10dp" >
++    <ImageView
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"
++        android:layout_gravity="center_vertical"
++        android:src="@mipmap/ic_menu_contact"/>
++    <LinearLayout
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"
++        android:orientation="vertical"
++        android:padding="10dp">
+ 
+     <TextView
+         android:id="@+id/textView1"
+@@ -11,16 +21,11 @@
+         android:layout_height="wrap_content"
+         android:textColor="@color/black"
+         android:textSize="18sp"/>
+-    <RelativeLayout
+-        android:layout_width="match_parent"
+-        android:layout_height="match_parent"
+-        android:gravity="center_vertical">
+     <TextView
+         android:id="@+id/textView2"
+         android:layout_width="wrap_content"
+         android:layout_height="wrap_content"
+         android:layout_marginTop="10dp"
+-        android:layout_alignParentLeft="true"
+         android:ellipsize="end"
+         android:singleLine="true" />
+     <TextView
+@@ -28,8 +33,7 @@
+         android:layout_width="wrap_content"
+         android:layout_height="wrap_content"
+         android:layout_marginTop="10dp"
+-        android:layout_alignParentRight="true"
+         android:ellipsize="end"
+         android:singleLine="true" />
+-    </RelativeLayout>
++    </LinearLayout>
+ </LinearLayout>
+\ No newline at end of file
+diff --git a/res/mipmap-xhdpi/ic_cancel.png b/res/mipmap-xhdpi/ic_cancel.png
+new file mode 100755
+index 0000000..b67b5b8
+Binary files /dev/null and b/res/mipmap-xhdpi/ic_cancel.png differ
+diff --git a/res/mipmap-xhdpi/ic_menu_contact.png b/res/mipmap-xhdpi/ic_menu_contact.png
+new file mode 100755
+index 0000000..6887e0d
+Binary files /dev/null and b/res/mipmap-xhdpi/ic_menu_contact.png differ
+diff --git a/res/mipmap-xhdpi/im_meg_status_out.png b/res/mipmap-xhdpi/im_meg_status_out.png
+new file mode 100755
+index 0000000..f13c413
+Binary files /dev/null and b/res/mipmap-xhdpi/im_meg_status_out.png differ
+diff --git a/res/mipmap-xhdpi/incoming_pressed.9.png b/res/mipmap-xhdpi/incoming_pressed.9.png
+new file mode 100755
+index 0000000..57d05b5
+Binary files /dev/null and b/res/mipmap-xhdpi/incoming_pressed.9.png differ
+diff --git a/res/mipmap-xhdpi/outgoing.9.png b/res/mipmap-xhdpi/outgoing.9.png
+new file mode 100755
+index 0000000..00e03da
+Binary files /dev/null and b/res/mipmap-xhdpi/outgoing.9.png differ
+diff --git a/src/com/transage/privatespace/activity/PrivateSms.java b/src/com/transage/privatespace/activity/PrivateSms.java
+index 40b1a87..78565c8 100755
+--- a/src/com/transage/privatespace/activity/PrivateSms.java
++++ b/src/com/transage/privatespace/activity/PrivateSms.java
+@@ -11,7 +11,9 @@ import android.support.v4.content.ContextCompat;
+ import android.view.View;
+ import android.view.Window;
+ import android.view.WindowManager;
++import android.widget.ImageView;
+ import android.widget.ListView;
++import android.widget.TextView;
+ 
+ import com.transage.privatespace.R;
+ import com.transage.privatespace.adapter.AddSmsListViewAdapter;
+@@ -30,11 +32,12 @@ public class PrivateSms extends BaseActivity {
+     private ArrayList<SmsInfo> listSmslist = new ArrayList<>();
+     private AddSmsListViewAdapter addSmsListViewAdapter;
+     private String mAddress;
++    private String mPerson;
+ 
+     protected void onCreate(@Nullable Bundle savedInstanceState) {
+         super.onCreate(savedInstanceState);
+-        requestWindowFeature(Window.FEATURE_NO_TITLE);//隐藏TitleBar
+-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);//透明状态栏
++//        requestWindowFeature(Window.FEATURE_NO_TITLE);//隐藏TitleBar
++//        getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);//透明状态栏
+         setContentView(R.layout.activity_add_sms);
+ 
+ 
+@@ -64,7 +67,7 @@ public class PrivateSms extends BaseActivity {
+      * 初始化组件适配器
+      */
+     public void initViewAndAdapter() {
+-        ListView listView = (ListView)findViewById(R.id.list_sms);
++        ListView listView = (ListView)findViewById(R.id.list_sms_recv);
+         addSmsListViewAdapter = new AddSmsListViewAdapter(PrivateSms.this, listSmslist);
+         listView.setAdapter(addSmsListViewAdapter);
+         addSmsListViewAdapter.notifyDataSetChanged();
+@@ -87,7 +90,20 @@ public class PrivateSms extends BaseActivity {
+     public void initData() {
+         Intent intent =getIntent();
+         mAddress=intent.getStringExtra("address");
++        mPerson = intent.getStringExtra("person");
+         Log.e("wangmeng","----mAddress---"+mAddress);
++        TextView tv = (TextView) findViewById(R.id.sms_tv);
++        ImageView imageView = (ImageView) findViewById(R.id.sms_back);
++        if(mPerson==null){
++            tv.setText(mAddress);
++        }else{
++            tv.setText(mPerson);
++        }
++        imageView.setOnClickListener(new View.OnClickListener() {
++            public void onClick(View view) {
++                PrivateSms.this.finish();
++            }
++        });
+         listSmslist.clear();
+         listSmslist.addAll(new DatabaseAdapter(PrivateSms.this).getSmsByNum(mAddress));
+     }
+diff --git a/src/com/transage/privatespace/adapter/AddSmsListViewAdapter.java b/src/com/transage/privatespace/adapter/AddSmsListViewAdapter.java
+index bba64c5..e1e6e78 100755
+--- a/src/com/transage/privatespace/adapter/AddSmsListViewAdapter.java
++++ b/src/com/transage/privatespace/adapter/AddSmsListViewAdapter.java
+@@ -1,15 +1,24 @@
+ package com.transage.privatespace.adapter;
+-import java.util.ArrayList;
++
+ import android.content.Context;
++import android.view.Gravity;
+ import android.view.LayoutInflater;
+ import android.view.View;
+ import android.view.ViewGroup;
+ import android.widget.BaseAdapter;
++import android.widget.ImageView;
++import android.widget.LinearLayout;
+ import android.widget.TextView;
+ 
+ import com.transage.privatespace.R;
+ import com.transage.privatespace.bean.SmsInfo;
+ 
++import java.text.SimpleDateFormat;
++import java.util.ArrayList;
++import java.util.Date;
++import java.util.Locale;
++
++
+ /**
+  * Created by meng.wang on 2017/9/2.
+  */
+@@ -41,22 +50,33 @@ public class AddSmsListViewAdapter extends BaseAdapter {
+     @Override
+     public View getView(int position, View convertView, ViewGroup parent) {
+         ViewHolder viewHolder;
++        int type = listSmslist.get(position).getType();
+         if (convertView == null) {
+-            convertView = LayoutInflater.from(context).inflate(R.layout.item_all_sms, parent, false);
+             viewHolder = new ViewHolder();
+-            viewHolder.textView1 = (TextView) convertView.findViewById(R.id.textView1);
+-            viewHolder.textView2 = (TextView) convertView.findViewById(R.id.textView2);
++            if(type==1) {
++                convertView = LayoutInflater.from(context).inflate(R.layout.item_all_sms_recv, parent, false);
++                viewHolder.textView1 = (TextView) convertView.findViewById(R.id.textView1_recv);
++                viewHolder.textView2 = (TextView) convertView.findViewById(R.id.textView2_recv);
++            }else{
++                convertView = LayoutInflater.from(context).inflate(R.layout.item_all_sms_send, parent, false);
++                viewHolder.imageView1 = (ImageView) convertView.findViewById(R.id.send_ok);
++                viewHolder.textView1 = (TextView) convertView.findViewById(R.id.textView1_send);
++                viewHolder.textView2 = (TextView) convertView.findViewById(R.id.textView2_send);
++            }
+             convertView.setTag(viewHolder);
+         } else {
+             viewHolder = (ViewHolder) convertView.getTag();
+         }
+         //数据适配
+-//        viewHolder.textView1.setText(listSmslist.get(position).getAddress());
++        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("MM-dd HH:mm", Locale.getDefault());
++        String date = simpleDateFormat.format(new Date(listSmslist.get(position).getDate()));
++        viewHolder.textView2.setText(date);
+         viewHolder.textView1.setText(listSmslist.get(position).getBody());
+         return convertView;
+     }
+ 
+     class ViewHolder {
+         TextView textView1, textView2;
++        ImageView imageView1;
+     }
+ }
+\ No newline at end of file
+diff --git a/src/com/transage/privatespace/fragment/FG_PrivateSms.java b/src/com/transage/privatespace/fragment/FG_PrivateSms.java
+index 94b71db..e888b87 100755
+--- a/src/com/transage/privatespace/fragment/FG_PrivateSms.java
++++ b/src/com/transage/privatespace/fragment/FG_PrivateSms.java
+@@ -74,8 +74,10 @@ public class FG_PrivateSms extends BaseFragment {
+         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+             public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+                 String address = listSmslist.get(i).getAddress();
++                String person = listSmslist.get(i).getPerson();
+                 Intent intent = new Intent();
+                 intent.putExtra("address",address);
++                intent.putExtra("person",person);
+                 intent.setClass(getActivity(), PrivateSms.class);
+                 Log.e("wangmeng", "onItemClick: " +address);
+                 startActivity(intent);
+@@ -95,6 +97,7 @@ public class FG_PrivateSms extends BaseFragment {
+             listSmslist.addAll(new DatabaseAdapter(getActivity()).
+                     getLastSms(formatNumber(listPrivatePeople.get(i).getPhones().get(0).phoneNumber)));
+         }
++
+ //
+     }
+ 

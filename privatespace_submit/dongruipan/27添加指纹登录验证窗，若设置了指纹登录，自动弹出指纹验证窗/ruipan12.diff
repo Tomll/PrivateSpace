@@ -1,0 +1,303 @@
+diff --git a/res/layout/activity_login.xml b/res/layout/activity_login.xml
+index 0a94165..5ddcea9 100755
+--- a/res/layout/activity_login.xml
++++ b/res/layout/activity_login.xml
+@@ -45,7 +45,7 @@
+             android:inputType="textPassword"
+             android:maxLength="6"
+             android:paddingStart="10dp"
+-            android:textColorHint="@color/lightgrey"
++            android:textColorHint="@color/greyline"
+             android:textColor="@color/colorAccent"
+             android:textSize="16sp"/>
+ 
+@@ -78,7 +78,7 @@
+             android:inputType="textPassword"
+             android:maxLength="6"
+             android:paddingStart="10dp"
+-            android:textColorHint="@color/lightgrey"
++            android:textColorHint="@color/greyline"
+             android:textColor="@color/colorAccent"
+             android:textSize="16sp"/>
+ 
+@@ -109,6 +109,27 @@
+         android:textSize="16sp"
+         android:visibility="gone"/>
+ 
++    <ImageView
++        android:id="@+id/bt_finger_print"
++        android:layout_width="80dp"
++        android:layout_height="80dp"
++        android:layout_gravity="center_horizontal"
++        android:layout_marginTop="80dp"
++        android:clickable="true"
++        android:onClick="onClick"
++        android:src="@mipmap/bt_finger_print"
++        android:visibility="gone"/>
++
++    <TextView
++        android:id="@+id/tip_finger_print_login"
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"
++        android:textColor="@color/greyline"
++        android:layout_gravity="center_horizontal"
++        android:layout_marginTop="5dp"
++        android:text="@string/click_login_by_finger_print"
++        android:visibility="gone"/>
++
+     <RelativeLayout
+         android:layout_width="match_parent"
+         android:layout_height="match_parent">
+diff --git a/res/layout/finger_print_view.xml b/res/layout/finger_print_view.xml
+new file mode 100755
+index 0000000..a282d34
+--- /dev/null
++++ b/res/layout/finger_print_view.xml
+@@ -0,0 +1,42 @@
++<?xml version="1.0" encoding="utf-8"?>
++<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
++              android:orientation="vertical"
++              android:layout_width="match_parent"
++              android:gravity="center_horizontal"
++              android:padding="10dp"
++              android:layout_height="match_parent">
++
++
++    <ImageView
++        android:id="@+id/iv_finger_print"
++        android:layout_width="80dp"
++        android:layout_height="80dp"
++        android:layout_marginTop="10dp"
++        android:src="@mipmap/iv_finger_print"/>
++
++    <TextView
++        android:layout_width="wrap_content"
++        android:text="@string/enter_private_space_by_private_fingerprint"
++        android:layout_marginTop="10dp"
++        android:layout_height="wrap_content"/>
++
++    <TextView
++        android:layout_width="match_parent"
++        android:background="@color/greyline"
++        android:layout_marginTop="20dp"
++        android:layout_marginBottom="10dp"
++        android:layout_height="0.5dp"/>
++
++    <TextView
++        android:id="@+id/cancel"
++        android:layout_width="match_parent"
++        android:gravity="center"
++        android:text="@string/cancel"
++        android:textSize="18sp"
++        android:padding="5dp"
++        android:clickable="true"
++        android:onClick="onClick"
++        android:textColor="@color/colorAccent"
++        android:layout_height="wrap_content"/>
++
++</LinearLayout>
+\ No newline at end of file
+diff --git a/res/mipmap-xxxhdpi/bt_finger_print.png b/res/mipmap-xxxhdpi/bt_finger_print.png
+new file mode 100755
+index 0000000..aac02c5
+Binary files /dev/null and b/res/mipmap-xxxhdpi/bt_finger_print.png differ
+diff --git a/res/mipmap-xxxhdpi/iv_finger_print.jpg b/res/mipmap-xxxhdpi/iv_finger_print.jpg
+new file mode 100755
+index 0000000..300f3d8
+Binary files /dev/null and b/res/mipmap-xxxhdpi/iv_finger_print.jpg differ
+diff --git a/res/values/strings.xml b/res/values/strings.xml
+index 334d2db..1d23ed7 100755
+--- a/res/values/strings.xml
++++ b/res/values/strings.xml
+@@ -63,5 +63,6 @@
+     <string name="decrypt">解密</string>
+     <string name="private_album">私密相册</string>
+     <string name="add_private_photo">添加私密图片</string>
++    <string name="click_login_by_finger_print">点击进行指纹登录</string>
+ 
+ </resources>
+diff --git a/src/com/transage/privatespace/activity/Login.java b/src/com/transage/privatespace/activity/Login.java
+index 5e30646..4fbbf31 100755
+--- a/src/com/transage/privatespace/activity/Login.java
++++ b/src/com/transage/privatespace/activity/Login.java
+@@ -1,24 +1,28 @@
+ package com.transage.privatespace.activity;
+ 
++import android.animation.AnimatorSet;
++import android.animation.ObjectAnimator;
+ import android.annotation.SuppressLint;
+-import android.annotation.TargetApi;
+ import android.app.Activity;
+ import android.content.ContentResolver;
+ import android.content.Context;
+ import android.content.Intent;
+ import android.content.SharedPreferences;
+ import android.hardware.fingerprint.FingerprintManager;
+-import android.os.Build;
+ import android.os.Bundle;
+ import android.os.CancellationSignal;
+ import android.os.Handler;
+ import android.os.UserHandle;
+ import android.provider.Settings;
+ import android.support.annotation.Nullable;
++import android.support.v4.hardware.fingerprint.FingerprintManagerCompat;
++import android.support.v7.app.AlertDialog;
+ import android.text.TextUtils;
+ import android.text.method.HideReturnsTransformationMethod;
+ import android.text.method.PasswordTransformationMethod;
++import android.util.Log;
+ import android.view.KeyEvent;
++import android.view.LayoutInflater;
+ import android.view.View;
+ import android.view.Window;
+ import android.view.WindowManager;
+@@ -28,6 +32,7 @@ import android.widget.CheckBox;
+ import android.widget.CompoundButton;
+ import android.widget.EditText;
+ import android.widget.FrameLayout;
++import android.widget.ImageView;
+ import android.widget.TextView;
+ import android.widget.Toast;
+ 
+@@ -43,7 +48,7 @@ import java.security.NoSuchAlgorithmException;
+  */
+ @SuppressLint("NewApi")
+ public class Login extends Activity implements View.OnClickListener, CompoundButton.OnCheckedChangeListener,EditText.OnEditorActionListener {
+-    private static String TAG = "Login";
++    private static String TAG = "Login_1";
+     private TextView textView1, textView2, textView3;
+     private FrameLayout frameLayout2;
+     private EditText editText1, editText2;
+@@ -59,8 +64,11 @@ public class Login extends Activity implements View.OnClickListener, CompoundBut
+     public static boolean isChangePrivateMark = false; // 本地全局标志：是否修改密码
+     private boolean resetPrivateMarkFromAdvancedSetup = false; // AdvancedSetupActivity发送过来的是否修改密码的标志
+     private boolean resetPrivateMarkFromSecurityQuestion = false; // SecurityQuestionActivity发送过来的是否修改密码的标志
+-
+     private FingerprintManager mFingerprintManager;
++    private ImageView btFingerprint;//“指纹”按钮：点击该按钮弹出指纹验证框
++    private TextView tip_finger_print_login;//“点击进行指纹登录”
++    private AlertDialog dialogFingerPrint;//指纹验证框
++    private ImageView ivFingerPrint;//指纹验证框中的指纹图片
+ 
+     @Override
+     protected void onCreate(@Nullable Bundle savedInstanceState) {
+@@ -70,6 +78,7 @@ public class Login extends Activity implements View.OnClickListener, CompoundBut
+         getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);//透明状态栏
+         setContentView(R.layout.activity_login);
+         mFingerprintManager = (FingerprintManager) getSystemService(Context.FINGERPRINT_SERVICE);
++
+         initData();
+         initView();
+ 
+@@ -79,8 +88,13 @@ public class Login extends Activity implements View.OnClickListener, CompoundBut
+     protected void onResume() {
+         super.onResume();
+         //注册指纹监听
+-        if(!isFirstRun && sp.getBoolean("enterByPrivateFingerprint",false)){
++        if(!isFirstRun && sp.getBoolean("enterByPrivateFingerprint",false) && FingerprintManagerCompat.from(this).hasEnrolledFingerprints()){
+             retryFingerprint();
++            if (null != dialogFingerPrint && !dialogFingerPrint.isShowing()){
++                dialogFingerPrint.show();
++            }
++            btFingerprint.setVisibility(View.VISIBLE);
++            tip_finger_print_login.setVisibility(View.VISIBLE);
+         }
+     }
+ 
+@@ -106,7 +120,11 @@ public class Login extends Activity implements View.OnClickListener, CompoundBut
+         textView1 = (TextView) findViewById(R.id.textView1);// 标题
+         textView2 = (TextView) findViewById(R.id.textView2);// 提示信息
+         textView3 = (TextView) findViewById(R.id.textView3);// “忘记密码”
+-        textView3.setOnClickListener(this);// “忘记密码”注册点击监听
++        btFingerprint = (ImageView) findViewById(R.id.bt_finger_print);//“指纹”按钮
++        tip_finger_print_login = (TextView) findViewById(R.id.tip_finger_print_login);//“点击进行指纹登录”提示语
++        View fingerPrintView = LayoutInflater.from(this).inflate(R.layout.finger_print_view, null);
++        ivFingerPrint = (ImageView) fingerPrintView.findViewById(R.id.iv_finger_print);//验证框中的指纹图片
++        dialogFingerPrint = new AlertDialog.Builder(this).setCancelable(false).setView(fingerPrintView).create();
+         frameLayout2 = (FrameLayout) findViewById(R.id.frame_layout2);
+         editText1 = (EditText) findViewById(R.id.editText1);
+         editText2 = (EditText) findViewById(R.id.editText2);
+@@ -119,7 +137,8 @@ public class Login extends Activity implements View.OnClickListener, CompoundBut
+         // 根据isFirstRun和isChangePrivateMark的状态值，决定所展示的布局
+         if (!isFirstRun && !isChangePrivateMark) { // 日常登录
+             textView1.setText(getString(R.string.confirm_private_mark));
+-            textView2.setText(getString(R.string.login_by_private_mark_or_private_fingerprint));
++            //textView2.setText(getString(R.string.login_by_private_mark_or_private_fingerprint));
++            textView2.setVisibility(View.GONE);
+             textView3.setVisibility(View.VISIBLE);
+             frameLayout2.setVisibility(View.GONE);
+         }
+@@ -141,6 +160,14 @@ public class Login extends Activity implements View.OnClickListener, CompoundBut
+                     loginOrResetPwd(); // 执行主业务逻辑
+                 }
+                 break;
++            case R.id.bt_finger_print://指纹登录按钮
++                retryFingerprint();
++                dialogFingerPrint.show();
++                break;
++            case R.id.cancel://指纹验证框中取消按钮
++                stopFingerprint();
++                dialogFingerPrint.dismiss();
++                break;
+         }
+     }
+ 
+@@ -325,9 +352,11 @@ public class Login extends Activity implements View.OnClickListener, CompoundBut
+                     }
+                     break;
+                 case MSG_FINGER_AUTH_FAIL:
++                    startFingerWrongAnimation();
+                     // No action required... fingerprint will allow up to 5 of these
+                     break;
+                 case MSG_FINGER_AUTH_ERROR:
++                    startFingerWrongAnimation();
+                     handleError(msg.arg1 /* errMsgId */, (CharSequence) msg.obj /* errStr */ );
+                     break;
+                 case MSG_FINGER_AUTH_HELP: {
+@@ -339,10 +368,24 @@ public class Login extends Activity implements View.OnClickListener, CompoundBut
+     };
+ 
+     /**
++     * 指纹错误动画
++     */
++    public void startFingerWrongAnimation(){
++        ObjectAnimator animator1 = ObjectAnimator.ofFloat(ivFingerPrint, "translationX", 0, -20);
++        ObjectAnimator animator2 = ObjectAnimator.ofFloat(ivFingerPrint, "translationX", -20, 20);
++        ObjectAnimator animator3 = ObjectAnimator.ofFloat(ivFingerPrint, "translationX", 20, 0);
++        AnimatorSet animSet = new AnimatorSet();
++        animSet.play(animator2).after(animator1);
++        animSet.play(animator3).after(animator2);
++        animSet.setDuration(100);
++        animSet.start();
++    }
++
++    /**
+      * 指纹错误或已上锁
+      */
+     protected void handleError(int errMsgId, CharSequence msg) {
+-        mFingerprintCancel = null;
++        //mFingerprintCancel = null;
+         switch (errMsgId) {
+             case FingerprintManager.FINGERPRINT_ERROR_CANCELED:
+                 return; // Only happens if we get preempted by another activity. Ignored.
+@@ -415,10 +458,19 @@ public class Login extends Activity implements View.OnClickListener, CompoundBut
+      * 停止指纹监听
+      */
+     private void stopFingerprint() {
++        try {
++            mFingerprintCancel.cancel();
++        } catch (Exception e) {
++            e.printStackTrace();
++        }
++    }
++
++/*    private void stopFingerprint() {
+         if (mFingerprintCancel != null && !mFingerprintCancel.isCanceled()) {
+             mFingerprintCancel.cancel();
+         }
+         mFingerprintCancel = null;
+-    }
++    }*/
++
+ 
+ }

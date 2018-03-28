@@ -1,0 +1,1363 @@
+diff --git a/src/com/transage/privatespace/activity/AddPeople.java b/src/com/transage/privatespace/activity/AddPeople.java
+index a811686..587883a 100755
+--- a/src/com/transage/privatespace/activity/AddPeople.java
++++ b/src/com/transage/privatespace/activity/AddPeople.java
+@@ -3,6 +3,7 @@ package com.transage.privatespace.activity;
+ import android.Manifest;
+ import android.annotation.TargetApi;
+ import android.app.Activity;
++import android.content.Intent;
+ import android.content.pm.PackageManager;
+ import android.database.Cursor;
+ import android.os.Build;
+@@ -12,6 +13,7 @@ import android.support.annotation.NonNull;
+ import android.support.annotation.Nullable;
+ import android.support.v4.app.ActivityCompat;
+ import android.support.v4.content.ContextCompat;
++import android.util.Log;
+ import android.view.View;
+ import android.view.Window;
+ import android.view.WindowManager;
+@@ -21,24 +23,29 @@ import android.widget.ListView;
+ import com.transage.privatespace.R;
+ import com.transage.privatespace.adapter.AddPeopleListViewAdapter;
+ import com.transage.privatespace.adapter.AddPeopleListViewAdapter.ViewHolder1;
++import com.transage.privatespace.bean.ContactInfo;
+ import com.transage.privatespace.bean.People;
+-import com.transage.privatespace.utils.PrivateSpaceUtils;
+ 
++import java.io.Serializable;
+ import java.util.ArrayList;
+ import java.util.HashMap;
+ import java.util.Iterator;
++import java.util.List;
+ import java.util.Map;
+ 
+ /**
+  * Created by dongrp on 2016/9/2. 添加联系人界面
+  */
+ public class AddPeople extends Activity implements AdapterView.OnItemClickListener, View.OnClickListener {
++    public static final String TAG = "AddPeople";
++
++    public static final String SELECTED_PEOPLE = "selected_people";
+ 
+     private ArrayList<People> peopleList = new ArrayList<People>(); // 存放：所有未添加到私密空间的联系人
+     // 该map记录最终选中的people
+     private HashMap<Integer, People> map_selectedPeople = new HashMap<Integer, People>();
+     // 将上面的map_selectedPeople中的值遍历，存入该list_selectedPeople集合
+-    private ArrayList<People> list_selectedPeople = new ArrayList<People>();
++    private List<People> list_selectedPeople = new ArrayList<People>();
+ 
+ 
+     @Override
+@@ -72,7 +79,12 @@ public class AddPeople extends Activity implements AdapterView.OnItemClickListen
+                 list_selectedPeople.add(next.getValue());
+             }
+             //将peopleList中的联系人加为私密
+-            PrivateSpaceUtils.executePrivateContacts(list_selectedPeople, 1, this);
++//            PrivateSpaceUtils.executePrivateContacts(list_selectedPeople, 1, this);
++            if (list_selectedPeople.size() > 0) {
++                Intent intent = new Intent();
++                intent.putExtra(SELECTED_PEOPLE, (Serializable) list_selectedPeople);
++                setResult(RESULT_OK, intent);
++            }
+ //            setPrivateContacts(list_selectedPeople, 1, getContentResolver());
+             finish();
+         }
+@@ -152,7 +164,6 @@ public class AddPeople extends Activity implements AdapterView.OnItemClickListen
+         }
+     }
+ 
+-
+     /**
+      * 初始化View 和 Adapter
+      */
+@@ -192,7 +203,12 @@ public class AddPeople extends Activity implements AdapterView.OnItemClickListen
+         }
+         //将peopleList中的联系人加为私密
+ //        setPrivateContacts(list_selectedPeople, 1, getContentResolver());
+-        PrivateSpaceUtils.executePrivateContacts(list_selectedPeople, 1, this);
++//        PrivateSpaceUtils.executePrivateContacts(list_selectedPeople, 1, this);
++        if (list_selectedPeople.size() > 0) {
++            Intent intent = new Intent();
++            intent.putExtra(SELECTED_PEOPLE, (Serializable) list_selectedPeople);
++            setResult(RESULT_OK, intent);
++        }
+         finish();
+     }
+ 
+diff --git a/src/com/transage/privatespace/activity/Login.java b/src/com/transage/privatespace/activity/Login.java
+index e657a0c..98bd29a 100755
+--- a/src/com/transage/privatespace/activity/Login.java
++++ b/src/com/transage/privatespace/activity/Login.java
+@@ -104,6 +104,7 @@ public class Login extends Activity implements View.OnClickListener, CompoundBut
+     // 点击监听回调
+     @Override
+     public void onClick(View v) {
++        //startActivity(new Intent(Login.this, PrivateContactsActivity.class));
+         switch (v.getId()) {
+             case R.id.textView3: // “忘记密码”按钮
+                 startActivity(new Intent(Login.this, SecurityQuestion.class));
+diff --git a/src/com/transage/privatespace/activity/PrivateContacts.java b/src/com/transage/privatespace/activity/PrivateContacts.java
+index 74280ec..86577de 100755
+--- a/src/com/transage/privatespace/activity/PrivateContacts.java
++++ b/src/com/transage/privatespace/activity/PrivateContacts.java
+@@ -1,5 +1,6 @@
+ package com.transage.privatespace.activity;
+ 
++import android.content.Intent;
+ import android.os.Bundle;
+ import android.support.annotation.Nullable;
+ import android.support.v4.app.Fragment;
+@@ -12,12 +13,18 @@ import android.view.View;
+ import android.view.Window;
+ import android.view.WindowManager;
+ import android.widget.TextView;
++import android.widget.Toast;
+ 
+ import com.transage.privatespace.R;
++import com.transage.privatespace.bean.People;
++import com.transage.privatespace.fragment.BaseFragment;
+ import com.transage.privatespace.fragment.FG_PrivateCallRecords;
+ import com.transage.privatespace.fragment.FG_PrivatePeople;
+ import com.transage.privatespace.fragment.FG_PrivateSms;
++import com.transage.privatespace.loader.OnLoadListener;
++import com.transage.privatespace.loader.PrivateSpaceLoader;
+ 
++import java.io.Serializable;
+ import java.util.ArrayList;
+ import java.util.List;
+ 
+@@ -25,11 +32,12 @@ import java.util.List;
+  * Created by dongrp on 2016/9/1. 此界面包含一个TabLayout布局、私密联系人、通话记录、短息
+  * 3个Fragment,通过ViewPager进行切换
+  */
+-public class PrivateContacts extends FragmentActivity implements View.OnClickListener, OnPageChangeListener {
+-    private List<Fragment> listFragment = new ArrayList<Fragment>(); // fragment集合
++public class PrivateContacts extends FragmentActivity implements View.OnClickListener, OnPageChangeListener, OnLoadListener {
++    private List<BaseFragment> listFragment = new ArrayList<BaseFragment>(); // fragment集合
+     private List<String> listTitle = new ArrayList<String>(); // tab名称集合
+     private List<TextView> listTab = new ArrayList<TextView>(); // tab集合
+     private ViewPager viewPager;
++    private PrivateSpaceLoader mLoader;
+ 
+     @Override
+     protected void onCreate(@Nullable Bundle savedInstanceState) {
+@@ -38,19 +46,34 @@ public class PrivateContacts extends FragmentActivity implements View.OnClickLis
+         requestWindowFeature(Window.FEATURE_NO_TITLE);//隐藏TitleBar
+         getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);//透明状态栏
+         setContentView(R.layout.activity_private_contacts);
+-
++        mLoader = new PrivateSpaceLoader(this);
+         initData();
+         initView();
+     }
+ 
++    @Override
++    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
++        if (resultCode == RESULT_OK && data!=null){
++            List<People> peopleList = (List<People>)data.getSerializableExtra(AddPeople.SELECTED_PEOPLE);
++            if (peopleList != null && peopleList.size() > 0){
++                mLoader.loadPrivateContacts(peopleList, 1, this);
++            }
++        }
++        super.onActivityResult(requestCode, resultCode, data);
++    }
++
+     /**
+      * 初始化data
+      */
+     private void initData() {
+         // 初始化各fragment 并将fragment存放集合listFragment中
+-        Fragment fg_PrivateCallRecords = new FG_PrivateCallRecords();// 私密通话记录
+-        Fragment fg_PrivatePeople = new FG_PrivatePeople();// 私密联系人
+-        Fragment fg_PrivateSms = new FG_PrivateSms();// 私密短信
++        BaseFragment fg_PrivateCallRecords = new FG_PrivateCallRecords();// 私密通话记录
++        BaseFragment fg_PrivatePeople = new FG_PrivatePeople();// 私密联系人
++        BaseFragment fg_PrivateSms = new FG_PrivateSms();// 私密短信
++        //添加加载器
++        fg_PrivateCallRecords.setLoader(mLoader);
++        fg_PrivatePeople.setLoader(mLoader);
++        fg_PrivateSms.setLoader(mLoader);
+         listFragment.add(fg_PrivateCallRecords);
+         listFragment.add(fg_PrivatePeople);
+         listFragment.add(fg_PrivateSms);
+@@ -142,4 +165,8 @@ public class PrivateContacts extends FragmentActivity implements View.OnClickLis
+     }
+ 
+ 
++    @Override
++    public void onLoad(LoadTag loadTag) {
++        listFragment.get(loadTag.getValue()).refresh();
++    }
+ }
+diff --git a/src/com/transage/privatespace/activity/PrivateContactsActivity.java b/src/com/transage/privatespace/activity/PrivateContactsActivity.java
+deleted file mode 100755
+index 5fa0ef3..0000000
+--- a/src/com/transage/privatespace/activity/PrivateContactsActivity.java
++++ /dev/null
+@@ -1,58 +0,0 @@
+-package com.transage.privatespace.activity;
+-
+-import android.app.Activity;
+-import android.os.Bundle;
+-import android.view.View;
+-import android.widget.Button;
+-import android.widget.LinearLayout;
+-
+-import com.transage.privatespace.R;
+-import com.transage.privatespace.bean.ContactInfo;
+-import com.transage.privatespace.utils.ImportExportUtils;
+-
+-import java.util.List;
+-
+-/**
+- * Created by yanjie.xu on 2017/7/19.
+- */
+-
+-public class PrivateContactsActivity extends Activity {
+-
+-    @Override
+-    protected void onCreate(Bundle savedInstanceState) {
+-        super.onCreate(savedInstanceState);
+-        LinearLayout layout = new LinearLayout(this);
+-        Button button1 = new Button(this);
+-        button1.setText("写入文件");
+-        Button button2 = new Button(this);
+-        button2.setText("读取文件");
+-        layout.addView(button1);
+-        layout.addView(button2);
+-        setContentView(layout);
+-
+-        button1.setOnClickListener(new View.OnClickListener() {
+-            @Override
+-            public void onClick(View view) {
+-                try{
+-//                    ImportExportUtils.writeData();
+-                    List<ContactInfo> contactInfo = ContactInfo.ContactHandler.getInstance().getContactInfo(PrivateContactsActivity.this);
+-                    ContactInfo.ContactHandler.getInstance().backupContacts(PrivateContactsActivity.this, contactInfo);
+-                }catch (Exception e){
+-                    e.printStackTrace();
+-                }
+-            }
+-        });
+-
+-        button2.setOnClickListener(new View.OnClickListener() {
+-            @Override
+-            public void onClick(View view) {
+-                try{
+-//                    ImportExportUtils.readData();
+-                    ContactInfo.ContactHandler.getInstance().restoreContacts();
+-                }catch (Exception e){
+-                    e.printStackTrace();
+-                }
+-            }
+-        });
+-    }
+-}
+diff --git a/src/com/transage/privatespace/adapter/CallRecordListViewAdapter.java b/src/com/transage/privatespace/adapter/CallRecordListViewAdapter.java
+index f54cd3d..593301e 100755
+--- a/src/com/transage/privatespace/adapter/CallRecordListViewAdapter.java
++++ b/src/com/transage/privatespace/adapter/CallRecordListViewAdapter.java
+@@ -11,9 +11,8 @@ import android.widget.TextView;
+ 
+ import com.transage.privatespace.R;
+ import com.transage.privatespace.bean.CallRecord;
+-import com.transage.privatespace.utils.PrivateSpaceUtils;
++import com.transage.privatespace.loader.PrivateSpaceLoader;
+ 
+-import java.util.ArrayList;
+ import java.util.List;
+ 
+ /**
+@@ -70,7 +69,7 @@ public class CallRecordListViewAdapter extends BaseAdapter {
+         }
+         viewHolder.tvName.setText(callRecord.getName());
+         viewHolder.tvPhoneNum.setText(callRecord.getPhoneNum());
+-        viewHolder.tvDate.setText(PrivateSpaceUtils.formartDate(callRecord.getDate()));
++        viewHolder.tvDate.setText(PrivateSpaceLoader.formartDate(callRecord.getDate()));
+         return convertView;
+     }
+ 
+diff --git a/src/com/transage/privatespace/bean/ContactInfo.java b/src/com/transage/privatespace/bean/ContactInfo.java
+index 338085e..ff18100 100755
+--- a/src/com/transage/privatespace/bean/ContactInfo.java
++++ b/src/com/transage/privatespace/bean/ContactInfo.java
+@@ -33,6 +33,7 @@ import android.provider.ContactsContract.CommonDataKinds.Phone;
+ import android.provider.ContactsContract.CommonDataKinds.StructuredName;
+ import android.provider.ContactsContract.RawContacts;
+ import android.provider.ContactsContract.RawContacts.Data;
++import android.util.Log;
+ import android.widget.Toast;
+ 
+ /**
+@@ -41,7 +42,7 @@ import android.widget.Toast;
+  * Created by yanjie.xu on 2017/7/19.
+  */
+ public class ContactInfo {
+-
++    private static final String TAG = "ContactInfo";
+     /**
+      * MUST exist
+      */
+@@ -188,8 +189,10 @@ public class ContactInfo {
+                     ContactInfo info = new ContactInfo(displayName);// 初始化联系人信息
+                     // 查看联系人有多少电话号码, 如果没有返回0
+                     int phoneCount = cur.getInt(cur.getColumnIndex(ContactsContract.Contacts.HAS_PHONE_NUMBER));
++                    Log.i(TAG, "getContactInfo()->info = " + info.toString());
+                     if (phoneCount > 0) {
+-                        Cursor phonesCursor = context.getContentResolver().query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null, ContactsContract.CommonDataKinds.Phone.CONTACT_ID + "=" + id, null, null);
++                        Cursor phonesCursor = context.getContentResolver().query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null, ContactsContract.CommonDataKinds.Phone.CONTACT_ID + "=?" , new String[]{id}, null);
++                        Log.i(TAG, "getContactInfo()->info = " + info.toString());
+                         if (phonesCursor.moveToFirst()) {
+                             List<ContactInfo.PhoneInfo> phoneNumberList = new ArrayList<ContactInfo.PhoneInfo>();
+                             do {
+@@ -227,6 +230,7 @@ public class ContactInfo {
+                     }
+ 
+                     //Cursor postalCursor = getContentResolver().query(ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_URI, null, ContactsContract.CommonDataKinds.StructuredPostal.CONTACT_ID + "=" + id, null, null);
++                    Log.i(TAG, "getContactInfo()->info = " + info.toString());
+                     infoList.add(info);
+ 
+                 } while (cur.moveToNext());
+@@ -241,6 +245,7 @@ public class ContactInfo {
+ 
+             try {
+                 String path = Environment.getExternalStorageDirectory() + "/contacts.vcf";
++                Log.i(TAG, "backupContacts()->file = " + path);
+                 OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(path), "UTF-8");
+                 VCardComposer composer = new VCardComposer();
+                 for (ContactInfo info : infos) {
+@@ -286,6 +291,7 @@ public class ContactInfo {
+             VCardParser parse = new VCardParser();
+             VDataBuilder builder = new VDataBuilder();
+             String file = Environment.getExternalStorageDirectory() + "/contacts.vcf";
++            Log.i(TAG, "restoreContacts()->file = " + file);
+             BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"));
+             String vcardString = "";
+             String line;
+@@ -293,6 +299,7 @@ public class ContactInfo {
+                 vcardString += line + "\n";
+             }
+             reader.close();
++            Log.i(TAG, "restoreContacts()->vcardString = " + vcardString);
+             boolean parsed = parse.parse(vcardString, "UTF-8", builder);
+             if (!parsed) {
+                 throw new VCardException("Could not parse vCard file: " + file);
+diff --git a/src/com/transage/privatespace/bean/People.java b/src/com/transage/privatespace/bean/People.java
+index e349647..39f2539 100755
+--- a/src/com/transage/privatespace/bean/People.java
++++ b/src/com/transage/privatespace/bean/People.java
+@@ -1,10 +1,12 @@
+ package com.transage.privatespace.bean;
+ 
++import java.io.Serializable;
++
+ /**
+  * Created by dongrp on 2016/9/2.
+  * 联系人实体类
+  */
+-public class People {
++public class People implements Serializable {
+     private int id;
+     private String displayName;
+     private String phoneNum;
+diff --git a/src/com/transage/privatespace/database/DatabaseAdapter.java b/src/com/transage/privatespace/database/DatabaseAdapter.java
+index 4f0c939..87b3ebb 100755
+--- a/src/com/transage/privatespace/database/DatabaseAdapter.java
++++ b/src/com/transage/privatespace/database/DatabaseAdapter.java
+@@ -220,17 +220,19 @@ public class DatabaseAdapter {
+                 PsDatabaseHelper.CallRecordClumns.NUMBER + "=?";
+         Log.i(TAG, "sql = " + sql);
+         List<CallRecord> list = new ArrayList<>();
+-        Cursor cursor = query(sql, new String[]{phone});
++        Cursor cursor = query(sql, new String[]{phone.replaceAll(" ", "").trim()});
+         try {
+-            while (cursor.moveToNext()) {
+-                CallRecord callRecord = new CallRecord();
+-                callRecord.setId(cursor.getInt(0));
+-                callRecord.setName(cursor.getString(1));
+-                callRecord.setPhoneNum(cursor.getString(2));
+-                callRecord.setDate(cursor.getLong(3));
+-                callRecord.setDuration(cursor.getInt(4));
+-                callRecord.setType(cursor.getInt(5));
+-                list.add(callRecord);
++            if (cursor.moveToFirst()){
++                do {
++                    CallRecord callRecord = new CallRecord();
++                    callRecord.setId(cursor.getInt(0));
++                    callRecord.setName(cursor.getString(1));
++                    callRecord.setPhoneNum(cursor.getString(2));
++                    callRecord.setDate(cursor.getLong(3));
++                    callRecord.setDuration(cursor.getInt(4));
++                    callRecord.setType(cursor.getInt(5));
++                    list.add(callRecord);
++                }while (cursor.moveToNext());
+             }
+         } catch (Exception e) {
+             e.printStackTrace();
+diff --git a/src/com/transage/privatespace/fragment/BaseFragment.java b/src/com/transage/privatespace/fragment/BaseFragment.java
+new file mode 100755
+index 0000000..75954ab
+--- /dev/null
++++ b/src/com/transage/privatespace/fragment/BaseFragment.java
+@@ -0,0 +1,17 @@
++package com.transage.privatespace.fragment;
++
++import android.support.v4.app.Fragment;
++
++import com.transage.privatespace.loader.PrivateSpaceLoader;
++
++/**
++ * Created by yanjie.xu on 2017/7/21.
++ */
++
++public abstract class BaseFragment extends Fragment{
++    public static PrivateSpaceLoader mLoader;
++
++    public abstract void setLoader(PrivateSpaceLoader loader);
++
++    public abstract void refresh();
++}
+diff --git a/src/com/transage/privatespace/fragment/FG_PrivateCallRecords.java b/src/com/transage/privatespace/fragment/FG_PrivateCallRecords.java
+index 09e8b67..7ca8a2c 100755
+--- a/src/com/transage/privatespace/fragment/FG_PrivateCallRecords.java
++++ b/src/com/transage/privatespace/fragment/FG_PrivateCallRecords.java
+@@ -20,25 +20,24 @@ import com.transage.privatespace.R;
+ import com.transage.privatespace.adapter.CallRecordListViewAdapter;
+ import com.transage.privatespace.adapter.PeopleListViewAdapter;
+ import com.transage.privatespace.bean.CallRecord;
+-import com.transage.privatespace.bean.People;
+ import com.transage.privatespace.database.DatabaseAdapter;
+-import com.transage.privatespace.utils.PrivateSpaceUtils;
++import com.transage.privatespace.loader.PrivateSpaceLoader;
+ 
+-import java.sql.Date;
+-import java.text.SimpleDateFormat;
+ import java.util.ArrayList;
+ import java.util.List;
+-import java.util.Locale;
+ 
+ /**
+  * Created by dongrp on 2016/9/1.
+  */
+-public class FG_PrivateCallRecords extends Fragment {
++public class FG_PrivateCallRecords extends BaseFragment {
+     private static final String TAG = "FG_PrivateCallRecords";
+     private View view;
+     private CallRecordListViewAdapter callRecordListViewAdapter;
+-//    private ArrayList<ArrayList<CallRecord>> listCallRecordList = new ArrayList<ArrayList<CallRecord>>(); // 该list存放每个私密联系人的通话记录
++    //    private ArrayList<ArrayList<CallRecord>> listCallRecordList = new ArrayList<ArrayList<CallRecord>>(); // 该list存放每个私密联系人的通话记录
+     private List<CallRecord> list_callRecord = new ArrayList<>();
++
++
++
+     @Nullable
+     @Override
+     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+@@ -133,4 +132,14 @@ public class FG_PrivateCallRecords extends Fragment {
+ 
+     }
+ 
++    @Override
++    public void setLoader(PrivateSpaceLoader loader) {
++        mLoader = loader;
++    }
++
++    @Override
++    public void refresh() {
++        initData();
++        initViewAndAdapter();
++    }
+ }
+diff --git a/src/com/transage/privatespace/fragment/FG_PrivatePeople.java b/src/com/transage/privatespace/fragment/FG_PrivatePeople.java
+index e1326f0..1a98185 100755
+--- a/src/com/transage/privatespace/fragment/FG_PrivatePeople.java
++++ b/src/com/transage/privatespace/fragment/FG_PrivatePeople.java
+@@ -6,7 +6,6 @@ import android.content.Intent;
+ import android.os.Build;
+ import android.os.Bundle;
+ import android.support.annotation.Nullable;
+-import android.support.v4.app.Fragment;
+ import android.view.KeyEvent;
+ import android.view.LayoutInflater;
+ import android.view.View;
+@@ -20,7 +19,7 @@ import com.transage.privatespace.activity.AddPeople;
+ import com.transage.privatespace.adapter.PeopleListViewAdapter;
+ import com.transage.privatespace.bean.People;
+ import com.transage.privatespace.database.DatabaseAdapter;
+-import com.transage.privatespace.utils.PrivateSpaceUtils;
++import com.transage.privatespace.loader.PrivateSpaceLoader;
+ 
+ import java.util.ArrayList;
+ import java.util.HashMap;
+@@ -30,7 +29,7 @@ import java.util.Map;
+ /**
+  * Created by dongrp on 2016/9/1.
+  */
+-public class FG_PrivatePeople extends Fragment implements AdapterView.OnItemClickListener,
++public class FG_PrivatePeople extends BaseFragment implements AdapterView.OnItemClickListener,
+         AdapterView.OnItemLongClickListener {
+     private View view;
+     private ImageButton floatActionButton;
+@@ -172,15 +171,15 @@ public class FG_PrivatePeople extends Fragment implements AdapterView.OnItemClic
+                     }
+                     //将listSelectedPeople中的联系人解除私密
+ //                    AddPeople.setPrivateContacts(listSelectedPeople, 0, getActivity().getContentResolver());
+-                    PrivateSpaceUtils.executePrivateContacts(listSelectedPeople, 0, getActivity());
++//                    PrivateSpaceUtils.executePrivateContacts(listSelectedPeople, 0, getActivity());
++                    mLoader.loadPrivateContacts(listSelectedPeople, 0, getActivity());
+                     isShowCheckBox = false;
+                     // 给floatActionButton添加属性翻转动画
+                     ObjectAnimator.ofFloat(floatActionButton, "rotationY", 0.0F, -180.0F).setDuration(500).start();
+                     floatActionButton.setImageResource(R.mipmap.add);
+-                    initData();// 重新加载数据
+-                    initViewAndAdapter();// 重新绑定适配器
+                 } else { // 添加
+-                    startActivity(new Intent(getActivity(), AddPeople.class));
++//                    startActivity(new Intent(getActivity(), AddPeople.class));
++                    startActivityForResult(new Intent(getActivity(), AddPeople.class), 111);
+                 }
+             }
+         });
+@@ -257,4 +256,14 @@ public class FG_PrivatePeople extends Fragment implements AdapterView.OnItemClic
+         return true;
+     }
+ 
++    @Override
++    public void setLoader(PrivateSpaceLoader loader) {
++        mLoader = loader;
++    }
++
++    @Override
++    public void refresh() {
++        initData();// 重新加载数据
++        initViewAndAdapter();// 重新绑定适配器
++    }
+ }
+diff --git a/src/com/transage/privatespace/fragment/FG_PrivateSms.java b/src/com/transage/privatespace/fragment/FG_PrivateSms.java
+index 19e4df5..9afb7e4 100755
+--- a/src/com/transage/privatespace/fragment/FG_PrivateSms.java
++++ b/src/com/transage/privatespace/fragment/FG_PrivateSms.java
+@@ -17,13 +17,14 @@ import com.transage.privatespace.R;
+ import com.transage.privatespace.adapter.SmsListViewAdapter;
+ import com.transage.privatespace.bean.Sms;
+ import com.transage.privatespace.database.DatabaseAdapter;
++import com.transage.privatespace.loader.PrivateSpaceLoader;
+ 
+ import java.util.ArrayList;
+ 
+ /**
+  * Created by dongrp on 2016/9/1.
+  */
+-public class FG_PrivateSms extends Fragment {
++public class FG_PrivateSms extends BaseFragment {
+     private View view;
+     private ArrayList<Sms> listSmslist = new ArrayList<Sms>();
+     private SmsListViewAdapter smsListViewAdapter;
+@@ -47,7 +48,6 @@ public class FG_PrivateSms extends Fragment {
+         }
+         initData();
+         initViewAndAdapter();
+-
+     }
+ 
+     //READ_SMS权限申请结果的回调方法
+@@ -109,6 +109,17 @@ public class FG_PrivateSms extends Fragment {
+ //            }
+ //        }
+     }
++
++    @Override
++    public void setLoader(PrivateSpaceLoader loader) {
++        mLoader = loader;
++    }
++
++    @Override
++    public void refresh() {
++        initData();
++        initViewAndAdapter();
++    }
+ //    public void initData() {
+ //        // 1.先获取到所有私密联系人
+ //        ArrayList<People> listPrivatePeople = new ArrayList<People>();
+diff --git a/src/com/transage/privatespace/loader/OnLoadListener.java b/src/com/transage/privatespace/loader/OnLoadListener.java
+new file mode 100755
+index 0000000..e525975
+--- /dev/null
++++ b/src/com/transage/privatespace/loader/OnLoadListener.java
+@@ -0,0 +1,22 @@
++package com.transage.privatespace.loader;
++
++/**
++ * Created by yanjie.xu on 2017/7/20.
++ */
++
++public interface OnLoadListener {
++    enum LoadTag{
++        CALLRECORD(0), CONTACT(1), SMS(2);
++
++        private int mValue;
++
++        LoadTag(int value) {
++            this.mValue = value;
++        }
++
++        public int getValue() {
++            return mValue;
++        }
++    }
++    public void onLoad(LoadTag loadTag);
++}
+diff --git a/src/com/transage/privatespace/loader/PrivateSpaceLoader.java b/src/com/transage/privatespace/loader/PrivateSpaceLoader.java
+new file mode 100755
+index 0000000..34623cf
+--- /dev/null
++++ b/src/com/transage/privatespace/loader/PrivateSpaceLoader.java
+@@ -0,0 +1,406 @@
++package com.transage.privatespace.loader;
++
++import android.Manifest;
++import android.app.Activity;
++import android.content.ContentProviderOperation;
++import android.content.ContentProviderResult;
++import android.content.ContentResolver;
++import android.content.ContentValues;
++import android.content.Context;
++import android.content.pm.PackageManager;
++import android.database.Cursor;
++import android.net.Uri;
++import android.os.Handler;
++import android.os.Message;
++import android.provider.CallLog;
++import android.provider.ContactsContract;
++import android.support.v4.app.ActivityCompat;
++import android.util.Log;
++
++import com.transage.privatespace.activity.PrivateContacts;
++import com.transage.privatespace.bean.CallRecord;
++import com.transage.privatespace.bean.People;
++import com.transage.privatespace.bean.Sms;
++import com.transage.privatespace.database.DatabaseAdapter;
++
++import java.text.SimpleDateFormat;
++import java.util.ArrayList;
++import java.util.Date;
++import java.util.List;
++import java.util.Locale;
++import java.util.concurrent.ExecutorService;
++import java.util.concurrent.Executors;
++
++/**
++ * Created by yanjie.xu on 2017/7/20.
++ */
++
++public class PrivateSpaceLoader {
++    private static final String TAG = "PrivateSpaceLoader";
++
++    private static final int REFRESHE_CALLRECORD = 1101;
++    private static final int REFRESHE_CONTACT = 1102;
++    private static final int REFRESHE_SMS = 1103;
++
++    //数据变动监听器
++    private static PrivateContacts mLoadListener;
++
++    private Handler mHandler = new Handler() {
++        public void handleMessage(Message msg) {//此方法在ui线程运行
++            OnLoadListener.LoadTag tag = OnLoadListener.LoadTag.CONTACT;
++            switch (msg.what) {
++                case REFRESHE_CALLRECORD:
++                    tag = OnLoadListener.LoadTag.CALLRECORD;
++                    break;
++                case REFRESHE_CONTACT:
++                    tag = OnLoadListener.LoadTag.CONTACT;
++                    break;
++                case REFRESHE_SMS:
++                    tag = OnLoadListener.LoadTag.SMS;
++                    break;
++                default:
++                    break;
++            }
++            mLoadListener.onLoad(tag);
++        }
++    };
++
++    public PrivateSpaceLoader(PrivateContacts mLoadListener) {
++        this.mLoadListener = mLoadListener;
++
++    }
++
++    /**
++     * 设置私密联系人
++     *
++     * @param list_selectedPeople ：待加密/解密的联系人列表
++     * @param isPrivate           ：1表示加为私密 ，0表示解除私密
++     * @param activity            ：内容解析者
++     */
++    public void loadPrivateContacts(List<People> list_selectedPeople, int isPrivate, Activity activity) {
++        DatabaseAdapter databaseAdapter = new DatabaseAdapter(activity);
++        for (People people : list_selectedPeople) {
++            if (isPrivate == 0) {//解除私密
++                //联系人数据操作
++                getThreadPool().execute(new Runnable() {
++                    @Override
++                    public void run() {
++                        //还原联系人到系统中
++                        addContacts2Db(activity, people);
++                        //删除私密联系人
++                        new DatabaseAdapter(activity).deleteContactsById(people.getId());
++                        mHandler.sendEmptyMessage(REFRESHE_CONTACT);
++                    }
++                });
++
++                //通话记录数据操作
++                getThreadPool().execute(new Runnable() {
++                    @Override
++                    public void run() {
++                        //批量插入通话记录
++//                        batchAddCallLogs(activity, databaseAdapter.getCallRecordsByNum(people.getPhoneNum()));
++                        addCallLogs(activity, databaseAdapter.getCallRecordsByNum(people.getPhoneNum()));
++                        //删除通话记录
++                        databaseAdapter.deleteCallRecordByNum(people.getPhoneNum());
++                        mHandler.sendEmptyMessage(REFRESHE_CALLRECORD);
++                    }
++                });
++
++                ////短信数据操作
++                getThreadPool().execute(new Runnable() {
++                    @Override
++                    public void run() {
++                        //删除私密短信
++                        new DatabaseAdapter(activity).deleteSmsByAddress(people.getPhoneNum());
++                        databaseAdapter.deleteContactsById(people.getId());
++                        mHandler.sendEmptyMessage(REFRESHE_SMS);
++                    }
++                });
++
++            }
++
++            if (isPrivate == 1) {
++                getThreadPool().execute(new Runnable() {
++                    @Override
++                    public void run() {
++                        //添加联系人到私密
++                        databaseAdapter.addContact(people);
++                        //删除联系人元数据
++                        activity.getContentResolver().delete(ContactsContract.RawContacts.CONTENT_URI,
++                                ContactsContract.Data._ID + "=?",
++                                new String[]{String.valueOf(people.getRawContactId())});
++                        mHandler.sendEmptyMessage(REFRESHE_CONTACT);
++                    }
++                });
++
++                getThreadPool().execute(new Runnable() {
++                    @Override
++                    public void run() {
++                        addCallLogToPrivate(list_selectedPeople, activity);
++                        mHandler.sendEmptyMessage(REFRESHE_CALLRECORD);
++                    }
++                });
++
++                getThreadPool().execute(new Runnable() {
++                    @Override
++                    public void run() {
++                        //添加短信到私密 add by wangmeng 20170707
++                        addSmstoPrivate(activity, people);
++                        mHandler.sendEmptyMessage(REFRESHE_SMS);
++                    }
++                });
++
++
++            }
++        }
++
++    }
++
++    public void addCallLogToPrivate(List<People> list_selectedPeople, Activity activity) {
++        DatabaseAdapter databaseAdapter = new DatabaseAdapter(activity);
++        List<CallRecord> callRecords = getCallRecordsFromContectsProvider(list_selectedPeople, activity);
++        if (callRecords != null && !callRecords.isEmpty()) {
++            for (CallRecord callRecord : callRecords) {
++                Log.i(TAG, "add callLog" + callRecord.toString());
++                //添加通话记录到私密
++                databaseAdapter.addCallRecord(callRecord);
++                //删除通话记录到私密
++                activity.getContentResolver().delete(CallLog.Calls.CONTENT_URI, CallLog.Calls.NUMBER + "=?",
++                        new String[]{callRecord.getPhoneNum().replaceAll(" ", "").trim()});
++            }
++        }
++
++    }
++
++    private List<CallRecord> getCallRecordsFromContectsProvider(List<People> list_selectedPeople, Activity activity) {
++        // 检查并申请 READ_CALL_LOG 权限
++        if (ActivityCompat.checkSelfPermission(activity, Manifest.permission.WRITE_CALL_LOG) != PackageManager.PERMISSION_GRANTED) {
++            ActivityCompat.requestPermissions(activity, new String[]{Manifest.permission.WRITE_CALL_LOG}, 1);
++            return null;
++        }
++        List<CallRecord> callRecordsList = new ArrayList<CallRecord>();
++        ContentResolver resolver = activity.getContentResolver();
++
++        for (int i = 0; i < list_selectedPeople.size(); i++) {
++            String phone = list_selectedPeople.get(i).getPhoneNum();
++            Log.i(TAG, list_selectedPeople.get(i).toString());
++            if (phone != null) {
++                /**
++                 * @param uri 需要查询的URI，（这个URI是ContentProvider提供的）努力了
++                 * @param projection 需要查询的字段
++                 * @param selection sql语句where之后的语句
++                 * @param selectionArgs ?占位符代表的数据
++                 * @param sortOrder 排序方式
++                 */
++                Cursor recordCursor = resolver.query(CallLog.Calls.CONTENT_URI, // 查询通话记录的URI
++                        new String[]{CallLog.Calls._ID,
++                                CallLog.Calls.CACHED_NAME,// 通话记录的联系人
++                                CallLog.Calls.NUMBER,// 通话记录的电话号码
++                                CallLog.Calls.DATE,// 通话记录的日期
++                                CallLog.Calls.DURATION,// 通话时长
++                                CallLog.Calls.TYPE}// 通话类型
++                        , CallLog.Calls.NUMBER + "= ?",
++                        new String[]{phone.replaceAll(" ", "").trim()},
++                        CallLog.Calls.DEFAULT_SORT_ORDER// 按照时间逆序排列，最近打的最先显示
++                );
++                if (recordCursor != null && recordCursor.moveToFirst()) {
++                    do {
++                        int callLogId = recordCursor.getInt(0);
++                        String name = recordCursor.getString(1);
++                        String phoneNum = recordCursor.getString(2);
++                        long date = recordCursor.getLong(3);
++                        int duration = recordCursor.getInt(4);
++                        int type = recordCursor.getInt(5);
++
++                        // 添加数据到list
++                        CallRecord callRecord = new CallRecord();
++                        callRecord.setDate(date);
++                        callRecord.setPhoneNum(phoneNum);
++                        callRecord.setName(name);
++                        callRecord.setType(type);
++                        callRecord.setDuration(duration);
++                        callRecordsList.add(callRecord);
++                    }while (recordCursor.moveToNext());
++                    recordCursor.close();
++                }
++            }
++        }
++
++        return callRecordsList;
++    }
++
++    //添加短信到私密 add by wangmeng 20170707
++    public void addSmstoPrivate(Activity activity, People phone) {
++        // 1.先获取到所有私密联系人
++//        ArrayList<People> listPrivatePeople = new ArrayList<People>();
++//        listPrivatePeople.addAll(new DatabaseAdapter(activity).getContacts());
++        //Log.e("wangmeng","=====111111111========>");
++        // 2.获取私密联系人的短信记录
++        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("MM-dd HH:mm", Locale.getDefault());
++        String[] projection = new String[]{"_id", "thread_id", "address", "person", "body", "date", "type"};
++//        for (int i = 0; i < listPrivatePeople.size(); i++) {
++//            String phone = listPrivatePeople.get(i).getPhoneNum();
++        if (phone != null) {
++            //Log.e("wangmeng","=====222222222========>");
++            Cursor cursor2 = activity.getContentResolver().query(Uri.parse("content://sms/"), projection,
++                    "address=?", new String[]{phone.getPhoneNum()}, "date desc");
++            if (cursor2 != null && cursor2.moveToFirst()) {
++                // ArrayList<Sms> listSms = new ArrayList<Sms>();
++                do {
++                    //Log.e("wangmeng","=====333333========>");
++                    int id = cursor2.getInt(cursor2.getColumnIndex("_id"));
++                    long threadId = cursor2.getLong(cursor2.getColumnIndex("thread_id"));
++                    String address = cursor2.getString(cursor2.getColumnIndex("address"));// 手机号码
++                    String body = cursor2.getString(cursor2.getColumnIndex("body"));// 短信内容
++                    String date = simpleDateFormat.format(new Date(cursor2.getLong(cursor2.getColumnIndex("date"))));// 收发时间
++                    int type = cursor2.getInt(cursor2.getColumnIndex("type"));// 收发类型
++                        /*Log.e("wangmeng","======threadId: "+threadId);
++                        Log.e("wangmeng","======address: "+address);
++                        Log.e("wangmeng","======body: "+body);
++                        Log.e("wangmeng","======date: "+date);
++                        Log.e("wangmeng","======type: "+type);*/
++                    // 添加一条短息数据到listSms
++                    Sms sms = new Sms();
++                    sms.setId(id);
++                    sms.setThread_id(threadId);
++                    sms.setAddress(address);
++                    sms.setPerson(phone.getDisplayName());
++                    sms.setBody(body);
++                    sms.setDate(date);
++                    sms.setType(type);
++
++                    new DatabaseAdapter(activity).addSms(sms);
++                    //activity.getContentResolver().delete(Uri.parse("content://sms/"), "_id=" + id, null);
++                     /*   activity.getContentResolver().delete(Uri.parse("content://sms/"),
++                                  "address =" + address,
++                                null);*/
++                    activity.getContentResolver().delete(Uri.parse("content://mms-sms/"), "address = ?", new String[]{address});
++
++                    // Log.e("wangmeng","=============>");
++                    // listSms.add(sms);
++                } while (cursor2.moveToNext());
++                cursor2.close();
++            }
++        }
++//        }
++
++
++    }
++
++    /**
++     * 添加联系人
++     * 在同一个事务中完成联系人各项数据的添加
++     * 使用ArrayList<ContentProviderOperation>，把每步操作放在它的对象中执行
++     */
++    private void addContacts2Db(Context context, People people) {
++        Uri uri = Uri.parse("content://com.android.contacts/raw_contacts");
++        ContentResolver resolver = context.getContentResolver();
++        // 第一个参数：内容提供者的主机名
++        // 第二个参数：要执行的操作
++        ArrayList<ContentProviderOperation> operations = new ArrayList<ContentProviderOperation>();
++
++        // 操作1.添加Google账号，这里值为null，表示不添加
++        ContentProviderOperation operation = ContentProviderOperation.newInsert(uri)
++                .withValue("account_name", null)// account_name:Google账号
++                .build();
++
++        // 操作2.添加data表中name字段
++        uri = Uri.parse("content://com.android.contacts/data");
++        ContentProviderOperation operation2 = ContentProviderOperation.newInsert(uri)
++                // 第二个参数int previousResult:表示上一个操作的位于operations的第0个索引，
++                // 所以能够将上一个操作返回的raw_contact_id作为该方法的参数
++                .withValueBackReference("raw_contact_id", 0)
++                .withValue("mimetype", "vnd.android.cursor.item/name")
++                .withValue("data2", people.getDisplayName())
++                .build();
++
++        // 操作3.添加data表中phone字段
++        uri = Uri.parse("content://com.android.contacts/data");
++        ContentProviderOperation operation3 = ContentProviderOperation.newInsert(uri)
++                .withValueBackReference("raw_contact_id", 0)
++                .withValue("mimetype", "vnd.android.cursor.item/phone_v2")
++                .withValue("data2", "2")
++                .withValue("data1", people.getPhoneNum())
++                .build();
++
++        // 操作4.添加data表中的Email字段
++//        uri = Uri.parse("content://com.android.contacts/data");
++//        ContentProviderOperation operation4 = ContentProviderOperation
++//                .newInsert(uri).withValueBackReference("raw_contact_id", 0)
++//                .withValue("mimetype", "vnd.android.cursor.item/email_v2")
++//                .withValue("data2", "2")
++//                .withValue("data1", "zhouguoping@qq.com").build();
++
++        operations.add(operation);
++        operations.add(operation2);
++        operations.add(operation3);
++//        operations.add(operation4);
++
++        try {
++            resolver.applyBatch("com.android.contacts", operations);
++        } catch (Exception e) {
++            e.printStackTrace();
++        }
++    }
++
++    /**
++     * 往数据库中新增通话记录
++     *
++     * @param context
++     * @param callRecordList
++     */
++    public void addCallLogs(Context context, List<CallRecord> callRecordList) {
++        ContentValues values = new ContentValues();
++        for (CallRecord callRecord : callRecordList) {
++            values.clear();
++            values.put(CallLog.Calls.CACHED_NAME, callRecord.getName());
++            values.put(CallLog.Calls.NUMBER, callRecord.getPhoneNum());
++            values.put(CallLog.Calls.TYPE, callRecord.getType());
++            values.put(CallLog.Calls.DATE, callRecord.getDate());
++            values.put(CallLog.Calls.DURATION, callRecord.getDuration());
++            values.put(CallLog.Calls.NEW, "0");// 0已看1未看 ,由于没有获取默认全为已读
++            context.getContentResolver().insert(CallLog.Calls.CONTENT_URI, values);
++        }
++    }
++
++    /**
++     * 批量添加通话记录到联系人
++     *
++     * @param context
++     * @param list
++     */
++    private void batchAddCallLogs(Context context, List<CallRecord> list) {
++        ArrayList<ContentProviderOperation> ops = new ArrayList<ContentProviderOperation>();
++        ContentValues values = new ContentValues();
++        for (CallRecord callRecord : list) {
++            values.clear();
++            values.put(CallLog.Calls.CACHED_NAME, callRecord.getName());
++            values.put(CallLog.Calls.NUMBER, callRecord.getPhoneNum());
++            values.put(CallLog.Calls.TYPE, callRecord.getType());
++            values.put(CallLog.Calls.DATE, callRecord.getDate());
++            values.put(CallLog.Calls.DURATION, callRecord.getDuration());
++            values.put(CallLog.Calls.NEW, "0");// 0已看1未看 ,由于没有获取默认全为已读
++            ops.add(ContentProviderOperation
++                    .newInsert(CallLog.Calls.CONTENT_URI).withValues(values)
++                    .withYieldAllowed(true).build());
++        }
++        if (ops != null) {
++            try {
++                // 真正添加
++                ContentProviderResult[] results = context.getContentResolver().applyBatch(CallLog.AUTHORITY, ops);
++                Log.i(TAG, "batchAddCallLogs -> results = " + results.toString());
++            } catch (Exception e) {
++                e.printStackTrace();
++            }
++        }
++    }
++
++    public ExecutorService getThreadPool() {
++        return Executors.newCachedThreadPool();
++    }
++
++    public static String formartDate(long date) {
++        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("MM-dd HH:mm", Locale.getDefault());
++        return simpleDateFormat.format(new Date(date));
++    }
++}
+diff --git a/src/com/transage/privatespace/utils/ImportExportUtils.java b/src/com/transage/privatespace/utils/ImportExportUtils.java
+index 05bc74f..d18d04e 100755
+--- a/src/com/transage/privatespace/utils/ImportExportUtils.java
++++ b/src/com/transage/privatespace/utils/ImportExportUtils.java
+@@ -122,4 +122,24 @@ public class ImportExportUtils {
+ //
+ //        writer.close();
+     }
++
++//    try{
++////                    ImportExportUtils.writeData();
++//        List<ContactInfo> contactInfo = ContactInfo.ContactHandler.getInstance().getContactInfo(PrivateContactsActivity.this);
++//        Log.i(TAG, "CatactInfo" + contactInfo.toArray().toString());
++//        ContactInfo.ContactHandler.getInstance().backupContacts(PrivateContactsActivity.this, contactInfo);
++//        Toast.makeText(PrivateContactsActivity.this, "备份联系人", Toast.LENGTH_SHORT).show();
++//    }catch (Exception e){
++//        e.printStackTrace();
++//    }
++
++//    try{
++////                    ImportExportUtils.readData();
++//        List<ContactInfo> contactInfos = ContactInfo.ContactHandler.getInstance().restoreContacts();
++//        String s = contactInfos.toArray().toString();
++//        textView.setText(s);
++//        Toast.makeText(PrivateContactsActivity.this, "还原备份的联系人", Toast.LENGTH_SHORT).show();
++//    }catch (Exception e){
++//        e.printStackTrace();
++//    }
+ }
+diff --git a/src/com/transage/privatespace/utils/PrivateSpaceUtils.java b/src/com/transage/privatespace/utils/PrivateSpaceUtils.java
+deleted file mode 100755
+index 31e52d4..0000000
+--- a/src/com/transage/privatespace/utils/PrivateSpaceUtils.java
++++ /dev/null
+@@ -1,305 +0,0 @@
+-package com.transage.privatespace.utils;
+-
+-import android.Manifest;
+-import android.app.Activity;
+-import android.content.ContentProviderOperation;
+-import android.content.ContentResolver;
+-import android.content.Context;
+-import android.content.pm.PackageManager;
+-import android.database.Cursor;
+-import android.net.Uri;
+-import android.provider.CallLog;
+-import android.provider.ContactsContract;
+-import android.util.Log;
+-import android.support.v4.app.ActivityCompat;
+-import android.content.ContentValues;
+-
+-import com.transage.privatespace.bean.CallRecord;
+-import com.transage.privatespace.bean.People;
+-import com.transage.privatespace.bean.Sms;
+-import com.transage.privatespace.database.DatabaseAdapter;
+-
+-import java.text.SimpleDateFormat;
+-import java.util.ArrayList;
+-import java.util.Date;
+-import java.util.Locale;
+-import java.util.List;
+-import java.util.concurrent.ExecutorService;
+-import java.util.concurrent.Executors;
+-
+-/**
+- * Created by yanjie.xu on 2017/7/6.
+- */
+-
+-public class PrivateSpaceUtils {
+-    private static final String TAG = "PrivateSpaceUtils";
+-
+-    /**
+-     * 设置私密联系人
+-     *
+-     * @param list_selectedPeople ：待加密/解密的联系人列表
+-     * @param isPrivate           ：1表示加为私密 ，0表示解除私密
+-     * @param activity            ：内容解析者
+-     */
+-    public static void executePrivateContacts(ArrayList<People> list_selectedPeople, int isPrivate, Activity activity) {
+-        DatabaseAdapter databaseAdapter = new DatabaseAdapter(activity);
+-        for (People people : list_selectedPeople) {
+-            if (isPrivate == 0) {
+-                //还原联系人到系统中
+-                addContacts2Db(activity, people);
+-                //删除私密联系人
+-                new DatabaseAdapter(activity).deleteContactsById(people.getId());
+-                //删除私密短信
+-                new DatabaseAdapter(activity).deleteSmsByAddress(people.getPhoneNum());
+-                databaseAdapter.deleteContactsById(people.getId());
+-
+-                //批量插入通话记录
+-                batchAddCallLogs(activity, databaseAdapter.getCallRecordsByNum(people.getPhoneNum()));
+-                //删除通话记录
+-                databaseAdapter.deleteCallRecordByNum(people.getPhoneNum());
+-            }
+-
+-            if (isPrivate == 1) {
+-                //添加联系人到私密
+-                databaseAdapter.addContact(people);
+-                //删除联系人元数据
+-                activity.getContentResolver().delete(ContactsContract.RawContacts.CONTENT_URI,
+-                        ContactsContract.Data._ID + "=?",
+-                        new String[]{String.valueOf(people.getRawContactId())});
+-                //添加短信到私密 add by wangmeng 20170707
+-                addSmstoPrivate(activity, people);
+-
+-                optionPrivateCallLog(list_selectedPeople, activity);
+-            }
+-        }
+-
+-    }
+-
+-    public static void optionPrivateCallLog(ArrayList<People> list_selectedPeople, Activity activity) {
+-        DatabaseAdapter databaseAdapter = new DatabaseAdapter(activity);
+-        ArrayList<CallRecord> callRecords = getCallRecordsFromContectsProvider(list_selectedPeople, activity);
+-        if (callRecords != null && !callRecords.isEmpty()) {
+-            for (CallRecord callRecord : callRecords) {
+-                Log.i(TAG, "add callLog" + callRecord.toString());
+-                //添加通话记录到私密
+-                databaseAdapter.addCallRecord(callRecord);
+-                //删除通话记录到私密
+-                activity.getContentResolver().delete(CallLog.Calls.CONTENT_URI, CallLog.Calls.NUMBER + "=?", new String[]{callRecord.getPhoneNum()});
+-            }
+-        }
+-
+-    }
+-
+-    private static ArrayList<CallRecord> getCallRecordsFromContectsProvider(ArrayList<People> list_selectedPeople, Activity activity) {
+-        // 检查并申请 READ_CALL_LOG 权限
+-        if (ActivityCompat.checkSelfPermission(activity, Manifest.permission.WRITE_CALL_LOG) != PackageManager.PERMISSION_GRANTED) {
+-            ActivityCompat.requestPermissions(activity, new String[]{Manifest.permission.WRITE_CALL_LOG}, 1);
+-            return null;
+-        }
+-        ArrayList<CallRecord> callRecordsList = new ArrayList<CallRecord>();
+-        ContentResolver resolver = activity.getContentResolver();
+-
+-        for (int i = 0; i < list_selectedPeople.size(); i++) {
+-            String phone = list_selectedPeople.get(i).getPhoneNum();
+-            Log.i(TAG, list_selectedPeople.get(i).toString());
+-            if (phone != null) {
+-                /**
+-                 * @param uri 需要查询的URI，（这个URI是ContentProvider提供的）努力了
+-                 * @param projection 需要查询的字段
+-                 * @param selection sql语句where之后的语句
+-                 * @param selectionArgs ?占位符代表的数据
+-                 * @param sortOrder 排序方式
+-                 */
+-                Cursor recordCursor = resolver.query(CallLog.Calls.CONTENT_URI, // 查询通话记录的URI
+-                        new String[]{CallLog.Calls._ID,
+-                                CallLog.Calls.CACHED_NAME,// 通话记录的联系人
+-                                CallLog.Calls.NUMBER,// 通话记录的电话号码
+-                                CallLog.Calls.DATE,// 通话记录的日期
+-                                CallLog.Calls.DURATION,// 通话时长
+-                                CallLog.Calls.TYPE}// 通话类型
+-                        , CallLog.Calls.NUMBER + "= ?",
+-                        new String[]{phone.replaceAll(" ", "").trim()},
+-                        CallLog.Calls.DEFAULT_SORT_ORDER// 按照时间逆序排列，最近打的最先显示
+-                );
+-                if (recordCursor != null && recordCursor.moveToFirst()) {
+-                    while (recordCursor.moveToNext()) {
+-                        int callLogId = recordCursor.getInt(0);
+-                        String name = recordCursor.getString(1);
+-                        String phoneNum = recordCursor.getString(2);
+-                        long date = recordCursor.getLong(3);
+-                        int duration = recordCursor.getInt(4);
+-                        int type = recordCursor.getInt(5);
+-
+-                        // 添加数据到list
+-                        CallRecord callRecord = new CallRecord();
+-                        callRecord.setDate(date);
+-                        callRecord.setPhoneNum(phoneNum);
+-                        callRecord.setName(name);
+-                        callRecord.setType(type);
+-                        callRecord.setDuration(duration);
+-                        callRecordsList.add(callRecord);
+-                    }
+-                    recordCursor.close();
+-                }
+-            }
+-        }
+-
+-        return callRecordsList;
+-    }
+-
+-    //添加短信到私密 add by wangmeng 20170707
+-    public static void addSmstoPrivate(Activity activity, People phone) {
+-        // 1.先获取到所有私密联系人
+-//        ArrayList<People> listPrivatePeople = new ArrayList<People>();
+-//        listPrivatePeople.addAll(new DatabaseAdapter(activity).getContacts());
+-        //Log.e("wangmeng","=====111111111========>");
+-        // 2.获取私密联系人的短信记录
+-        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("MM-dd HH:mm", Locale.getDefault());
+-        String[] projection = new String[]{"_id", "thread_id", "address", "person", "body", "date", "type"};
+-//        for (int i = 0; i < listPrivatePeople.size(); i++) {
+-//            String phone = listPrivatePeople.get(i).getPhoneNum();
+-        if (phone != null) {
+-            //Log.e("wangmeng","=====222222222========>");
+-            Cursor cursor2 = activity.getContentResolver().query(Uri.parse("content://sms/"), projection,
+-                    "address=?", new String[]{phone.getPhoneNum()}, "date desc");
+-            if (cursor2 != null && cursor2.moveToFirst()) {
+-                // ArrayList<Sms> listSms = new ArrayList<Sms>();
+-                do {
+-                    //Log.e("wangmeng","=====333333========>");
+-                    int id = cursor2.getInt(cursor2.getColumnIndex("_id"));
+-                    long threadId = cursor2.getLong(cursor2.getColumnIndex("thread_id"));
+-                    String address = cursor2.getString(cursor2.getColumnIndex("address"));// 手机号码
+-                    String body = cursor2.getString(cursor2.getColumnIndex("body"));// 短信内容
+-                    String date = simpleDateFormat.format(new Date(cursor2.getLong(cursor2.getColumnIndex("date"))));// 收发时间
+-                    int type = cursor2.getInt(cursor2.getColumnIndex("type"));// 收发类型
+-                        /*Log.e("wangmeng","======threadId: "+threadId);
+-                        Log.e("wangmeng","======address: "+address);
+-                        Log.e("wangmeng","======body: "+body);
+-                        Log.e("wangmeng","======date: "+date);
+-                        Log.e("wangmeng","======type: "+type);*/
+-                    // 添加一条短息数据到listSms
+-                    Sms sms = new Sms();
+-                    sms.setId(id);
+-                    sms.setThread_id(threadId);
+-                    sms.setAddress(address);
+-                    sms.setPerson(phone.getDisplayName());
+-                    sms.setBody(body);
+-                    sms.setDate(date);
+-                    sms.setType(type);
+-
+-                    new DatabaseAdapter(activity).addSms(sms);
+-                    //activity.getContentResolver().delete(Uri.parse("content://sms/"), "_id=" + id, null);
+-                     /*   activity.getContentResolver().delete(Uri.parse("content://sms/"),
+-                                  "address =" + address,
+-                                null);*/
+-                    activity.getContentResolver().delete(Uri.parse("content://mms-sms/"), "address = ?", new String[]{address});
+-
+-                    // Log.e("wangmeng","=============>");
+-                    // listSms.add(sms);
+-                } while (cursor2.moveToNext());
+-                cursor2.close();
+-            }
+-        }
+-//        }
+-
+-
+-    }
+-
+-    /**
+-     * 添加联系人
+-     * 在同一个事务中完成联系人各项数据的添加
+-     * 使用ArrayList<ContentProviderOperation>，把每步操作放在它的对象中执行
+-     */
+-    private static void addContacts2Db(Context context, People people) {
+-        Uri uri = Uri.parse("content://com.android.contacts/raw_contacts");
+-        ContentResolver resolver = context.getContentResolver();
+-        // 第一个参数：内容提供者的主机名
+-        // 第二个参数：要执行的操作
+-        ArrayList<ContentProviderOperation> operations = new ArrayList<ContentProviderOperation>();
+-
+-        // 操作1.添加Google账号，这里值为null，表示不添加
+-        ContentProviderOperation operation = ContentProviderOperation.newInsert(uri)
+-                .withValue("account_name", null)// account_name:Google账号
+-                .build();
+-
+-        // 操作2.添加data表中name字段
+-        uri = Uri.parse("content://com.android.contacts/data");
+-        ContentProviderOperation operation2 = ContentProviderOperation.newInsert(uri)
+-                // 第二个参数int previousResult:表示上一个操作的位于operations的第0个索引，
+-                // 所以能够将上一个操作返回的raw_contact_id作为该方法的参数
+-                .withValueBackReference("raw_contact_id", 0)
+-                .withValue("mimetype", "vnd.android.cursor.item/name")
+-                .withValue("data2", people.getDisplayName())
+-                .build();
+-
+-        // 操作3.添加data表中phone字段
+-        uri = Uri.parse("content://com.android.contacts/data");
+-        ContentProviderOperation operation3 = ContentProviderOperation.newInsert(uri)
+-                .withValueBackReference("raw_contact_id", 0)
+-                .withValue("mimetype", "vnd.android.cursor.item/phone_v2")
+-                .withValue("data2", "2")
+-                .withValue("data1", people.getPhoneNum())
+-                .build();
+-
+-        // 操作4.添加data表中的Email字段
+-//        uri = Uri.parse("content://com.android.contacts/data");
+-//        ContentProviderOperation operation4 = ContentProviderOperation
+-//                .newInsert(uri).withValueBackReference("raw_contact_id", 0)
+-//                .withValue("mimetype", "vnd.android.cursor.item/email_v2")
+-//                .withValue("data2", "2")
+-//                .withValue("data1", "zhouguoping@qq.com").build();
+-
+-        operations.add(operation);
+-        operations.add(operation2);
+-        operations.add(operation3);
+-//        operations.add(operation4);
+-
+-        try {
+-            resolver.applyBatch("com.android.contacts", operations);
+-        } catch (Exception e) {
+-            e.printStackTrace();
+-        }
+-    }
+-
+-    /**
+-     * 批量添加通话记录到联系人
+-     *
+-     * @param list
+-     * @throws RemoteException
+-     * @throws OperationApplicationException
+-     */
+-    private static void batchAddCallLogs(Context context, List<CallRecord> list) {
+-        ArrayList<ContentProviderOperation> ops = new ArrayList<ContentProviderOperation>();
+-        ContentValues values = new ContentValues();
+-        for (CallRecord callRecord : list) {
+-            values.clear();
+-            values.put(CallLog.Calls.CACHED_NAME, callRecord.getName());
+-            values.put(CallLog.Calls.NUMBER, callRecord.getPhoneNum());
+-            values.put(CallLog.Calls.TYPE, callRecord.getType());
+-            values.put(CallLog.Calls.DATE, callRecord.getDate());
+-            values.put(CallLog.Calls.DURATION, callRecord.getDuration());
+-            values.put(CallLog.Calls.NEW, "0");// 0已看1未看 ,由于没有获取默认全为已读
+-            ops.add(ContentProviderOperation
+-                    .newInsert(CallLog.Calls.CONTENT_URI).withValues(values)
+-                    .withYieldAllowed(true).build());
+-        }
+-        if (ops != null) {
+-            try {
+-                // 真正添加
+-                /*ContentProviderResult[] results = */
+-                context.getContentResolver().applyBatch(CallLog.AUTHORITY, ops);
+-            } catch (Exception e) {
+-                e.printStackTrace();
+-            }
+-        }
+-    }
+-
+-    public static ExecutorService getThreadPool() {
+-        return Executors.newCachedThreadPool();
+-    }
+-
+-    public static String formartDate(long date) {
+-        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("MM-dd HH:mm", Locale.getDefault());
+-        return simpleDateFormat.format(new Date(date));
+-    }
+-}

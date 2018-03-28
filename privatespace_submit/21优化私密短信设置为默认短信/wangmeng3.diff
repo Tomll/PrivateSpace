@@ -1,0 +1,449 @@
+diff --git a/src/com/transage/privatespace/activity/PrivateContacts.java b/src/com/transage/privatespace/activity/PrivateContacts.java
+index abe04a4..0398db5 100755
+--- a/src/com/transage/privatespace/activity/PrivateContacts.java
++++ b/src/com/transage/privatespace/activity/PrivateContacts.java
+@@ -1,5 +1,6 @@
+ package com.transage.privatespace.activity;
+ 
++import android.content.Context;
+ import android.content.Intent;
+ import android.database.ContentObserver;
+ import android.net.Uri;
+@@ -17,6 +18,7 @@ import android.view.View;
+ import android.view.Window;
+ import android.view.WindowManager;
+ import android.widget.TextView;
++
+ import com.transage.privatespace.R;
+ import com.transage.privatespace.bean.People;
+ import com.transage.privatespace.fragment.BaseFragment;
+@@ -26,7 +28,8 @@ import com.transage.privatespace.fragment.FG_PrivateSms;
+ import com.transage.privatespace.loader.OnLoadListener;
+ import com.transage.privatespace.loader.PrivateSpaceLoader;
+ import com.transage.privatespace.provider.PrivateObserver;
+-
++import android.provider.Telephony;
++import com.android.internal.telephony.SmsApplication;
+ import java.util.ArrayList;
+ import java.util.List;
+ 
+@@ -44,7 +47,8 @@ public class PrivateContacts extends FragmentActivity implements View.OnClickLis
+     private ViewPager viewPager;
+     private PrivateSpaceLoader mLoader;
+     private ContentObserver mObserver;
+-
++    //默认短信
++    private String mDefaultSmsApp;
+     @Override
+     protected void onCreate(@Nullable Bundle savedInstanceState) {
+         super.onCreate(savedInstanceState);
+@@ -58,6 +62,7 @@ public class PrivateContacts extends FragmentActivity implements View.OnClickLis
+             mObserver = new PrivateObserver(mLoader.getmHandler());
+             getContentResolver().registerContentObserver(Uri.parse(URI_PRIVATE_SPACE), true, mObserver);
+         }
++        mDefaultSmsApp = Telephony.Sms.getDefaultSmsPackage(PrivateContacts.this);//获取系统默认短信
+         initData();
+         initView();
+     }
+@@ -74,9 +79,8 @@ public class PrivateContacts extends FragmentActivity implements View.OnClickLis
+     }
+ 
+     protected void onPause() {
+-        if(mLoader.mDefaultSmsApp!= null) {
+-            mLoader.setRestoreDefaultSms(PrivateContacts.this);//恢复默认短信
+-        }
++        Log.e("wangmeng ","######mDefaultSmsApp######" +mDefaultSmsApp);
++        setRestoreDefaultSms(PrivateContacts.this);//恢复默认短信
+         super.onPause();
+     }
+ 
+@@ -86,7 +90,11 @@ public class PrivateContacts extends FragmentActivity implements View.OnClickLis
+         getContentResolver().unregisterContentObserver(mObserver);
+         super.onDestroy();
+     }
+-
++    //恢复默认短信
++    public void setRestoreDefaultSms(Context context){
++        Log.e("wangmeng","###setRestoreDefaultSms###### "+mDefaultSmsApp);
++        SmsApplication.setDefaultApplication(mDefaultSmsApp, context);
++    }
+     /**
+      * 初始化data
+      */
+diff --git a/src/com/transage/privatespace/adapter/SmsListViewAdapter.java b/src/com/transage/privatespace/adapter/SmsListViewAdapter.java
+index 3242a86..cfd7d2f 100755
+--- a/src/com/transage/privatespace/adapter/SmsListViewAdapter.java
++++ b/src/com/transage/privatespace/adapter/SmsListViewAdapter.java
+@@ -8,7 +8,7 @@ import android.widget.BaseAdapter;
+ import android.widget.TextView;
+ 
+ import com.transage.privatespace.R;
+-import com.transage.privatespace.bean.Sms;
++import com.transage.privatespace.bean.SmsInfo;
+ 
+ import java.util.ArrayList;
+ 
+@@ -17,9 +17,9 @@ import java.util.ArrayList;
+  */
+ public class SmsListViewAdapter extends BaseAdapter {
+     private Context context;
+-    private ArrayList<Sms> listSmslist;
++    private ArrayList<SmsInfo> listSmslist;
+ 
+-    public SmsListViewAdapter(Context context, ArrayList<Sms> listSmslist) {
++    public SmsListViewAdapter(Context context, ArrayList<SmsInfo> listSmslist) {
+         this.context = context;
+         this.listSmslist = listSmslist;
+     }
+diff --git a/src/com/transage/privatespace/bean/Sms.java b/src/com/transage/privatespace/bean/Sms.java
+deleted file mode 100755
+index 83195ab..0000000
+--- a/src/com/transage/privatespace/bean/Sms.java
++++ /dev/null
+@@ -1,69 +0,0 @@
+-package com.transage.privatespace.bean;
+-
+-/**
+- * Created by dongrp on 2016/9/12.
+- */
+-public class Sms {
+-    private int id;
+-    private long thread_id;
+-    private String address;
+-    private String body;
+-    private String date;
+-    private String person;
+-    private int type;
+-
+-    public int getId() {
+-        return id;
+-    }
+-
+-    public void setId(int id) {
+-        this.id = id;
+-    }
+-    public long  getThread_id() {
+-        return thread_id;
+-    }
+-
+-    public void setThread_id(long thread_id) {
+-        this.thread_id = thread_id;
+-    }
+-
+-    public String getAddress() {
+-        return address;
+-    }
+-
+-    public void setAddress(String address) {
+-        this.address = address;
+-    }
+-
+-    public String getBody() {
+-        return body;
+-    }
+-
+-    public void setBody(String body) {
+-        this.body = body;
+-    }
+-
+-    public String getDate() {
+-        return date;
+-    }
+-
+-    public void setDate(String date) {
+-        this.date = date;
+-    }
+-
+-    public int getType() {
+-        return type;
+-    }
+-
+-    public void setType(int type) {
+-        this.type = type;
+-    }
+-
+-    public String getPerson() {
+-        return person;
+-    }
+-
+-    public void setPerson(String person) {
+-        this.person = person;
+-    }
+-}
+diff --git a/src/com/transage/privatespace/bean/SmsInfo.java b/src/com/transage/privatespace/bean/SmsInfo.java
+new file mode 100755
+index 0000000..0cfc731
+--- /dev/null
++++ b/src/com/transage/privatespace/bean/SmsInfo.java
+@@ -0,0 +1,69 @@
++package com.transage.privatespace.bean;
++
++/**
++ * Created by dongrp on 2016/9/12.
++ */
++public class SmsInfo {
++    private int id;
++    private long thread_id;
++    private String address;
++    private String body;
++    private long date;
++    private String person;
++    private int type;
++
++    public int getId() {
++        return id;
++    }
++
++    public void setId(int id) {
++        this.id = id;
++    }
++    public long  getThread_id() {
++        return thread_id;
++    }
++
++    public void setThread_id(long thread_id) {
++        this.thread_id = thread_id;
++    }
++
++    public String getAddress() {
++        return address;
++    }
++
++    public void setAddress(String address) {
++        this.address = address;
++    }
++
++    public String getBody() {
++        return body;
++    }
++
++    public void setBody(String body) {
++        this.body = body;
++    }
++
++    public long getDate() {
++        return date;
++    }
++
++    public void setDate(long date) {
++        this.date = date;
++    }
++
++    public int getType() {
++        return type;
++    }
++
++    public void setType(int type) {
++        this.type = type;
++    }
++
++    public String getPerson() {
++        return person;
++    }
++
++    public void setPerson(String person) {
++        this.person = person;
++    }
++}
+diff --git a/src/com/transage/privatespace/database/DatabaseAdapter.java b/src/com/transage/privatespace/database/DatabaseAdapter.java
+index c395563..88c80de 100755
+--- a/src/com/transage/privatespace/database/DatabaseAdapter.java
++++ b/src/com/transage/privatespace/database/DatabaseAdapter.java
+@@ -9,7 +9,7 @@ import android.database.Cursor;
+ import com.transage.privatespace.bean.AppInfo;
+ import com.transage.privatespace.bean.CallRecord;
+ import com.transage.privatespace.bean.People;
+-import com.transage.privatespace.bean.Sms;
++import com.transage.privatespace.bean.SmsInfo;
+ import com.transage.privatespace.gallery.photozoom.ImageItem;
+ import com.transage.privatespace.utils.ImportExportUtils;
+ 
+@@ -224,26 +224,26 @@ public class DatabaseAdapter {
+     /**
+      * sms操作 20170707 add by wangmeng
+      */
+-    public void addSms(Sms sms) {
++    public void addSms(SmsInfo sms) {
+         ContentValues values = new ContentValues();
+         values.put(PsDatabaseHelper.SmsColumns.THREAD_ID, String.valueOf(sms.getThread_id()));
+         values.put(PsDatabaseHelper.SmsColumns.SMS_ADDRESS, sms.getAddress());
+         values.put(PsDatabaseHelper.SmsColumns.SMS_BODY, sms.getBody());
+-        values.put(PsDatabaseHelper.SmsColumns.SMS_DATE, sms.getDate());
++        values.put(PsDatabaseHelper.SmsColumns.SMS_DATE, Long.valueOf(sms.getDate()));
+         values.put(PsDatabaseHelper.SmsColumns.SMS_PERSON, sms.getPerson());
+         values.put(PsDatabaseHelper.SmsColumns.SMS_TYPE, String.valueOf(sms.getType()));
+-        /*Log.e("wangmeng","===add===threadId: "+sms.getThread_id());
+-        Log.e("wangmeng","===add===address: "+sms.getAddress());
+-        Log.e("wangmeng","===add===body: "+sms.getBody());
++        //Log.e("wangmeng","===add===threadId: "+sms.getThread_id());
++        //Log.e("wangmeng","===add===address: "+sms.getAddress());
++       // Log.e("wangmeng","===add===body: "+sms.getBody());
+         Log.e("wangmeng","===add===date: "+sms.getDate());
+-        Log.e("wangmeng","===add===type: "+sms.getType());*/
++        //Log.e("wangmeng","===add===type: "+sms.getType());
+         insert(PsDatabaseHelper.Tables.SMS, null, values);
+     }
+ 
+     public void deleteSmsByAddress(String address) {
+         delete(PsDatabaseHelper.Tables.SMS, PsDatabaseHelper.SmsColumns.SMS_ADDRESS + "=?", new String[]{address});
+     }
+-    public List<Sms> getSmsByNum(String phone){
++    public List<SmsInfo> getSmsByNum(String phone){
+         String sql = "SELECT " +
+             PsDatabaseHelper.SmsColumns._ID + "," +
+             PsDatabaseHelper.SmsColumns.THREAD_ID + "," +
+@@ -255,16 +255,16 @@ public class DatabaseAdapter {
+                 " FROM " + PsDatabaseHelper.Tables.SMS +
+                 " WHERE " + PsDatabaseHelper.SmsColumns.SMS_ADDRESS + "=?" ;
+         Log.i(TAG, "sql = " + sql);
+-        List<Sms> list = new ArrayList<>();
++        List<SmsInfo> list = new ArrayList<>();
+         Cursor cursor = query(sql, new String[]{phone});
+         try {
+             while (cursor.moveToNext()) {
+-                Sms sms = new Sms();
++                SmsInfo sms = new SmsInfo();
+                 sms.setId(cursor.getInt(0));
+                 sms.setThread_id(cursor.getInt(1));
+                 sms.setAddress(cursor.getString(2));
+                 sms.setBody(cursor.getString(3));
+-                sms.setDate(cursor.getString(4));
++                sms.setDate(cursor.getLong(4));
+                 sms.setPerson(cursor.getString(5));
+                 sms.setType(cursor.getInt(6));
+                 list.add(sms);
+@@ -276,7 +276,7 @@ public class DatabaseAdapter {
+         }
+         return list;
+ }
+-    public List<Sms> getSms() {
++    public List<SmsInfo> getSms() {
+         String sql = "SELECT " +
+                 PsDatabaseHelper.SmsColumns._ID + "," +
+                 PsDatabaseHelper.SmsColumns.THREAD_ID + "," +
+@@ -287,16 +287,16 @@ public class DatabaseAdapter {
+                 PsDatabaseHelper.SmsColumns.SMS_TYPE +
+                 " FROM " + PsDatabaseHelper.Tables.SMS;
+         Log.i(TAG, "sql = " + sql);
+-        List<Sms> list = new ArrayList<>();
++        List<SmsInfo> list = new ArrayList<>();
+         Cursor cursor = query(sql,null);
+         try {
+             while (cursor.moveToNext()) {
+-                Sms sms = new Sms();
++                SmsInfo sms = new SmsInfo();
+                 sms.setId(cursor.getInt(0));
+                 sms.setThread_id(cursor.getInt(1));
+                 sms.setAddress(cursor.getString(2));
+                 sms.setBody(cursor.getString(3));
+-                sms.setDate(cursor.getString(4));
++                sms.setDate(cursor.getLong(4));
+                 sms.setPerson(cursor.getString(5));
+                 sms.setType(cursor.getInt(6));
+                 list.add(sms);
+diff --git a/src/com/transage/privatespace/fragment/FG_PrivateSms.java b/src/com/transage/privatespace/fragment/FG_PrivateSms.java
+index 9afb7e4..e6be096 100755
+--- a/src/com/transage/privatespace/fragment/FG_PrivateSms.java
++++ b/src/com/transage/privatespace/fragment/FG_PrivateSms.java
+@@ -15,7 +15,7 @@ import android.widget.ListView;
+ 
+ import com.transage.privatespace.R;
+ import com.transage.privatespace.adapter.SmsListViewAdapter;
+-import com.transage.privatespace.bean.Sms;
++import com.transage.privatespace.bean.SmsInfo;
+ import com.transage.privatespace.database.DatabaseAdapter;
+ import com.transage.privatespace.loader.PrivateSpaceLoader;
+ 
+@@ -26,7 +26,7 @@ import java.util.ArrayList;
+  */
+ public class FG_PrivateSms extends BaseFragment {
+     private View view;
+-    private ArrayList<Sms> listSmslist = new ArrayList<Sms>();
++    private ArrayList<SmsInfo> listSmslist = new ArrayList<SmsInfo>();
+     private SmsListViewAdapter smsListViewAdapter;
+ 
+     //private DatabaseAdapter mDb;
+diff --git a/src/com/transage/privatespace/loader/PrivateSpaceLoader.java b/src/com/transage/privatespace/loader/PrivateSpaceLoader.java
+index 6455634..58d5fe4 100755
+--- a/src/com/transage/privatespace/loader/PrivateSpaceLoader.java
++++ b/src/com/transage/privatespace/loader/PrivateSpaceLoader.java
+@@ -18,12 +18,12 @@ import android.provider.ContactsContract;
+ import android.provider.Telephony;
+ import android.support.v4.app.ActivityCompat;
+ import android.util.Log;
+-
++import android.provider.Telephony.Sms;
+ import com.android.internal.telephony.SmsApplication;
+ import com.transage.privatespace.activity.PrivateContacts;
+ import com.transage.privatespace.bean.CallRecord;
+ import com.transage.privatespace.bean.People;
+-import com.transage.privatespace.bean.Sms;
++import com.transage.privatespace.bean.SmsInfo;
+ import com.transage.privatespace.database.DatabaseAdapter;
+ import com.transage.privatespace.database.PsDatabaseHelper;
+ import com.transage.privatespace.utils.ImportExportUtils;
+@@ -48,8 +48,6 @@ public class PrivateSpaceLoader {
+     public static final int REFRESHE_CONTACT = 1102;
+     public static final int REFRESHE_SMS = 1103;
+     public static final int PRIVATE_OBSERVER = 1104;
+-    //默认短信
+-	public String mDefaultSmsApp;
+     //数据加载监听器
+     private static PrivateContacts mLoadListener;
+ 
+@@ -164,14 +162,9 @@ public class PrivateSpaceLoader {
+     }
+ 	//wangmeng 20170802 setting default mms start
+ 	public void setDefaultSms(Context context){
+-		mDefaultSmsApp = Telephony.Sms.getDefaultSmsPackage(context);
+-		Log.e("wangmeng","###setDefaultSms###### "+mDefaultSmsApp);
++		Log.e("wangmeng","###setDefaultSms###### "+context.getPackageName());
+ 		SmsApplication.setDefaultApplication(context.getPackageName(), context);
+ 	}
+-	public void setRestoreDefaultSms(Context context){
+-		Log.e("wangmeng","###setRestoreDefaultSms###### "+mDefaultSmsApp);
+-		SmsApplication.setDefaultApplication(mDefaultSmsApp, context);
+-	}
+ 	//wangmeng 20170802 setting default mms end
+     public void addCallLogToPrivate(People people, Activity activity) {
+         DatabaseAdapter databaseAdapter = new DatabaseAdapter(activity);
+@@ -242,13 +235,13 @@ public class PrivateSpaceLoader {
+         return callRecordsList;
+     }
+     //还原短信数据到系统中
+-    public void insertSmstoSystem(Context context, List<Sms> smsList) {
++    public void insertSmstoSystem(Context context, List<SmsInfo> smsList) {
+         ContentValues values = new ContentValues();
+-        for (Sms sms : smsList) {
++        for (SmsInfo sms : smsList) {
+             values.clear();
+             values.put("address", sms.getAddress());
+             values.put("body", sms.getBody());
+-            values.put("date", sms.getDate());
++            values.put("date", String.valueOf(sms.getDate()));
+             values.put("type", String.valueOf(sms.getType()));
+             context.getContentResolver().insert(Uri.parse("content://sms/"), values);
+         }
+@@ -277,15 +270,16 @@ public class PrivateSpaceLoader {
+                     long threadId = cursor2.getLong(cursor2.getColumnIndex("thread_id"));
+                     String address = cursor2.getString(cursor2.getColumnIndex("address"));// 手机号码
+                     String body = cursor2.getString(cursor2.getColumnIndex("body"));// 短信内容
+-                    String date = simpleDateFormat.format(new Date(cursor2.getLong(cursor2.getColumnIndex("date"))));// 收发时间
++                    long date = cursor2.getLong(cursor2.getColumnIndex("date"));//收发时间
++                    //String date = simpleDateFormat.format(new Date(cursor2.getLong(cursor2.getColumnIndex("date"))));// 收发时间
+                     int type = cursor2.getInt(cursor2.getColumnIndex("type"));// 收发类型
+-                        /*Log.e("wangmeng","======threadId: "+threadId);
+-                        Log.e("wangmeng","======address: "+address);
+-                        Log.e("wangmeng","======body: "+body);
++//                        Log.e("wangmeng","======threadId: "+threadId);
++//                        Log.e("wangmeng","======address: "+address);
++//                        Log.e("wangmeng","======body: "+body);
+                         Log.e("wangmeng","======date: "+date);
+-                        Log.e("wangmeng","======type: "+type);*/
++//                        Log.e("wangmeng","======type: "+type);
+                     // 添加一条短息数据到listSms
+-                    Sms sms = new Sms();
++                    SmsInfo sms = new SmsInfo();
+                     sms.setId(id);
+                     sms.setThread_id(threadId);
+                     sms.setAddress(address);

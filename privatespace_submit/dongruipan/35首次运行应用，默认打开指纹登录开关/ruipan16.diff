@@ -1,0 +1,14 @@
+diff --git a/src/com/transage/privatespace/activity/Login.java b/src/com/transage/privatespace/activity/Login.java
+index f85253e..a393d3f 100755
+--- a/src/com/transage/privatespace/activity/Login.java
++++ b/src/com/transage/privatespace/activity/Login.java
+@@ -95,6 +95,9 @@ public class Login extends BaseActivity implements View.OnClickListener, Compoun
+             }
+             btFingerprint.setVisibility(View.VISIBLE);
+             tip_finger_print_login.setVisibility(View.VISIBLE);
++        }else if (isFirstRun){
++            //app首次运行,默认打开指纹登录开关
++            Login.editor.putBoolean("enterByPrivateFingerprint",true).commit();
+         }
+     }
+ 

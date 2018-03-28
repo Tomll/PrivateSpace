@@ -1,0 +1,39 @@
+diff --git a/src/com/transage/privatespace/utils/ContactUtils.java b/src/com/transage/privatespace/utils/ContactUtils.java
+index a99b480..262dfbe 100755
+--- a/src/com/transage/privatespace/utils/ContactUtils.java
++++ b/src/com/transage/privatespace/utils/ContactUtils.java
+@@ -41,7 +41,7 @@ public class ContactUtils {
+     private static Context context;
+     private List<ContactInfo> mContactInfos = new ArrayList<>();
+ 
+-    public ContactUtil(Context context) {
++    public ContactUtils(Context context) {
+         this.context = context;
+     }
+ 
+@@ -61,7 +61,7 @@ public class ContactUtils {
+                 // 查看联系人有多少电话号码, 如果没有返回0
+                 int phoneCount = cur.getInt(cur.getColumnIndex(Contacts.HAS_PHONE_NUMBER));
+                 //得到联系人头像ID
+-                Long photoid = cur.getLong(Contacts.PHOTO_ID);
++                int photoid = cur.getInt(cur.getColumnIndex(Contacts.PHOTO_ID));
+ 
+                 //photoid 大于0 表示联系人有头像 如果没有给此人设置头像则给他一个默认的
+                 if(photoid > 0 ) {
+@@ -152,7 +152,7 @@ public class ContactUtils {
+             ContactInfo.DataInfo dataInfo = new ContactInfo.DataInfo();
+             mimetype = cursor.getString(cursor.getColumnIndex(Data.MIMETYPE)); // 取得mimetype类型,扩展的数据都在这个类型里面
+             type = cursor.getString(cursor.getColumnIndex(Data.DATA2));
+-            dataInfo.rawContactId = contactId
++            dataInfo.rawContactId = contactId;
+             dataInfo.mimeType = mimetype;
+             dataInfo.type = type;
+             dataInfo.data2 = type;
+@@ -271,6 +271,6 @@ public class ContactUtils {
+     public static String getLabelNameByType(int type) {
+         //通过type获取typelabel字符串
+         int typeLabelResource = Phone.getTypeLabelResource(type);
+-        return context.getResources().getString(typeLabelResource)
++        return context.getResources().getString(typeLabelResource);
+     }
+ }

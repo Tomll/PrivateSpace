@@ -1,0 +1,325 @@
+diff --git a/Android.mk b/Android.mk
+index 203b626..e3163ab 100755
+--- a/Android.mk
++++ b/Android.mk
+@@ -3,6 +3,8 @@ include $(CLEAR_VARS)
+ LOCAL_MODULE_TAGS := optional 
+ LOCAL_SRC_FILES := $(call all-java-files-under, src) 
+ LOCAL_PACKAGE_NAME := PrivateSpace
++LOCAL_JAVA_LIBRARIES += mediatek-framework
++LOCAL_JAVA_LIBRARIES += telephony-common
+ LOCAL_STATIC_JAVA_LIBRARIES := \
+     android-support-v4 \
+     android-support-v7-recyclerview \
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index a26124f..b94a45c 100755
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -1,7 +1,8 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+           xmlns:app="http://schemas.android.com/apk/res-auto"
+-          package="com.transage.privatespace">
++          package="com.transage.privatespace"
++          android:sharedUserId="android.uid.system">
+ 
+     <uses-sdk
+         android:minSdkVersion="19"
+@@ -19,6 +20,12 @@
+     <uses-permission android:name="android.permission.SEND_SMS"/>
+     <uses-permission android:name="android.permission.READ_SMS"/>
+     <uses-permission android:name="android.permission.USE_FINGERPRINT"/>
++    <uses-permission android:name="android.permission.WRITE_SMS"/>
++    <uses-permission android:name="android.permission.RECEIVE_SMS"/>
++    <permission android:name="android.permission.UPDATE_APP_OPS_STATS"
++                android:protectionLevel="signature|privileged|installer" />
++    <permission android:name="android.permission.SET_PREFERRED_APPLICATIONS"
++                android:protectionLevel="signature"/>
+ 
+     <application
+         android:allowBackup="true"
+@@ -26,7 +33,36 @@
+         android:label="@string/app_name"
+         android:supportsRtl="true"
+         android:theme="@style/AppBaseTheme">
+-
++        <!--wangmeng 20170802 begin-->
++        <receiver
++            android:name=".SmsReceiver"
++            android:permission="android.permission.BROADCAST_SMS">
++            <intent-filter>
++                <action android:name="android.provider.Telephony.SMS_DELIVER" />
++            </intent-filter>
++        </receiver>
++        <!-- BroadcastReceiver that listens for incoming MMS messages -->
++        <receiver
++            android:name=".MmsReceiver"
++            android:permission="android.permission.BROADCAST_WAP_PUSH">
++            <intent-filter>
++                <action android:name="android.provider.Telephony.WAP_PUSH_DELIVER" />
++                <data android:mimeType="application/vnd.wap.mms-message" />
++            </intent-filter>
++        </receiver>
++        <service android:name=".HeadlessSmsSendService"
++            android:permission="android.permission.SEND_RESPOND_VIA_MESSAGE"
++            android:exported="true" >
++            <intent-filter>
++                <action android:name="android.intent.action.RESPOND_VIA_MESSAGE" />
++                <category android:name="android.intent.category.DEFAULT" />
++                <data android:scheme="sms" />
++                <data android:scheme="smsto" />
++                <!--<data android:scheme="mms" />
++                <data android:scheme="mmsto" />-->
++            </intent-filter>
++        </service>
++        <!--wangmeng 20170802 end-->
+         <!-- Activity -->
+         <activity
+             android:name=".activity.Main"
+@@ -70,7 +106,16 @@
+             android:windowSoftInputMode="stateAlwaysVisible"/>
+         <activity
+             android:name=".activity.PrivateContacts"
+-            android:screenOrientation="portrait"/>
++            android:screenOrientation="portrait">
++            <intent-filter>
++                <action android:name="android.intent.action.SEND" />
++                <action android:name="android.intent.action.SENDTO" />
++                <category android:name="android.intent.category.DEFAULT" />
++                <category android:name="android.intent.category.BROWSABLE" />
++                <data android:scheme="sms" />
++                <data android:scheme="smsto" />
++            </intent-filter>
++        </activity>
+         <activity
+             android:name=".activity.AddPeople"
+             android:screenOrientation="portrait"/>
+diff --git a/src/com/transage/privatespace/activity/PrivateContacts.java b/src/com/transage/privatespace/activity/PrivateContacts.java
+index 3885a2a..abe04a4 100755
+--- a/src/com/transage/privatespace/activity/PrivateContacts.java
++++ b/src/com/transage/privatespace/activity/PrivateContacts.java
+@@ -73,6 +73,13 @@ public class PrivateContacts extends FragmentActivity implements View.OnClickLis
+         super.onActivityResult(requestCode, resultCode, data);
+     }
+ 
++    protected void onPause() {
++        if(mLoader.mDefaultSmsApp!= null) {
++            mLoader.setRestoreDefaultSms(PrivateContacts.this);//恢复默认短信
++        }
++        super.onPause();
++    }
++
+     @Override
+     protected void onDestroy() {
+         //取消注册内容观察者，监听PrivateProvider
+diff --git a/src/com/transage/privatespace/database/DatabaseAdapter.java b/src/com/transage/privatespace/database/DatabaseAdapter.java
+index a7a81d7..491c9f4 100755
+--- a/src/com/transage/privatespace/database/DatabaseAdapter.java
++++ b/src/com/transage/privatespace/database/DatabaseAdapter.java
+@@ -226,12 +226,12 @@ public class DatabaseAdapter {
+      */
+     public void addSms(Sms sms) {
+         ContentValues values = new ContentValues();
+-        values.put(PsDatabaseHelper.SmsColumns.THREAD_ID, sms.getThread_id());
++        values.put(PsDatabaseHelper.SmsColumns.THREAD_ID, String.valueOf(sms.getThread_id()));
+         values.put(PsDatabaseHelper.SmsColumns.SMS_ADDRESS, sms.getAddress());
+         values.put(PsDatabaseHelper.SmsColumns.SMS_BODY, sms.getBody());
+         values.put(PsDatabaseHelper.SmsColumns.SMS_DATE, sms.getDate());
+         values.put(PsDatabaseHelper.SmsColumns.SMS_PERSON, sms.getPerson());
+-        values.put(PsDatabaseHelper.SmsColumns.SMS_TYPE, sms.getType());
++        values.put(PsDatabaseHelper.SmsColumns.SMS_TYPE, String.valueOf(sms.getType()));
+         /*Log.e("wangmeng","===add===threadId: "+sms.getThread_id());
+         Log.e("wangmeng","===add===address: "+sms.getAddress());
+         Log.e("wangmeng","===add===body: "+sms.getBody());
+@@ -243,7 +243,39 @@ public class DatabaseAdapter {
+     public void deleteSmsByAddress(String address) {
+         delete(PsDatabaseHelper.Tables.SMS, PsDatabaseHelper.SmsColumns.SMS_ADDRESS + "=?", new String[]{address});
+     }
+-
++    public List<Sms> getSmsByNum(String phone){
++        String sql = "SELECT " +
++            PsDatabaseHelper.SmsColumns._ID + "," +
++            PsDatabaseHelper.SmsColumns.THREAD_ID + "," +
++            PsDatabaseHelper.SmsColumns.SMS_ADDRESS + "," +
++            PsDatabaseHelper.SmsColumns.SMS_BODY + "," +
++            PsDatabaseHelper.SmsColumns.SMS_DATE + "," +
++            PsDatabaseHelper.SmsColumns.SMS_PERSON + "," +
++            PsDatabaseHelper.SmsColumns.SMS_TYPE +
++                " FROM " + PsDatabaseHelper.Tables.SMS +
++                " WHERE " + PsDatabaseHelper.SmsColumns.SMS_ADDRESS + "=?" ;
++        Log.i(TAG, "sql = " + sql);
++        List<Sms> list = new ArrayList<>();
++        Cursor cursor = query(sql, new String[]{phone});
++        try {
++            while (cursor.moveToNext()) {
++                Sms sms = new Sms();
++                sms.setId(cursor.getInt(0));
++                sms.setThread_id(cursor.getInt(1));
++                sms.setAddress(cursor.getString(2));
++                sms.setBody(cursor.getString(3));
++                sms.setDate(cursor.getString(4));
++                sms.setPerson(cursor.getString(5));
++                sms.setType(cursor.getInt(6));
++                list.add(sms);
++            }
++        } catch (Exception e) {
++            e.printStackTrace();
++        } finally {
++            cursor.close();
++        }
++        return list;
++}
+     public List<Sms> getSms() {
+         String sql = "SELECT " +
+                 PsDatabaseHelper.SmsColumns._ID + "," +
+@@ -256,7 +288,7 @@ public class DatabaseAdapter {
+                 " FROM " + PsDatabaseHelper.Tables.SMS;
+         Log.i(TAG, "sql = " + sql);
+         List<Sms> list = new ArrayList<>();
+-        Cursor cursor = query(sql, null);
++        Cursor cursor = query(sql,null);
+         try {
+             while (cursor.moveToNext()) {
+                 Sms sms = new Sms();
+diff --git a/src/com/transage/privatespace/loader/PrivateSpaceLoader.java b/src/com/transage/privatespace/loader/PrivateSpaceLoader.java
+index dd32d0b..6455634 100755
+--- a/src/com/transage/privatespace/loader/PrivateSpaceLoader.java
++++ b/src/com/transage/privatespace/loader/PrivateSpaceLoader.java
+@@ -15,14 +15,17 @@ import android.os.Handler;
+ import android.os.Message;
+ import android.provider.CallLog;
+ import android.provider.ContactsContract;
++import android.provider.Telephony;
+ import android.support.v4.app.ActivityCompat;
+ import android.util.Log;
+ 
++import com.android.internal.telephony.SmsApplication;
+ import com.transage.privatespace.activity.PrivateContacts;
+ import com.transage.privatespace.bean.CallRecord;
+ import com.transage.privatespace.bean.People;
+ import com.transage.privatespace.bean.Sms;
+ import com.transage.privatespace.database.DatabaseAdapter;
++import com.transage.privatespace.database.PsDatabaseHelper;
+ import com.transage.privatespace.utils.ImportExportUtils;
+ 
+ import java.io.File;
+@@ -33,7 +36,6 @@ import java.util.List;
+ import java.util.Locale;
+ import java.util.concurrent.ExecutorService;
+ import java.util.concurrent.Executors;
+-
+ /**
+  * Created by yanjie.xu on 2017/7/20.
+  */
+@@ -46,7 +48,8 @@ public class PrivateSpaceLoader {
+     public static final int REFRESHE_CONTACT = 1102;
+     public static final int REFRESHE_SMS = 1103;
+     public static final int PRIVATE_OBSERVER = 1104;
+-
++    //默认短信
++	public String mDefaultSmsApp;
+     //数据加载监听器
+     private static PrivateContacts mLoadListener;
+ 
+@@ -82,9 +85,10 @@ public class PrivateSpaceLoader {
+      * @param isPrivate           ：1表示加为私密 ，0表示解除私密
+      * @param activity            ：内容解析者
+      */
+-    public void loadPrivateContacts(List<People> list_selectedPeople, int isPrivate, Activity activity) {
++    public void loadPrivateContacts(List<People> list_selectedPeople, int isPrivate,  Activity activity) {
+         Log.i(TAG, "loadPrivateContacts()");
+         DatabaseAdapter databaseAdapter = new DatabaseAdapter(activity);
++        setDefaultSms(activity.getApplicationContext());//设置私密为默认短信
+         if (isPrivate == 0) {//解除私密
+             for (People people : list_selectedPeople) {
+                 getThreadPool().execute(new Runnable() {
+@@ -113,6 +117,8 @@ public class PrivateSpaceLoader {
+                 getThreadPool().execute(new Runnable() {
+                     @Override
+                     public void run() {
++                        //还原短信到数据库中
++                        insertSmstoSystem(activity,databaseAdapter.getSmsByNum(people.getPhoneNum()));
+                         //删除私密短信
+                         new DatabaseAdapter(activity).deleteSmsByAddress(people.getPhoneNum());
+                         databaseAdapter.deleteContactsById(people.getId());
+@@ -156,7 +162,17 @@ public class PrivateSpaceLoader {
+             }
+         }
+     }
+-
++	//wangmeng 20170802 setting default mms start
++	public void setDefaultSms(Context context){
++		mDefaultSmsApp = Telephony.Sms.getDefaultSmsPackage(context);
++		Log.e("wangmeng","###setDefaultSms###### "+mDefaultSmsApp);
++		SmsApplication.setDefaultApplication(context.getPackageName(), context);
++	}
++	public void setRestoreDefaultSms(Context context){
++		Log.e("wangmeng","###setRestoreDefaultSms###### "+mDefaultSmsApp);
++		SmsApplication.setDefaultApplication(mDefaultSmsApp, context);
++	}
++	//wangmeng 20170802 setting default mms end
+     public void addCallLogToPrivate(People people, Activity activity) {
+         DatabaseAdapter databaseAdapter = new DatabaseAdapter(activity);
+         List<CallRecord> callRecords = getCallRecordsFromContectsProvider(people, activity);
+@@ -225,7 +241,18 @@ public class PrivateSpaceLoader {
+         }
+         return callRecordsList;
+     }
+-
++    //还原短信数据到系统中
++    public void insertSmstoSystem(Context context, List<Sms> smsList) {
++        ContentValues values = new ContentValues();
++        for (Sms sms : smsList) {
++            values.clear();
++            values.put("address", sms.getAddress());
++            values.put("body", sms.getBody());
++            values.put("date", sms.getDate());
++            values.put("type", String.valueOf(sms.getType()));
++            context.getContentResolver().insert(Uri.parse("content://sms/"), values);
++        }
++    }
+     //添加短信到私密 add by wangmeng 20170707
+     public void addSmstoPrivate(Activity activity, People phone) {
+         // 1.先获取到所有私密联系人
+@@ -238,13 +265,14 @@ public class PrivateSpaceLoader {
+ //        for (int i = 0; i < listPrivatePeople.size(); i++) {
+ //            String phone = listPrivatePeople.get(i).getPhoneNum();
+         if (phone != null) {
+-            //Log.e("wangmeng","=====222222222========>");
++            Log.e("wangmeng","=====222222222========>");
+             Cursor cursor2 = activity.getContentResolver().query(Uri.parse("content://sms/"), projection,
+                     "address=?", new String[]{phone.getPhoneNum()}, "date desc");
++            Log.e("wangmeng","=====cursor2========>"+cursor2);
+             if (cursor2 != null && cursor2.moveToFirst()) {
+                 // ArrayList<Sms> listSms = new ArrayList<Sms>();
+                 do {
+-                    //Log.e("wangmeng","=====333333========>");
++                    Log.e("wangmeng","=====333333========>");
+                     int id = cursor2.getInt(cursor2.getColumnIndex("_id"));
+                     long threadId = cursor2.getLong(cursor2.getColumnIndex("thread_id"));
+                     String address = cursor2.getString(cursor2.getColumnIndex("address"));// 手机号码
+@@ -267,21 +295,13 @@ public class PrivateSpaceLoader {
+                     sms.setType(type);
+ 
+                     new DatabaseAdapter(activity).addSms(sms);
+-                    //activity.getContentResolver().delete(Uri.parse("content://sms/"), "_id=" + id, null);
+-                     /*   activity.getContentResolver().delete(Uri.parse("content://sms/"),
+-                                  "address =" + address,
+-                                null);*/
+-                    activity.getContentResolver().delete(Uri.parse("content://mms-sms/"), "address = ?", new String[]{address});
+-
+-                    // Log.e("wangmeng","=============>");
+-                    // listSms.add(sms);
++					//wangmeng delete mms data
++					int result = activity.getContentResolver().delete(Uri.parse("content://sms/"), "address = ?", new String[]{address});
++					Log.e("wangmeng","=======result======>"+result);
+                 } while (cursor2.moveToNext());
+                 cursor2.close();
+             }
+         }
+-//        }
+-
+-
+     }
+ 
+     /**

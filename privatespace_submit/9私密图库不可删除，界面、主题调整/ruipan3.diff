@@ -1,0 +1,209 @@
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index 44116d2..39185fd 100755
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -37,6 +37,7 @@
+         <activity
+             android:name=".activity.Login"
+             android:screenOrientation="portrait"
++            android:theme="@style/AppStartLoad"
+             android:windowSoftInputMode="stateVisible">
+             <!-- android:windowSoftInputMode="adjustPan"  -->
+             <intent-filter>
+diff --git a/res/layout/activity_advance_setup.xml b/res/layout/activity_advance_setup.xml
+index d81dc01..49244d9 100755
+--- a/res/layout/activity_advance_setup.xml
++++ b/res/layout/activity_advance_setup.xml
+@@ -53,8 +53,7 @@
+                     android:id="@+id/iv1"
+                     android:layout_width="wrap_content"
+                     android:layout_height="wrap_content"
+-                    android:layout_centerVertical="true"
+-                    android:src="@mipmap/ic_launcher"/>
++                    android:layout_centerVertical="true"/>
+ 
+                 <TextView
+                     android:id="@+id/tv1"
+@@ -95,8 +94,7 @@
+                     android:id="@+id/iv2"
+                     android:layout_width="wrap_content"
+                     android:layout_height="wrap_content"
+-                    android:layout_centerVertical="true"
+-                    android:src="@mipmap/ic_launcher"/>
++                    android:layout_centerVertical="true"/>
+ 
+                 <TextView
+                     android:id="@+id/tv2"
+@@ -123,7 +121,8 @@
+                 android:layout_width="match_parent"
+                 android:layout_height="wrap_content"
+                 android:layout_marginBottom="10dp"
+-                android:layout_marginTop="10dp">
++                android:layout_marginTop="10dp"
++                android:visibility="gone">
+ 
+                 <Switch
+                     android:id="@+id/switch3"
+@@ -172,7 +171,8 @@
+                 android:layout_width="match_parent"
+                 android:layout_height="wrap_content"
+                 android:layout_marginBottom="10dp"
+-                android:layout_marginTop="10dp">
++                android:layout_marginTop="10dp"
++                android:visibility="gone">
+ 
+                 <TextView
+                     android:layout_width="wrap_content"
+diff --git a/res/layout/activity_login.xml b/res/layout/activity_login.xml
+index 6f1ee0b..12aeb78 100755
+--- a/res/layout/activity_login.xml
++++ b/res/layout/activity_login.xml
+@@ -5,7 +5,7 @@
+               android:layout_height="match_parent"
+               android:background="@color/lightblack"
+               android:orientation="vertical"
+-              android:paddingTop="25dp">
++              android:paddingTop="35dp">
+ 
+     <TextView
+         android:id="@+id/textView1"
+diff --git a/res/layout/activity_main.xml b/res/layout/activity_main.xml
+index 3fcd9e8..332bd6b 100755
+--- a/res/layout/activity_main.xml
++++ b/res/layout/activity_main.xml
+@@ -3,7 +3,7 @@
+                 xmlns:tools="http://schemas.android.com/tools"
+                 android:layout_width="match_parent"
+                 android:layout_height="match_parent"
+-                android:background="@mipmap/background"
++                android:background="@color/lightblack"
+                 android:fitsSystemWindows="true"
+                 tools:context=".activity.Main">
+ 
+diff --git a/res/layout/item_app.xml b/res/layout/item_app.xml
+index 0823440..9c8df3c 100755
+--- a/res/layout/item_app.xml
++++ b/res/layout/item_app.xml
+@@ -17,7 +17,7 @@
+             android:layout_height="50dp"
+             android:clickable="true"
+             android:onClick="onClick"
+-            android:scaleType="fitCenter"/>
++            android:scaleType="fitXY"/>
+ 
+         <TextView
+             android:id="@+id/tv_app_name"
+diff --git a/res/mipmap-xhdpi/icon_priv_gallery.png b/res/mipmap-xhdpi/icon_priv_gallery.png
+new file mode 100755
+index 0000000..e74e761
+Binary files /dev/null and b/res/mipmap-xhdpi/icon_priv_gallery.png differ
+diff --git a/res/values/styles.xml b/res/values/styles.xml
+index 5b52a39..df7809b 100755
+--- a/res/values/styles.xml
++++ b/res/values/styles.xml
+@@ -2,25 +2,27 @@
+ 
+     <!--
+         Base application theme, dependent on API level. This theme is replaced
+-        by AppBaseTheme from res/values-vXX/styles.xml on newer devices.
++        by AppBaseTheme from res/values-vXX/styles.xml on newer devices.
++
+ 
+     -->
+-    <style name="AppBaseTheme" parent="Theme.AppCompat.Light.NoActionBar">
++    <style name="AppBaseTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
+         <!--
+             Theme customizations available in newer API levels can go in
+             res/values-vXX/styles.xml, while customizations related to
+-            backward-compatibility can go here.
++            backward-compatibility can go here.
++
+ 
+         -->
+         <!-- Customize your theme here. -->
+-        <item name="colorPrimary">@color/colorPrimary</item>
+-        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
++        <item name="colorPrimary">@color/lightblack</item>
++        <item name="colorPrimaryDark">@color/lightblack</item>
+         <item name="colorAccent">@color/colorAccent</item>
+     </style>
+ 
+-    <!-- Application theme. -->
+-    <style name="AppTheme" parent="AppBaseTheme">
+-        <!-- All customizations that are NOT specific to a particular API-level can go here. -->
++    <!-- theme for app start black or white screen problem -->
++    <style name="AppStartLoad" parent="AppBaseTheme">
++        <item name="android:windowBackground">@color/lightblack</item>
+     </style>
+ 
+ </resources>
+\ No newline at end of file
+diff --git a/src/com/transage/privatespace/activity/Main.java b/src/com/transage/privatespace/activity/Main.java
+index 0c018e8..9a31161 100755
+--- a/src/com/transage/privatespace/activity/Main.java
++++ b/src/com/transage/privatespace/activity/Main.java
+@@ -44,7 +44,7 @@ public class Main extends Activity implements View.OnClickListener, AppRecyclerA
+         mDb = new DatabaseAdapter(getApplication());
+ 
+         // initData(); //一定要先初始化数据
+-        initViewAndAdapter(); // 再初始化View 和 Adapter，否则等着空指针吧！！！
++        initViewAndAdapter(); // 再初始化View 和 Adapter
+     }
+ 
+     @Override
+@@ -92,10 +92,12 @@ public class Main extends Activity implements View.OnClickListener, AppRecyclerA
+         appList.add(appInfo);
+         //添加“私密图库”
+         AppInfo appInfo1 = new AppInfo();
+-        appInfo1.setAppIcon(getDrawable(R.mipmap.ic_launcher));
++        appInfo1.setAppIcon(getDrawable(R.mipmap.icon_priv_gallery));
+         appInfo1.setAppName(getString(R.string.private_gallery));
+         appList.add(0,appInfo1);
+-        recycleAdapter.notifyDataSetChanged();
++        isShowDeleteImageView = false;
++        recycleAdapter.showDeletImageView(false);//不显示右上角的删除按钮,该方法内部包含notifyDataSetChanged（）,所以不需要下面的notify了
++        //recycleAdapter.notifyDataSetChanged();
+     }
+ 
+     // RecycleView的item点击监听回调
+diff --git a/src/com/transage/privatespace/adapter/AppRecyclerAdapter.java b/src/com/transage/privatespace/adapter/AppRecyclerAdapter.java
+index 9700392..df0c9dd 100755
+--- a/src/com/transage/privatespace/adapter/AppRecyclerAdapter.java
++++ b/src/com/transage/privatespace/adapter/AppRecyclerAdapter.java
+@@ -42,12 +42,12 @@ public class AppRecyclerAdapter extends RecyclerView.Adapter<AppRecyclerAdapter.
+ 		holder.iv.setBackground(appList.get(position).getAppIcon());
+ 		holder.tv.setText(appList.get(position).getAppName());// 设置应用名
+ 		if (isShowDeleteImageView) {
+-			if (position == appList.size() - 1) { // 最后的“+”不需要右上角的删除按钮
++			if (position == appList.size() - 1 || position == 0) { // 以上几个position不需要右上角的删除按钮
+ 				holder.iv_delete.setVisibility(View.GONE);
+ 			} else {
+ 				holder.iv_delete.setVisibility(View.VISIBLE);
+ 			}
+-		} else if (!isShowDeleteImageView) {
++		} else {
+ 			holder.iv_delete.setVisibility(View.GONE);
+ 		}
+ 	}
+@@ -95,7 +95,7 @@ public class AppRecyclerAdapter extends RecyclerView.Adapter<AppRecyclerAdapter.
+ 	/**
+ 	 * 自定义的展示、隐藏右上角的“叉号图”的方法
+ 	 */
+-	public void showDeletImageView(Boolean isShowDeleteImageView) {
++	public void showDeletImageView(boolean isShowDeleteImageView) {
+ 		this.isShowDeleteImageView = isShowDeleteImageView;
+ 		notifyDataSetChanged();
+ 	}
+diff --git a/src/com/transage/privatespace/gallery/photozoom/AlbumHelper.java b/src/com/transage/privatespace/gallery/photozoom/AlbumHelper.java
+index 9855e5d..3d6057f 100755
+--- a/src/com/transage/privatespace/gallery/photozoom/AlbumHelper.java
++++ b/src/com/transage/privatespace/gallery/photozoom/AlbumHelper.java
+@@ -140,7 +140,7 @@ public class AlbumHelper {
+ 		String columns[] = new String[] { Media._ID, Media.BUCKET_ID,
+ 				Media.PICASA_ID, Media.DATA, Media.DISPLAY_NAME, Media.TITLE,
+ 				Media.SIZE, Media.BUCKET_DISPLAY_NAME ,Media.DATE_ADDED,Media.MIME_TYPE};
+-		Cursor cur = cr.query(Media.EXTERNAL_CONTENT_URI, columns, null, null, Media.DATE_TAKEN+" desc");
++		Cursor cur = cr.query(Media.EXTERNAL_CONTENT_URI, columns, null, null, Media.DATE_ADDED+" desc");
+ 		bucketList.clear();//add by dongrp
+ 		if (cur.moveToFirst()) {
+ 			int photoIDIndex = cur.getColumnIndexOrThrow(Media._ID);

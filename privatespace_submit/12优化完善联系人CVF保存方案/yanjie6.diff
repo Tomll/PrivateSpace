@@ -1,0 +1,982 @@
+diff --git a/res/layout/activity_advance_setup.xml b/res/layout/activity_advance_setup.xml
+index 49244d9..32032c8 100755
+--- a/res/layout/activity_advance_setup.xml
++++ b/res/layout/activity_advance_setup.xml
+@@ -159,6 +159,46 @@
+                     android:textSize="12sp"/>
+             </RelativeLayout>
+ 
++            <RelativeLayout
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content"
++                android:layout_marginBottom="10dp"
++                android:layout_marginTop="10dp">
++
++                <Switch
++                    android:id="@+id/switch_save_by_cvf"
++                    android:layout_width="wrap_content"
++                    android:layout_height="wrap_content"
++                    android:layout_alignParentEnd="true"
++                    android:layout_centerVertical="true"/>
++
++                <ImageView
++                    android:id="@+id/iv_save_by_cvf"
++                    android:layout_width="wrap_content"
++                    android:layout_height="wrap_content"
++                    android:layout_centerVertical="true"/>
++
++                <TextView
++                    android:id="@+id/tv_save_by_cvf"
++                    android:layout_width="wrap_content"
++                    android:layout_height="wrap_content"
++                    android:layout_alignParentTop="true"
++                    android:layout_toEndOf="@id/iv_save_by_cvf"
++                    android:text="@string/save_vcf"
++                    android:textColor="@color/white"
++                    android:textSize="16sp"/>
++
++                <TextView
++                    android:layout_width="wrap_content"
++                    android:layout_height="wrap_content"
++                    android:layout_below="@id/tv_save_by_cvf"
++                    android:layout_toEndOf="@id/iv_save_by_cvf"
++                    android:layout_toStartOf="@id/switch3"
++                    android:text="@string/enter_private_space_by_save_vcf_mark"
++                    android:textColor="@color/greyline"
++                    android:textSize="12sp"/>
++            </RelativeLayout>
++
+             <TextView
+                 android:layout_width="wrap_content"
+                 android:layout_height="wrap_content"
+diff --git a/res/values/strings.xml b/res/values/strings.xml
+index 21a8170..334d2db 100755
+--- a/res/values/strings.xml
++++ b/res/values/strings.xml
+@@ -10,6 +10,8 @@
+     <string name="open_login_activity_by_double_decline">通过双指下滑手势打开私密空间的登录界面</string>
+     <string name="dial_plate">拨号盘</string>
+     <string name="enter_private_space_by_input_private_mark">在拨号盘输入密码进入私密空间</string>
++    <string name="save_vcf">加密模式</string>
++    <string name="enter_private_space_by_save_vcf_mark">是否将私密联系人保存到vcf文件</string>
+     <string name="other_settings">其他设置</string>
+     <string name="hide_desktop_icon_of_private_space">隐藏私密空间桌面图标</string>
+     <string name="change_private_fingerprint">更改指纹</string>
+diff --git a/src/com/transage/privatespace/activity/AddPeople.java b/src/com/transage/privatespace/activity/AddPeople.java
+index 587883a..2a3eda4 100755
+--- a/src/com/transage/privatespace/activity/AddPeople.java
++++ b/src/com/transage/privatespace/activity/AddPeople.java
+@@ -134,29 +134,39 @@ public class AddPeople extends Activity implements AdapterView.OnItemClickListen
+             String contactNumber = null;
+             String contactName;
+             int contactId;
+-            Cursor cursor = getContentResolver().query(ContactsContract.Contacts.CONTENT_URI, null,
+-                    ContactsContract.Contacts.IS_PRIVATE_CONTACTS + "=?", new String[]{"0"}, null);
+-            if (cursor != null) {
+-                while (cursor.moveToNext()) {
++//            Cursor cursor = getContentResolver().query(ContactsContract.Contacts.CONTENT_URI, null,
++//                    ContactsContract.Contacts.IS_PRIVATE_CONTACTS + "=?", new String[]{"0"}, null);
++            Cursor cursor = getContentResolver().query(ContactsContract.Contacts.CONTENT_URI, null, null, null, null);
++            if (cursor != null && cursor.moveToFirst()) {
++                do {
+                     contactId = cursor.getInt(cursor.getColumnIndex(ContactsContract.Contacts.NAME_RAW_CONTACT_ID));
+                     contactName = cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
++                    int phoneCount = cursor.getInt(cursor.getColumnIndex(ContactsContract.Contacts.HAS_PHONE_NUMBER));
++                    Log.i(TAG, "phoneCount = " + phoneCount + "  cursor.getCount() = " + cursor.getCount());
+                     //Fetch Phone Number：根据contactId去Data表中查询电话号码
+-                    Cursor phoneCursor = getContentResolver().query(ContactsContract.Data.CONTENT_URI, new String[]{"data1"},
+-                            ContactsContract.Data.CONTACT_ID + "= ? and " + ContactsContract.Data.MIMETYPE + "= ?",
+-                            new String[]{String.valueOf(contactId), ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE}, null);
+-                    if (phoneCursor != null) {
+-                        while (phoneCursor.moveToNext()) {
+-                            contactNumber = phoneCursor.getString(0);
++                    if(phoneCount > 0){
++//                        Cursor phoneCursor = getContentResolver().query(
++//                                ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null,
++//                                ContactsContract.CommonDataKinds.Phone.CONTACT_ID + "=? add " +
++//                                ContactsContract.Data.MIMETYPE + "= ?",
++//                                new String[]{String.valueOf(contactId), ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE}, null);
++                        Cursor phoneCursor = getContentResolver().query(ContactsContract.Data.CONTENT_URI, new String[]{"data1"},
++                                ContactsContract.Data.CONTACT_ID + "= ? and " + ContactsContract.Data.MIMETYPE + "= ?",
++                                new String[]{String.valueOf(contactId), ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE}, null);
++                        while (phoneCursor.moveToNext()){
++                            Log.i(TAG, "phoneCount = phoneCursor.getcount = " + phoneCursor.getCount());
++                            contactNumber = phoneCursor.getString(phoneCursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
++//                            contactNumber = phoneCursor.getString(0);
+                         }
++                        //添加一条数据到peopleList
++                        People people = new People();
++                        people.setDisplayName(contactName);
++                        people.setRawContactId(contactId);
++                        people.setPhoneNum(contactNumber);
++                        peopleList.add(people);
+                         phoneCursor.close();
+                     }
+-                    //添加一条数据到peopleList
+-                    People people = new People();
+-                    people.setDisplayName(contactName);
+-                    people.setRawContactId(contactId);
+-                    people.setPhoneNum(contactNumber);
+-                    peopleList.add(people);
+-                }
++                } while (cursor.moveToNext());
+                 cursor.close();// 使用完后一定要将cursor关闭，不然会造成内存泄露等问题
+             }
+         } catch (Exception e) {
+diff --git a/src/com/transage/privatespace/activity/AdvancedSetup.java b/src/com/transage/privatespace/activity/AdvancedSetup.java
+index b99f26d..6120871 100755
+--- a/src/com/transage/privatespace/activity/AdvancedSetup.java
++++ b/src/com/transage/privatespace/activity/AdvancedSetup.java
+@@ -39,10 +39,12 @@ public class AdvancedSetup extends Activity implements View.OnClickListener, Com
+         Switch aSwitch2 = (Switch) findViewById(R.id.switch2);
+         Switch aSwitch3 = (Switch) findViewById(R.id.switch3);
+         Switch aSwitch4 = (Switch) findViewById(R.id.switch4);
++        Switch switchSaveVcf = (Switch) findViewById(R.id.switch_save_by_cvf);
+         aSwitch1.setOnCheckedChangeListener(this);
+         aSwitch2.setOnCheckedChangeListener(this);
+         aSwitch3.setOnCheckedChangeListener(this);
+         aSwitch4.setOnCheckedChangeListener(this);
++        switchSaveVcf.setOnCheckedChangeListener(this);
+         // 根据xml中保存的开关状态 设置switch状态
+         if (Login.sp.getBoolean("enterByPrivateFingerprint", false)) {
+             aSwitch1.setChecked(true);
+@@ -64,6 +66,11 @@ public class AdvancedSetup extends Activity implements View.OnClickListener, Com
+         } else {
+             aSwitch4.setChecked(false);
+         }
++        if (Login.sp.getBoolean("saveVcf", false)) {
++            switchSaveVcf.setChecked(true);
++        } else {
++            switchSaveVcf.setChecked(false);
++        }
+     }
+ 
+     // switch的CheckedChanged监听
+@@ -102,6 +109,14 @@ public class AdvancedSetup extends Activity implements View.OnClickListener, Com
+                 }
+                 Login.editor.commit();
+                 break;
++            case R.id.switch_save_by_cvf: // 隐藏桌面图标 开关
++                if (isChecked) {
++                    Login.editor.putBoolean("saveVcf", true);
++                } else {
++                    Login.editor.putBoolean("saveVcf", false);
++                }
++                Login.editor.commit();
++                break;
+         }
+ 
+     }
+diff --git a/src/com/transage/privatespace/adapter/CallRecordListViewAdapter.java b/src/com/transage/privatespace/adapter/CallRecordListViewAdapter.java
+index b8e4dc0..8f88e29 100755
+--- a/src/com/transage/privatespace/adapter/CallRecordListViewAdapter.java
++++ b/src/com/transage/privatespace/adapter/CallRecordListViewAdapter.java
+@@ -10,7 +10,8 @@ import android.widget.ImageView;
+ import android.widget.TextView;
+ 
+ import com.transage.privatespace.R;
+-import com.transage.privatespace.bean.CallRecord;
++import com.transage.privatespace.bean.CallRecordInfo;
++import com.transage.privatespace.bean.CallRecordInfo;
+ import com.transage.privatespace.loader.PrivateSpaceLoader;
+ 
+ import java.util.List;
+@@ -20,10 +21,10 @@ import java.util.List;
+  */
+ public class CallRecordListViewAdapter extends BaseAdapter {
+     private Context context;
+-    private List<List<CallRecord>> listCallRecordList;
++    private List<CallRecordInfo> listCallRecordList;
+ 
+ 
+-    public CallRecordListViewAdapter(Context context, List<List<CallRecord>> listCallRecordList) {
++    public CallRecordListViewAdapter(Context context, List<CallRecordInfo> listCallRecordList) {
+         this.context = context;
+         this.listCallRecordList = listCallRecordList;
+     }
+@@ -35,7 +36,7 @@ public class CallRecordListViewAdapter extends BaseAdapter {
+ 
+     @Override
+     public Object getItem(int position) {
+-        return listCallRecordList.get(position).get(listCallRecordList.get(position).size()-1);
++        return listCallRecordList.get(position).getCallRecord();
+     }
+ 
+     @Override
+@@ -60,17 +61,18 @@ public class CallRecordListViewAdapter extends BaseAdapter {
+         }
+         //数据适配
+         //最新的通话记录是list的最后一项
+-        if (listCallRecordList.get(position).get(listCallRecordList.get(position).size()-1).getType() == CallLog.Calls.INCOMING_TYPE) { //呼入
++        int type = listCallRecordList.get(position).type();
++        if (type == CallLog.Calls.INCOMING_TYPE) { //呼入
+             viewHolder.ivCallType.setImageResource(R.mipmap.dial_in);
+-        } else if (listCallRecordList.get(position).get(listCallRecordList.get(position).size()-1).getType() == CallLog.Calls.OUTGOING_TYPE) { //呼出
++        } else if (type == CallLog.Calls.OUTGOING_TYPE) { //呼出
+             viewHolder.ivCallType.setImageResource(R.mipmap.dial_out);
+-        } else if (listCallRecordList.get(position).get(listCallRecordList.get(position).size()-1).getType() == CallLog.Calls.MISSED_TYPE) { //未接
++        } else if (type == CallLog.Calls.MISSED_TYPE) { //未接
+             viewHolder.ivCallType.setImageResource(R.mipmap.missed_call);
+         }
+-        viewHolder.tvName.setText(listCallRecordList.get(position).get(listCallRecordList.get(position).size()-1).getName());
+-        viewHolder.tvPhoneNum.setText(listCallRecordList.get(position).get(listCallRecordList.get(position).size()-1).getPhoneNum());
+-        viewHolder.tvDate.setText(PrivateSpaceLoader.formartDate(listCallRecordList.get(position).get(listCallRecordList.get(position).size()-1).getDate()));
+-        viewHolder.tvCallCounts.setText("(" + listCallRecordList.get(position).size() + ")");
++        viewHolder.tvName.setText(listCallRecordList.get(position).name());
++        viewHolder.tvPhoneNum.setText(listCallRecordList.get(position).phone());
++        viewHolder.tvDate.setText(PrivateSpaceLoader.formartDate(listCallRecordList.get(position).date()));
++        viewHolder.tvCallCounts.setText("(" + listCallRecordList.get(position).counts() + ")");
+         return convertView;
+     }
+ 
+diff --git a/src/com/transage/privatespace/bean/CallRecord.java b/src/com/transage/privatespace/bean/CallRecord.java
+index efc032c..dfa59c0 100755
+--- a/src/com/transage/privatespace/bean/CallRecord.java
++++ b/src/com/transage/privatespace/bean/CallRecord.java
+@@ -1,8 +1,9 @@
+ package com.transage.privatespace.bean;
+ 
+ /**
+- * Created by dongrp on 2016/9/6.
+- * 通话记录实体类
++ * Created by yanjie.xu on 2017/8/2.
++ *
++ * 通话记录对象类
+  */
+ public class CallRecord {
+     private int id;
+@@ -71,4 +72,4 @@ public class CallRecord {
+                 ", duration=" + duration +
+                 '}';
+     }
+-}
++}
+\ No newline at end of file
+diff --git a/src/com/transage/privatespace/bean/CallRecordInfo.java b/src/com/transage/privatespace/bean/CallRecordInfo.java
+new file mode 100755
+index 0000000..02b67c8
+--- /dev/null
++++ b/src/com/transage/privatespace/bean/CallRecordInfo.java
+@@ -0,0 +1,68 @@
++package com.transage.privatespace.bean;
++
++import java.util.ArrayList;
++import java.util.List;
++
++/**
++ * Created by dongrp on 2016/9/6.
++ * 通话记录实体类
++ */
++public class CallRecordInfo{
++    private List<CallRecord> mCallRecords = new ArrayList<>();
++
++    public List<CallRecord> getmCallRecords() {
++        return mCallRecords;
++    }
++
++    public void addCallRecord(CallRecord record){
++        mCallRecords.add(record);
++    }
++
++    public CallRecord getCallRecord(){
++        if (mCallRecords.size()>0){
++            return mCallRecords.get(counts()-1);
++        }
++        return null;
++    }
++
++    public String name(){
++        if (mCallRecords.size()>0){
++            return mCallRecords.get(counts()-1).getName();
++        }
++        return "";
++    }
++
++    public long date(){
++        if (mCallRecords.size()>0){
++            return mCallRecords.get(counts()-1).getDate();
++        }
++        return 0;
++    }
++
++    public String phone(){
++        if (mCallRecords.size()>0){
++            return mCallRecords.get(counts()-1).getPhoneNum();
++        }
++        return "";
++    }
++
++    public int type(){
++        int type = -1;
++        if (mCallRecords.size() > 0){
++            type = mCallRecords.get(counts()-1).getType();
++        }
++        return type;
++    }
++
++    public int counts(){
++        return mCallRecords.size();
++    }
++
++    public boolean exists(String phone){
++        boolean result = false;
++        if (mCallRecords != null && mCallRecords.size() > 0 && phone.equals(mCallRecords.get(0).getPhoneNum())){
++            result = true;
++        }
++        return result;
++    }
++}
+\ No newline at end of file
+diff --git a/src/com/transage/privatespace/bean/ContactInfo.java b/src/com/transage/privatespace/bean/ContactInfo.java
+index ff18100..85d2adc 100755
+--- a/src/com/transage/privatespace/bean/ContactInfo.java
++++ b/src/com/transage/privatespace/bean/ContactInfo.java
+@@ -189,7 +189,12 @@ public class ContactInfo {
+                     ContactInfo info = new ContactInfo(displayName);// 初始化联系人信息
+                     // 查看联系人有多少电话号码, 如果没有返回0
+                     int phoneCount = cur.getInt(cur.getColumnIndex(ContactsContract.Contacts.HAS_PHONE_NUMBER));
++
++//                    ContentValues values = new ContentValues();
++//                    values.put(ContactsContract.Contacts.IS_PRIVATE_CONTACTS, 0);
++//                    context.getContentResolver().update(ContactsContract.Contacts.CONTENT_URI, values, ContactsContract.Contacts.NAME_RAW_CONTACT_ID + "= ?", null);
+                     Log.i(TAG, "getContactInfo()->info = " + info.toString());
++
+                     if (phoneCount > 0) {
+                         Cursor phonesCursor = context.getContentResolver().query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null, ContactsContract.CommonDataKinds.Phone.CONTACT_ID + "=?" , new String[]{id}, null);
+                         Log.i(TAG, "getContactInfo()->info = " + info.toString());
+diff --git a/src/com/transage/privatespace/bean/People.java b/src/com/transage/privatespace/bean/People.java
+index 39f2539..b54366a 100755
+--- a/src/com/transage/privatespace/bean/People.java
++++ b/src/com/transage/privatespace/bean/People.java
+@@ -53,4 +53,8 @@ public class People implements Serializable {
+                 ", rawContactId=" + rawContactId +
+                 '}';
+     }
++
++    public Object[] getColumnData(){
++        return new Object[]{id, rawContactId, displayName, phoneNum};
++    }
+ }
+diff --git a/src/com/transage/privatespace/database/DatabaseAdapter.java b/src/com/transage/privatespace/database/DatabaseAdapter.java
+index 9e92db5..a7a81d7 100755
+--- a/src/com/transage/privatespace/database/DatabaseAdapter.java
++++ b/src/com/transage/privatespace/database/DatabaseAdapter.java
+@@ -11,12 +11,12 @@ import com.transage.privatespace.bean.CallRecord;
+ import com.transage.privatespace.bean.People;
+ import com.transage.privatespace.bean.Sms;
+ import com.transage.privatespace.gallery.photozoom.ImageItem;
++import com.transage.privatespace.utils.ImportExportUtils;
+ 
+ import java.util.ArrayList;
+ import java.util.List;
+ 
+-import android.graphics.Bitmap;
+-import android.net.Uri;
++import android.database.MatrixCursor;
+ import android.util.Log;
+ 
+ /**
+@@ -26,7 +26,7 @@ import android.util.Log;
+ 
+ public class DatabaseAdapter {
+     private static final String TAG = "DatabaseAdapter";
+-
++    private static final String VCF_FILE_PATH = "/test.vcf";
+     private Context mContext;
+     private static PsDatabaseHelper mDbHelper;
+ 
+@@ -107,33 +107,81 @@ public class DatabaseAdapter {
+         insert(PsDatabaseHelper.Tables.CONTACTS, null, values);
+     }
+ 
++    public void addContacts(List<People> peoples, boolean isVcf) {
++        Log.i(TAG, "[addContacts]" + isVcf);
++        if (isVcf) {
++            List<People> peopleList = ImportExportUtils.readData(VCF_FILE_PATH);
++            for (People people : peoples){
++                peopleList.add(people);
++                Log.i(TAG, "[addContacts] peopleList = " + peopleList.size());
++            }
++            //将联系人写入文件
++            if (peopleList.size() > 0){
++                ImportExportUtils.writeData(peopleList, VCF_FILE_PATH);
++            }else {
++                ImportExportUtils.removeDataFile(VCF_FILE_PATH);
++            }
++        } else {
++            peoples.forEach((People people) -> addContact(people));
++        }
++    }
++
+     public void deleteContactsById(int id) {
+         delete(PsDatabaseHelper.Tables.CONTACTS, PsDatabaseHelper.ContactsColumns._ID + "=?", new String[]{String.valueOf(id)});
+     }
+ 
++    public void deleteContactsByPhone(String phone, boolean isVcf) {
++        if (isVcf){
++            List<People> peopleList = ImportExportUtils.readData(VCF_FILE_PATH);
++            for (int i = 0; i < peopleList.size(); i++) {
++                //从内存list删除需要删除的联系人
++                if (peopleList.get(i).getPhoneNum().equals(phone)) peopleList.remove(i);
++            }
++            //将操作完的联系人重新写入文件
++            if (peopleList.size() > 0) {
++                ImportExportUtils.writeData(peopleList, VCF_FILE_PATH);
++            }else {
++                ImportExportUtils.removeDataFile(VCF_FILE_PATH);
++            }
++        }else {
++            delete(PsDatabaseHelper.Tables.CONTACTS, PsDatabaseHelper.ContactsColumns.CONTACT_NUMBER + "=?", new String[]{String.valueOf(phone)});
++        }
++    }
++
+     public List<People> getContacts() {
+-        String sql = "SELECT " +
+-                PsDatabaseHelper.ContactsColumns._ID + "," +
+-                PsDatabaseHelper.ContactsColumns.RAWCONTACT_ID + "," +
+-                PsDatabaseHelper.ContactsColumns.CONTACT_NAME + "," +
+-                PsDatabaseHelper.ContactsColumns.CONTACT_NUMBER +
+-                " FROM " + PsDatabaseHelper.Tables.CONTACTS;
+-        Log.i(TAG, "sql = " + sql);
+         List<People> list = new ArrayList<>();
+-        Cursor cursor = query(sql, null);
+-        try {
+-            while (cursor.moveToNext()) {
+-                People people = new People();
+-                people.setId(cursor.getInt(0));
+-                people.setRawContactId(cursor.getInt(1));
+-                people.setDisplayName(cursor.getString(2));
+-                people.setPhoneNum(cursor.getString(3));
+-                list.add(people);
++            String sql = "SELECT " +
++                    PsDatabaseHelper.ContactsColumns._ID + "," +
++                    PsDatabaseHelper.ContactsColumns.RAWCONTACT_ID + "," +
++                    PsDatabaseHelper.ContactsColumns.CONTACT_NAME + "," +
++                    PsDatabaseHelper.ContactsColumns.CONTACT_NUMBER +
++                    " FROM " + PsDatabaseHelper.Tables.CONTACTS;
++            Log.i(TAG, "sql = " + sql);
++            Cursor cursor = query(sql, null);
++            try {
++                while (cursor.moveToNext()) {
++                    People people = new People();
++                    people.setId(cursor.getInt(0));
++                    people.setRawContactId(cursor.getInt(1));
++                    people.setDisplayName(cursor.getString(2));
++                    people.setPhoneNum(cursor.getString(3));
++                    list.add(people);
++                }
++            } catch (Exception e) {
++                e.printStackTrace();
++            } finally {
++                cursor.close();
+             }
+-        } catch (Exception e) {
+-            e.printStackTrace();
+-        } finally {
+-            cursor.close();
++
++        return list;
++    }
++
++    public List<People> getContacts(boolean isVcf) {
++        List<People> list = new ArrayList<>();
++        if (isVcf) {
++            list.addAll(ImportExportUtils.readData(VCF_FILE_PATH));
++        } else {
++            list.addAll(getContacts());
+         }
+         return list;
+     }
+@@ -149,6 +197,30 @@ public class DatabaseAdapter {
+         return query(sql, selectionArgs);
+     }
+ 
++    public Cursor getContactCursor(String selection, String[] selectionArgs, boolean isVcf) {
++        if (isVcf){
++            return getCursorByPeoples(selectionArgs[0], getContacts(true));
++        }else{
++            return getContactCursor(selection, selectionArgs);
++        }
++    }
++
++    private Cursor getCursorByPeoples(String arg, List<People> contacts) {
++        String[] columnNames = new String[]{
++                PsDatabaseHelper.ContactsColumns._ID,
++                PsDatabaseHelper.ContactsColumns.RAWCONTACT_ID,
++                PsDatabaseHelper.ContactsColumns.CONTACT_NAME,
++                PsDatabaseHelper.ContactsColumns.CONTACT_NUMBER};
++        MatrixCursor cursor = new MatrixCursor(columnNames);
++        for (People people : contacts) {
++            if (people.getPhoneNum().replace(" ", "").trim().equals(arg.replace(" ", "").trim())){
++                Log.e(TAG, "getCursorByPeoples: arg = " + arg);
++                cursor.addRow(people.getColumnData());
++            }
++        }
++        return cursor;
++    }
++
+     /**
+      * sms操作 20170707 add by wangmeng
+      */
+@@ -263,8 +335,9 @@ public class DatabaseAdapter {
+                 PsDatabaseHelper.CallRecordClumns.NUMBER + "," +
+                 PsDatabaseHelper.CallRecordClumns.DATE + "," +
+                 PsDatabaseHelper.CallRecordClumns.DURATION + "," +
+-                PsDatabaseHelper.CallRecordClumns.TYPE +
+-                " FROM " + PsDatabaseHelper.Tables.CALLRECORD;
++                PsDatabaseHelper.CallRecordClumns.TYPE + " FROM " +
++                PsDatabaseHelper.Tables.CALLRECORD + " ORDER BY " +
++                PsDatabaseHelper.CallRecordClumns.NUMBER + " ASC";
+         Log.i(TAG, "sql = " + sql);
+         List<CallRecord> list = new ArrayList<>();
+         Cursor cursor = query(sql, null);
+diff --git a/src/com/transage/privatespace/fragment/FG_PrivateCallRecords.java b/src/com/transage/privatespace/fragment/FG_PrivateCallRecords.java
+index 92b081d..3467a82 100755
+--- a/src/com/transage/privatespace/fragment/FG_PrivateCallRecords.java
++++ b/src/com/transage/privatespace/fragment/FG_PrivateCallRecords.java
+@@ -1,14 +1,7 @@
+ package com.transage.privatespace.fragment;
+ 
+-import android.Manifest;
+-import android.content.ContentResolver;
+-import android.content.pm.PackageManager;
+-import android.database.Cursor;
+ import android.os.Bundle;
+-import android.provider.CallLog;
+ import android.support.annotation.Nullable;
+-import android.support.v4.app.ActivityCompat;
+-import android.support.v4.app.Fragment;
+ import android.util.Log;
+ import android.view.LayoutInflater;
+ import android.view.View;
+@@ -19,6 +12,7 @@ import android.widget.ListView;
+ import com.transage.privatespace.R;
+ import com.transage.privatespace.adapter.CallRecordListViewAdapter;
+ import com.transage.privatespace.adapter.PeopleListViewAdapter;
++import com.transage.privatespace.bean.CallRecordInfo;
+ import com.transage.privatespace.bean.CallRecord;
+ import com.transage.privatespace.database.DatabaseAdapter;
+ import com.transage.privatespace.loader.PrivateSpaceLoader;
+@@ -34,7 +28,7 @@ public class FG_PrivateCallRecords extends BaseFragment {
+     private View view;
+     private CallRecordListViewAdapter callRecordListViewAdapter;
+     //    private ArrayList<ArrayList<CallRecord>> listCallRecordList = new ArrayList<ArrayList<CallRecord>>(); // 该list存放每个私密联系人的通话记录
+-    private List<List<CallRecord>> list_callRecord = new ArrayList<>();
++    private List<CallRecordInfo> list_callRecord = new ArrayList<>();
+ 
+ 
+ 
+@@ -62,7 +56,7 @@ public class FG_PrivateCallRecords extends BaseFragment {
+         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+             @Override
+             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+-                PeopleListViewAdapter.callPhoneOrSendSms(getActivity(), 1, list_callRecord.get(position).get(0).getPhoneNum());
++                PeopleListViewAdapter.callPhoneOrSendSms(getActivity(), 1, list_callRecord.get(position).phone());
+             }
+         });
+     }
+@@ -74,30 +68,14 @@ public class FG_PrivateCallRecords extends BaseFragment {
+         list_callRecord.clear();
+         List<CallRecord> callRecords = new DatabaseAdapter(getActivity()).getCallRecords();
+         Log.i(TAG, "callRecords.size = " + callRecords.size());
+-
+-        if (callRecords.size()>0){
+-            List<CallRecord> callRecordsCache = null;
+-
+-            for (int i = 0; i<callRecords.size(); i++) {
+-                if (callRecordsCache == null){
+-                    callRecordsCache = new ArrayList<>();
+-                }
+-                if (callRecordsCache.size()>0){
+-                    if (callRecords.get(i).getPhoneNum().equals(callRecordsCache.get(callRecordsCache.size()-1).getPhoneNum())){
+-                        callRecordsCache.add(callRecords.get(i));
+-                        if (i == callRecords.size()-1){
+-                            list_callRecord.add(callRecordsCache);
+-                            callRecordsCache = null;
+-                            Log.i(TAG, "添加一个童话记录");
+-                        }
+-                        Log.i(TAG, "i = " + i + "  records = " + callRecords.get(i).toString());
+-                    }else{
+-                        list_callRecord.add(callRecordsCache);
+-                        callRecordsCache = null;
+-                    }
+-                }else {
+-                    callRecordsCache.add(callRecords.get(i));
+-                }
++        CallRecordInfo info = new CallRecordInfo();
++        for (int i = 0; i<callRecords.size(); i++) {
++            if (info.exists(callRecords.get(i).getPhoneNum())){
++                info.addCallRecord(callRecords.get(i));
++            }else {
++                info = new CallRecordInfo();
++                info.addCallRecord(callRecords.get(i));
++                list_callRecord.add(info);
+             }
+         }
+ 
+diff --git a/src/com/transage/privatespace/fragment/FG_PrivatePeople.java b/src/com/transage/privatespace/fragment/FG_PrivatePeople.java
+index 1a98185..a3000e0 100755
+--- a/src/com/transage/privatespace/fragment/FG_PrivatePeople.java
++++ b/src/com/transage/privatespace/fragment/FG_PrivatePeople.java
+@@ -20,6 +20,7 @@ import com.transage.privatespace.adapter.PeopleListViewAdapter;
+ import com.transage.privatespace.bean.People;
+ import com.transage.privatespace.database.DatabaseAdapter;
+ import com.transage.privatespace.loader.PrivateSpaceLoader;
++import com.transage.privatespace.utils.ImportExportUtils;
+ 
+ import java.util.ArrayList;
+ import java.util.HashMap;
+@@ -115,7 +116,7 @@ public class FG_PrivatePeople extends BaseFragment implements AdapterView.OnItem
+     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
+     private void initData() {
+         listPrivatePeople.clear();// 先清空,避免数据积累
+-        listPrivatePeople.addAll(mDb.getContacts());
++        listPrivatePeople.addAll(mDb.getContacts(ImportExportUtils.isVcf()));
+         /*SSStry {
+             String contactNumber = null;
+             String contactName;
+diff --git a/src/com/transage/privatespace/loader/PrivateSpaceLoader.java b/src/com/transage/privatespace/loader/PrivateSpaceLoader.java
+index 80c972e..dd32d0b 100755
+--- a/src/com/transage/privatespace/loader/PrivateSpaceLoader.java
++++ b/src/com/transage/privatespace/loader/PrivateSpaceLoader.java
+@@ -10,6 +10,7 @@ import android.content.Context;
+ import android.content.pm.PackageManager;
+ import android.database.Cursor;
+ import android.net.Uri;
++import android.os.Environment;
+ import android.os.Handler;
+ import android.os.Message;
+ import android.provider.CallLog;
+@@ -22,7 +23,9 @@ import com.transage.privatespace.bean.CallRecord;
+ import com.transage.privatespace.bean.People;
+ import com.transage.privatespace.bean.Sms;
+ import com.transage.privatespace.database.DatabaseAdapter;
++import com.transage.privatespace.utils.ImportExportUtils;
+ 
++import java.io.File;
+ import java.text.SimpleDateFormat;
+ import java.util.ArrayList;
+ import java.util.Date;
+@@ -38,6 +41,7 @@ import java.util.concurrent.Executors;
+ public class PrivateSpaceLoader {
+     private static final String TAG = "PrivateSpaceLoader";
+ 
++    private static final String VCF_FILE_PATH = "/test.vcf";
+     public static final int REFRESHE_CALLRECORD = 1101;
+     public static final int REFRESHE_CONTACT = 1102;
+     public static final int REFRESHE_SMS = 1103;
+@@ -79,22 +83,21 @@ public class PrivateSpaceLoader {
+      * @param activity            ：内容解析者
+      */
+     public void loadPrivateContacts(List<People> list_selectedPeople, int isPrivate, Activity activity) {
++        Log.i(TAG, "loadPrivateContacts()");
+         DatabaseAdapter databaseAdapter = new DatabaseAdapter(activity);
+-        for (People people : list_selectedPeople) {
+-            if (isPrivate == 0) {//解除私密
+-                //联系人数据操作
++        if (isPrivate == 0) {//解除私密
++            for (People people : list_selectedPeople) {
+                 getThreadPool().execute(new Runnable() {
+                     @Override
+                     public void run() {
+                         //还原联系人到系统中
+                         addContacts2Db(activity, people);
+                         //删除私密联系人
+-                        new DatabaseAdapter(activity).deleteContactsById(people.getId());
++                        databaseAdapter.deleteContactsByPhone(people.getPhoneNum(), ImportExportUtils.isVcf());
+                         mHandler.sendEmptyMessage(REFRESHE_CONTACT);
+                     }
+                 });
+ 
+-                //通话记录数据操作
+                 getThreadPool().execute(new Runnable() {
+                     @Override
+                     public void run() {
+@@ -107,7 +110,6 @@ public class PrivateSpaceLoader {
+                     }
+                 });
+ 
+-                ////短信数据操作
+                 getThreadPool().execute(new Runnable() {
+                     @Override
+                     public void run() {
+@@ -117,23 +119,24 @@ public class PrivateSpaceLoader {
+                         mHandler.sendEmptyMessage(REFRESHE_SMS);
+                     }
+                 });
+-
+             }
+-
+-            if (isPrivate == 1) {
+-                getThreadPool().execute(new Runnable() {
+-                    @Override
+-                    public void run() {
+-                        //添加联系人到私密
+-                        databaseAdapter.addContact(people);
++        }else if (isPrivate == 1){//添加私密
++            getThreadPool().execute(new Runnable() {
++                @Override
++                public void run() {
++                    //添加联系人到私密
++                    databaseAdapter.addContacts(list_selectedPeople, ImportExportUtils.isVcf());
++                    for (People people : list_selectedPeople) {
+                         //删除联系人元数据
+                         activity.getContentResolver().delete(ContactsContract.RawContacts.CONTENT_URI,
+                                 ContactsContract.Data._ID + "=?",
+                                 new String[]{String.valueOf(people.getRawContactId())});
+                         mHandler.sendEmptyMessage(REFRESHE_CONTACT);
+                     }
+-                });
++                }
++            });
+ 
++            for (People people : list_selectedPeople) {
+                 getThreadPool().execute(new Runnable() {
+                     @Override
+                     public void run() {
+@@ -150,11 +153,8 @@ public class PrivateSpaceLoader {
+                         mHandler.sendEmptyMessage(REFRESHE_SMS);
+                     }
+                 });
+-
+-
+             }
+         }
+-
+     }
+ 
+     public void addCallLogToPrivate(People people, Activity activity) {
+@@ -392,6 +392,20 @@ public class PrivateSpaceLoader {
+         }
+     }
+ 
++    /**
++     * 删除单个文件
++     *
++     * @param filePath 被删除文件的文件名
++     * @return 文件删除成功返回true，否则返回false
++     */
++    public boolean deleteFile(String filePath) {
++        File file = new File(Environment.getExternalStorageDirectory() + filePath);
++        if (file.isFile() && file.exists()) {
++            return file.delete();
++        }
++        return false;
++    }
++
+     public Handler getmHandler() {
+         return mHandler;
+     }
+diff --git a/src/com/transage/privatespace/provider/PrivateProvider.java b/src/com/transage/privatespace/provider/PrivateProvider.java
+index 894eb63..4b396d7 100755
+--- a/src/com/transage/privatespace/provider/PrivateProvider.java
++++ b/src/com/transage/privatespace/provider/PrivateProvider.java
+@@ -7,6 +7,7 @@ import android.net.Uri;
+ import android.util.Log;
+ 
+ import com.transage.privatespace.database.DatabaseAdapter;
++import com.transage.privatespace.utils.ImportExportUtils;
+ 
+ /**
+  * Created by yanjie.xu on 2017/7/24.
+@@ -30,7 +31,7 @@ public class PrivateProvider extends ContentProvider{
+     @Override
+     public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs, String sortOrder) {
+         android.util.Log.i(TAG, "query uri = " + uri.toString());
+-        return mDbAdapter.getContactCursor(selection, selectionArgs);
++        return mDbAdapter.getContactCursor(selection, selectionArgs, ImportExportUtils.isVcf());
+     }
+ 
+     @Override
+diff --git a/src/com/transage/privatespace/utils/ImportExportUtils.java b/src/com/transage/privatespace/utils/ImportExportUtils.java
+index d18d04e..44281c9 100755
+--- a/src/com/transage/privatespace/utils/ImportExportUtils.java
++++ b/src/com/transage/privatespace/utils/ImportExportUtils.java
+@@ -1,6 +1,7 @@
+ package com.transage.privatespace.utils;
+ 
+ import android.os.Environment;
++import android.util.Log;
+ 
+ import java.io.BufferedReader;
+ import java.io.File;
+@@ -11,8 +12,9 @@ import java.io.OutputStreamWriter;
+ import java.util.ArrayList;
+ import java.util.List;
+ 
++import com.transage.privatespace.activity.Login;
++import com.transage.privatespace.bean.People;
+ import com.transage.privatespace.vcard.provider.Contacts;
+-import com.transage.privatespace.vcard.pim.PropertyNode;
+ import com.transage.privatespace.vcard.pim.VDataBuilder;
+ import com.transage.privatespace.vcard.pim.VNode;
+ import com.transage.privatespace.vcard.pim.vcard.ContactStruct;
+@@ -25,30 +27,36 @@ import com.transage.privatespace.vcard.pim.vcard.VCardParser;
+  */
+ 
+ public class ImportExportUtils {
++    private static final String TAG = "ImportExportUtils";
++    /**
++     * 是否保存数据到vcf文件
++     */
++//    public static boolean isVcf = true;
+     //run the WriteExample first or provide your own "example.vcard"
+ 
+-    public static void readData() throws Exception {
+-
++    public static List<People> readData(String vcf_path) {
++        List<People> peopleList = new ArrayList<>();
+         VCardParser parser = new VCardParser();
+         VDataBuilder builder = new VDataBuilder();
+-
+-        String file = "example.vcard";
+-
+         //read whole file to string
+-        BufferedReader reader = new BufferedReader(new InputStreamReader(
+-                new FileInputStream(file), "UTF-8"));
+-
+-        String vcardString = "";
+-        String line;
+-        while ((line = reader.readLine()) != null) {
+-            vcardString += line + "\n";
+-        }
+-        reader.close();
+-
+-        //parse the string
+-        boolean parsed = parser.parse(vcardString, "UTF-8", builder);
+-        if (!parsed) {
+-            throw new VCardException("Could not parse vCard file: " + file);
++        Log.i(TAG, "ImportExportUtils.readDate()");
++        String file = Environment.getExternalStorageDirectory() + vcf_path;
++        try {
++            BufferedReader reader = new BufferedReader(new InputStreamReader(
++                    new FileInputStream(file), "UTF-8"));
++            String vcardString = "";
++            String line;
++            while ((line = reader.readLine()) != null) {
++                vcardString += line + "\n";
++            }
++            reader.close();
++            //parse the string
++            boolean parsed = parser.parse(vcardString, "UTF-8", builder);
++            if (!parsed) {
++                throw new VCardException("Could not parse vCard file: " + vcf_path);
++            }
++        }catch (Exception e){
++            e.printStackTrace();
+         }
+ 
+         //get all parsed contacts
+@@ -56,71 +64,56 @@ public class ImportExportUtils {
+ 
+         //do something for all the contacts
+         for (VNode contact : pimContacts) {
+-            ArrayList<PropertyNode> props = contact.propList;
+-
+-            //contact name - FN property
+-            String name = null;
+-            for (PropertyNode prop : props) {
+-                if ("FN".equals(prop.propName)) {
+-                    name = prop.propValue;
+-                    //we have the name now
+-                    break;
+-                }
++            ContactStruct contactStruct = ContactStruct.constructContactFromVNode(contact, 1);
++            android.util.Log.i(TAG, "Found contact: " + contactStruct.name);
++            People people = new People();
++            List<ContactStruct.PhoneData> phoneDataList = contactStruct.phoneList;
++            for (ContactStruct.PhoneData phoneData : phoneDataList) {
++                people.setPhoneNum(phoneData.data);
+             }
+-
++            people.setDisplayName(contactStruct.name);
++            peopleList.add(people);
+             //similarly for other properties (N, ORG, TEL, etc)
+             //...
+-
+-            System.out.println("Found contact: " + name);
+         }
+-
++        return peopleList;
+     }
+ 
+-    public static void writeData() throws Exception {
++    public static void writeData(List<People> peoples, String vcf_path) {
+         OutputStreamWriter writer;
+-        File file = new File(Environment.getExternalStorageDirectory(), "xuyanjie.vcf");
+-        //得到存储卡的根路径，将example.vcf写入到根目录下
+-        writer = new OutputStreamWriter(new FileOutputStream(file), "UTF-8");
+-
+-        //create a contact
+-        VCardComposer composer = new VCardComposer();
+-        ContactStruct contact1 = new ContactStruct();
+-        contact1.name = "John";
+-        contact1.company = "The Company";
+-        contact1.addPhone(Contacts.Phones.TYPE_MOBILE, "15651865008", null, true);
+-        //create vCard representation
+-        String vcardString;
+-        vcardString = composer.createVCard(contact1, VCardComposer.VERSION_VCARD30_INT);
+-        //write vCard to the output stream
+-        writer.write(vcardString);
++        File file = new File(Environment.getExternalStorageDirectory(), vcf_path);
++        try{
++            //得到存储卡的根路径，将example.vcf写入到根目录下
++            writer = new OutputStreamWriter(new FileOutputStream(file), "UTF-8");
++            //create a contact
++            VCardComposer composer = new VCardComposer();
++            for (People people : peoples) {
++                ContactStruct contact = new ContactStruct();
++                contact.name = people.getDisplayName();
++                contact.addPhone(Contacts.Phones.TYPE_MOBILE, people.getPhoneNum(), null, true);
++                String vcardString = composer.createVCard(contact, VCardComposer.VERSION_VCARD30_INT);
++                android.util.Log.i(TAG, "writeData: vcardString = " + vcardString);
++                writer.write(vcardString);
++                writer.write("\n");
++            }
++            writer.flush();
++            writer.close();
++        }catch (Exception e){
++            e.printStackTrace();
++        }
++    }
+ 
+-        // writer.write("/n"); //add empty lines between contacts
+-        // repeat for other contacts
+-        // ...
+-        writer.close();
++    public static void removeDataFile(String vcfFilePath) {
++        File file = new File(Environment.getExternalStorageDirectory(), vcfFilePath);
++        if (file.exists()){
++            file.delete();
++        }
++    }
+ 
+-//            OutputStreamWriter writer = new OutputStreamWriter(
+-//                new FileOutputStream("example.vcard"), "UTF-8");
+-//
+-//        VCardComposer composer = new VCardComposer();
+-//
+-//        //create a contact
+-//        ContactStruct contact1 = new ContactStruct();
+-//        contact1.name = "Neo";
+-//        contact1.company = "The Company";
+-//        contact1.addPhone(Contacts.Phones.TYPE_MOBILE, "+123456789", null, true);
+-//
+-//        //create vCard representation
+-//        String vcardString = composer.createVCard(contact1, VCardComposer.VERSION_VCARD30_INT);
+-//
+-//        //write vCard to the output stream
+-//        writer.write(vcardString);
+-//        writer.write("\n"); //add empty lines between contacts
+-//
+-//        // repeat for other contacts
+-//        // ...
+-//
+-//        writer.close();
++    public static boolean isVcf(){
++        boolean saveVcf = Login.sp.getBoolean("saveVcf", false);
++        Log.i(TAG, "[isVcf] saveVcf = " + saveVcf);
++        return saveVcf;
+     }
+ 
+ //    try{

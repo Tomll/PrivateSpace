@@ -1,0 +1,440 @@
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index aee97fa..698fcdd 100755
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -99,7 +99,6 @@
+             android:screenOrientation="portrait"/>
+         <activity
+             android:name=".gallery.photozoom.Gallery"
+-            android:theme="@style/ThemeNoStatusBar"
+             android:screenOrientation="portrait"/>
+         <activity
+             android:name=".gallery.activity.PrivateAlbum"
+diff --git a/res/layout/activity_add_app.xml b/res/layout/activity_add_app.xml
+index 0b60993..badd4bd 100755
+--- a/res/layout/activity_add_app.xml
++++ b/res/layout/activity_add_app.xml
+@@ -2,7 +2,6 @@
+ <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+               android:orientation="vertical"
+               android:layout_width="match_parent"
+-              android:paddingTop="25dp"
+               android:background="@color/lightblack"
+               android:layout_height="match_parent">
+ 
+diff --git a/res/layout/activity_add_people.xml b/res/layout/activity_add_people.xml
+index 9e9005d..891fa48 100755
+--- a/res/layout/activity_add_people.xml
++++ b/res/layout/activity_add_people.xml
+@@ -2,7 +2,6 @@
+ <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+               android:layout_width="match_parent"
+               android:layout_height="match_parent"
+-              android:paddingTop="25dp"
+               android:background="@color/lightblack"
+               android:orientation="vertical">
+ 
+diff --git a/res/layout/activity_advance_setup.xml b/res/layout/activity_advance_setup.xml
+index 5ca6933..9e3cd50 100755
+--- a/res/layout/activity_advance_setup.xml
++++ b/res/layout/activity_advance_setup.xml
+@@ -3,9 +3,7 @@
+               android:layout_width="match_parent"
+               android:layout_height="match_parent"
+               android:background="@color/lightblack"
+-              android:fitsSystemWindows="false"
+-              android:orientation="vertical"
+-              android:paddingTop="25dp">
++              android:orientation="vertical">
+ 
+     <TextView
+ 
+diff --git a/res/layout/activity_login.xml b/res/layout/activity_login.xml
+index 5ddcea9..9b8bc19 100755
+--- a/res/layout/activity_login.xml
++++ b/res/layout/activity_login.xml
+@@ -4,8 +4,7 @@
+               android:layout_width="match_parent"
+               android:layout_height="match_parent"
+               android:background="@color/lightblack"
+-              android:orientation="vertical"
+-              android:paddingTop="35dp">
++              android:orientation="vertical">
+ 
+     <TextView
+         android:id="@+id/textView1"
+diff --git a/res/layout/activity_main.xml b/res/layout/activity_main.xml
+index 332bd6b..ed4ae9b 100755
+--- a/res/layout/activity_main.xml
++++ b/res/layout/activity_main.xml
+@@ -4,7 +4,6 @@
+                 android:layout_width="match_parent"
+                 android:layout_height="match_parent"
+                 android:background="@color/lightblack"
+-                android:fitsSystemWindows="true"
+                 tools:context=".activity.Main">
+ 
+     <LinearLayout
+diff --git a/res/layout/activity_private_contacts.xml b/res/layout/activity_private_contacts.xml
+index db95d97..efd086c 100755
+--- a/res/layout/activity_private_contacts.xml
++++ b/res/layout/activity_private_contacts.xml
+@@ -3,8 +3,7 @@
+               android:layout_width="match_parent"
+               android:layout_height="match_parent"
+               android:orientation="vertical"
+-              android:background="@color/lightblack"
+-              android:paddingTop="25dp">
++              android:background="@color/lightblack">
+ 
+     <LinearLayout
+         android:layout_width="match_parent"
+diff --git a/res/layout/activity_security_question.xml b/res/layout/activity_security_question.xml
+index 868583f..ff6345e 100755
+--- a/res/layout/activity_security_question.xml
++++ b/res/layout/activity_security_question.xml
+@@ -2,8 +2,7 @@
+ <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                 android:layout_width="match_parent"
+                 android:layout_height="match_parent"
+-                android:background="@color/lightblack"
+-                android:paddingTop="25dp">
++                android:background="@color/lightblack">
+ 
+     <TextView
+         android:id="@+id/textView1"
+diff --git a/res/mipmap-xxxhdpi/bt_finger_print.png b/res/mipmap-xxxhdpi/bt_finger_print.png
+new file mode 100755
+index 0000000..aac02c5
+Binary files /dev/null and b/res/mipmap-xxxhdpi/bt_finger_print.png differ
+diff --git a/res/mipmap-xxxhdpi/iv_finger_print.png b/res/mipmap-xxxhdpi/iv_finger_print.png
+new file mode 100755
+index 0000000..6df71a5
+Binary files /dev/null and b/res/mipmap-xxxhdpi/iv_finger_print.png differ
+diff --git a/res/values/styles.xml b/res/values/styles.xml
+index 15c825c..2284d8c 100755
+--- a/res/values/styles.xml
++++ b/res/values/styles.xml
+@@ -24,11 +24,6 @@
+     <style name="AppStartLoad" parent="AppBaseTheme">
+         <item name="android:windowBackground">@color/lightblack</item>
+     </style>
+-    <!-- add by dongrp -->
+-    <style name="ThemeNoStatusBar" parent="AppBaseTheme">
+-        <item name="windowNoTitle">true</item>
+-        <item name="android:windowFullscreen">true</item>
+-    </style>
+     <!--add by dongrp : ThemeTransparentBackground -->
+     <style name="ThemeTransparentBackground" parent="AppBaseTheme">
+         <item name="android:windowIsTranslucent">true</item>
+diff --git a/src/com/transage/privatespace/activity/AddApp.java b/src/com/transage/privatespace/activity/AddApp.java
+index bfa3dbb..d087ac8 100755
+--- a/src/com/transage/privatespace/activity/AddApp.java
++++ b/src/com/transage/privatespace/activity/AddApp.java
+@@ -8,8 +8,6 @@ import android.content.pm.ResolveInfo;
+ import android.os.Bundle;
+ import android.support.annotation.Nullable;
+ import android.view.View;
+-import android.view.Window;
+-import android.view.WindowManager;
+ import android.widget.AdapterView;
+ import android.widget.ListView;
+ import android.widget.TextView;
+@@ -44,9 +42,6 @@ public class AddApp extends BaseActivity implements View.OnClickListener, Adapte
+     @Override
+     protected void onCreate(@Nullable Bundle savedInstanceState) {
+         super.onCreate(savedInstanceState);
+-        // getSupportActionBar().hide();// 隐藏掉ActionBar
+-        requestWindowFeature(Window.FEATURE_NO_TITLE);//隐藏TitleBar
+-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);//透明状态栏
+         setContentView(R.layout.activity_add_app);
+ 
+         // 通过自定义DBHelper类，获取SQLiteDatabase对象
+diff --git a/src/com/transage/privatespace/activity/AddPeople.java b/src/com/transage/privatespace/activity/AddPeople.java
+index d2ff213..cb19e66 100755
+--- a/src/com/transage/privatespace/activity/AddPeople.java
++++ b/src/com/transage/privatespace/activity/AddPeople.java
+@@ -13,8 +13,6 @@ import android.support.v4.app.ActivityCompat;
+ import android.support.v4.content.ContextCompat;
+ import android.util.Log;
+ import android.view.View;
+-import android.view.Window;
+-import android.view.WindowManager;
+ import android.widget.AdapterView;
+ import android.widget.ListView;
+ import android.widget.Toast;
+@@ -51,9 +49,6 @@ public class AddPeople extends BaseActivity implements AdapterView.OnItemClickLi
+     @Override
+     protected void onCreate(@Nullable Bundle savedInstanceState) {
+         super.onCreate(savedInstanceState);
+-        // getSupportActionBar().hide();// 隐藏掉ActionBar
+-        requestWindowFeature(Window.FEATURE_NO_TITLE);//隐藏TitleBar
+-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);//透明状态栏
+         setContentView(R.layout.activity_add_people);
+ 
+         // 检查并申请READ_CONTACTS权限
+diff --git a/src/com/transage/privatespace/activity/AdvancedSetup.java b/src/com/transage/privatespace/activity/AdvancedSetup.java
+index 9736d6f..31f665e 100755
+--- a/src/com/transage/privatespace/activity/AdvancedSetup.java
++++ b/src/com/transage/privatespace/activity/AdvancedSetup.java
+@@ -5,8 +5,6 @@ import android.content.SharedPreferences;
+ import android.os.Bundle;
+ import android.support.annotation.Nullable;
+ import android.view.View;
+-import android.view.Window;
+-import android.view.WindowManager;
+ import android.widget.CompoundButton;
+ import android.widget.Switch;
+ 
+@@ -26,9 +24,6 @@ public class AdvancedSetup extends BaseActivity implements View.OnClickListener,
+     @Override
+     protected void onCreate(@Nullable Bundle savedInstanceState) {
+         super.onCreate(savedInstanceState);
+-        // getSupportActionBar().hide();// 隐藏掉ActionBar
+-        requestWindowFeature(Window.FEATURE_NO_TITLE);//隐藏TitleBar
+-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);//透明状态栏
+         setContentView(R.layout.activity_advance_setup);
+         if (mVcfSP == null){
+             mVcfSP = getSharedPreferences(ImportExportUtils.SHARE_SAVEVCF, MODE_PRIVATE);
+diff --git a/src/com/transage/privatespace/activity/Login.java b/src/com/transage/privatespace/activity/Login.java
+index a393d3f..fc86c2e 100755
+--- a/src/com/transage/privatespace/activity/Login.java
++++ b/src/com/transage/privatespace/activity/Login.java
+@@ -73,8 +73,8 @@ public class Login extends BaseActivity implements View.OnClickListener, Compoun
+     protected void onCreate(@Nullable Bundle savedInstanceState) {
+         super.onCreate(savedInstanceState);
+         // getSupportActionBar().hide();// 隐藏掉ActionBar
+-        requestWindowFeature(Window.FEATURE_NO_TITLE);//隐藏TitleBar
+-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);//透明状态栏
++        //requestWindowFeature(Window.FEATURE_NO_TITLE);//隐藏TitleBar
++        //getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);//透明状态栏
+         setContentView(R.layout.activity_login);
+         mFingerprintManager = (FingerprintManager) getSystemService(Context.FINGERPRINT_SERVICE);
+ 
+diff --git a/src/com/transage/privatespace/activity/Main.java b/src/com/transage/privatespace/activity/Main.java
+index 3636717..e148153 100755
+--- a/src/com/transage/privatespace/activity/Main.java
++++ b/src/com/transage/privatespace/activity/Main.java
+@@ -10,8 +10,6 @@ import android.support.v7.widget.DefaultItemAnimator;
+ import android.support.v7.widget.GridLayoutManager;
+ import android.support.v7.widget.RecyclerView;
+ import android.view.View;
+-import android.view.Window;
+-import android.view.WindowManager;
+ 
+ import com.transage.privatespace.R;
+ import com.transage.privatespace.adapter.AppRecyclerAdapter;
+@@ -36,13 +34,8 @@ public class Main extends BaseActivity implements View.OnClickListener, AppRecyc
+     @Override
+     protected void onCreate(Bundle savedInstanceState) {
+         super.onCreate(savedInstanceState);
+-        // getSupportActionBar().hide();// 隐藏掉ActionBar
+-        requestWindowFeature(Window.FEATURE_NO_TITLE);//隐藏TitleBar
+-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);//透明状态栏
+         setContentView(R.layout.activity_main);
+-
+         mDb = new DatabaseAdapter(getApplication());
+-
+         // initData(); //一定要先初始化数据
+         initViewAndAdapter(); // 再初始化View 和 Adapter
+     }
+diff --git a/src/com/transage/privatespace/activity/PrivateContacts.java b/src/com/transage/privatespace/activity/PrivateContacts.java
+index 9ef0535..4797031 100755
+--- a/src/com/transage/privatespace/activity/PrivateContacts.java
++++ b/src/com/transage/privatespace/activity/PrivateContacts.java
+@@ -54,9 +54,6 @@ public class PrivateContacts extends FragmentActivity implements View.OnClickLis
+     @Override
+     protected void onCreate(@Nullable Bundle savedInstanceState) {
+         super.onCreate(savedInstanceState);
+-        // getSupportActionBar().hide();// 隐藏掉ActionBar
+-        requestWindowFeature(Window.FEATURE_NO_TITLE);//隐藏TitleBar
+-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);//透明状态栏
+         setContentView(R.layout.activity_private_contacts);
+         mLoader = new PrivateSpaceLoader(this);
+         //注册内容观察者，监听PrivateProvider
+diff --git a/src/com/transage/privatespace/activity/PrivateSms.java b/src/com/transage/privatespace/activity/PrivateSms.java
+index 1ad1a76..40b1a87 100755
+--- a/src/com/transage/privatespace/activity/PrivateSms.java
++++ b/src/com/transage/privatespace/activity/PrivateSms.java
+@@ -12,14 +12,15 @@ import android.view.View;
+ import android.view.Window;
+ import android.view.WindowManager;
+ import android.widget.ListView;
+-import java.util.ArrayList;
++
+ import com.transage.privatespace.R;
+ import com.transage.privatespace.adapter.AddSmsListViewAdapter;
+ import com.transage.privatespace.bean.SmsInfo;
+ import com.transage.privatespace.database.DatabaseAdapter;
+-import com.transage.privatespace.loader.PrivateSpaceLoader;
+ import com.transage.privatespace.vcard.util.Log;
+ 
++import java.util.ArrayList;
++
+ /**
+  * Created by meng.wang on 2017/9/2.
+  */
+diff --git a/src/com/transage/privatespace/activity/SecurityQuestion.java b/src/com/transage/privatespace/activity/SecurityQuestion.java
+index 4970400..5f2ba66 100755
+--- a/src/com/transage/privatespace/activity/SecurityQuestion.java
++++ b/src/com/transage/privatespace/activity/SecurityQuestion.java
+@@ -7,8 +7,6 @@ import android.os.Bundle;
+ import android.support.annotation.Nullable;
+ import android.text.TextUtils;
+ import android.view.View;
+-import android.view.Window;
+-import android.view.WindowManager;
+ import android.widget.AdapterView;
+ import android.widget.ArrayAdapter;
+ import android.widget.Button;
+@@ -34,9 +32,6 @@ public class SecurityQuestion extends BaseActivity implements View.OnClickListen
+     @Override
+     protected void onCreate(@Nullable Bundle savedInstanceState) {
+         super.onCreate(savedInstanceState);
+-        // getSupportActionBar().hide();// 隐藏掉ActionBar
+-        requestWindowFeature(Window.FEATURE_NO_TITLE);//隐藏TitleBar
+-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);//透明状态栏
+         setContentView(R.layout.activity_security_question);
+ 
+         // 初始化spinner所需数据
+diff --git a/src/com/transage/privatespace/gallery/photozoom/Gallery.java b/src/com/transage/privatespace/gallery/photozoom/Gallery.java
+index 6d54d34..f0fe340 100755
+--- a/src/com/transage/privatespace/gallery/photozoom/Gallery.java
++++ b/src/com/transage/privatespace/gallery/photozoom/Gallery.java
+@@ -26,7 +26,7 @@ public class Gallery extends BaseActivity implements OnClickListener, OnPageChan
+     private Intent intent;
+     public static boolean isFromPrivateAlbum;
+     private int location;//当前的位置
+-    private static Button buttonAdd,buttonMin;
++    private static Button buttonAdd, buttonMin;
+     private ProgressBar progressBar;
+     private GalleryViewPagerAdapter adapter;
+     private ViewPagerFixed pager;
+@@ -34,6 +34,7 @@ public class Gallery extends BaseActivity implements OnClickListener, OnPageChan
+     @Override
+     public void onCreate(Bundle savedInstanceState) {
+         super.onCreate(savedInstanceState);
++        hideSystemUI();
+         setContentView(R.layout.activity_gallery);
+     }
+ 
+@@ -42,22 +43,47 @@ public class Gallery extends BaseActivity implements OnClickListener, OnPageChan
+         initViewAndCtrl(); //初始化view 和 ctrl
+     }
+ 
++    @Override
++    protected void onDestroy() {
++        super.onDestroy();
++        showSystemUI();
++    }
++
++    private void showSystemUI() {
++        getWindow().getDecorView().setSystemUiVisibility(
++                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
++                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
++                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
++    }
++    private void hideSystemUI() {
++        // Set the IMMERSIVE flag.
++        // Set the content to appear under the system bars so that the content
++        // doesn't resize when the system bars hide and show.
++        getWindow().getDecorView().setSystemUiVisibility(
++                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
++                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
++                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
++                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION // hide nav bar
++                        | View.SYSTEM_UI_FLAG_FULLSCREEN // hide status bar
++                        | View.SYSTEM_UI_FLAG_IMMERSIVE);
++    }
++
+     /**
+      * 初始化view和适配器ctrl
+      */
+     private void initViewAndCtrl() {
+         intent = getIntent();
+-        isFromPrivateAlbum = intent.getBooleanExtra("isFromPrivateAlbum",false);
++        isFromPrivateAlbum = intent.getBooleanExtra("isFromPrivateAlbum", false);
+         //加密、解密按钮
+         progressBar = (ProgressBar) findViewById(R.id.progressBar);
+         buttonAdd = (Button) findViewById(R.id.buttonAdd);
+         buttonMin = (Button) findViewById(R.id.buttonMin);
+         buttonAdd.setOnClickListener(this);
+         buttonMin.setOnClickListener(this);
+-        if (isFromPrivateAlbum){//私密相册
++        if (isFromPrivateAlbum) {//私密相册
+             buttonAdd.setVisibility(View.GONE);
+             buttonMin.setVisibility(View.VISIBLE);
+-        }else {
++        } else {
+             buttonAdd.setVisibility(View.VISIBLE);
+             buttonMin.setVisibility(View.GONE);
+         }
+@@ -116,9 +142,9 @@ public class Gallery extends BaseActivity implements OnClickListener, OnPageChan
+         @Override
+         protected Boolean doInBackground(Void... params) {
+             boolean result = false;
+-            if (isFromPrivateAlbum){//从私密相册来，肯定是要解密了
++            if (isFromPrivateAlbum) {//从私密相册来，肯定是要解密了
+                 result = decryptSinglePhoto();//解密单张图片
+-            }else {//从正常相册来，肯定是要加密了
++            } else {//从正常相册来，肯定是要加密了
+                 result = encryptSinglePhoto();//加密单张图片
+             }
+             return result;
+@@ -127,9 +153,9 @@ public class Gallery extends BaseActivity implements OnClickListener, OnPageChan
+         @Override
+         protected void onPostExecute(Boolean result) {
+             super.onPostExecute(result);
+-            if (adapter.getCount() == 0){
++            if (adapter.getCount() == 0) {
+                 finish();
+-            }else {
++            } else {
+                 adapter.notifyDataSetChanged();
+             }
+             String showMessage = result ? "成功" : "失败";
+@@ -148,7 +174,7 @@ public class Gallery extends BaseActivity implements OnClickListener, OnPageChan
+         String privImagePath = imagePath.replaceFirst("/storage/emulated/0", "/data/data/" + getPackageName() + "/files/storage/emulated/0");
+         boolean b = AESEncryptionUtil.encryptFile(imagePath, privImagePath);
+         if (b) {//成功
+-            if (Bimp.tempSelectBitmap.contains(Album.dataList.get(location))){
++            if (Bimp.tempSelectBitmap.contains(Album.dataList.get(location))) {
+                 Bimp.tempSelectBitmap.remove(Album.dataList.get(location));
+             }
+             Album.dataList.remove(location);
+@@ -168,14 +194,14 @@ public class Gallery extends BaseActivity implements OnClickListener, OnPageChan
+         String privImagePath = item.getImagePath(); //这个私密文件的绝对路径
+         String imagePath = privImagePath.replaceFirst("/data/data/" + getPackageName() + "/files/storage/emulated/0", "/storage/emulated/0");
+         boolean b = AESEncryptionUtil.decryptFile(privImagePath, imagePath);
+-        if (b){
+-            if (Bimp.tempSelectBitmap.contains(PrivateAlbum.dateList.get(location))){
++        if (b) {
++            if (Bimp.tempSelectBitmap.contains(PrivateAlbum.dateList.get(location))) {
+                 Bimp.tempSelectBitmap.remove(PrivateAlbum.dateList.get(location));
+             }
+             PrivateAlbum.dateList.remove(location);
+-            PrivateAlbum.delete(item,imagePath,getContentResolver());
++            PrivateAlbum.delete(item, imagePath, getContentResolver());
+             return true;
+-        }else {
++        } else {
+             return false;
+         }
+     }
+@@ -189,13 +215,13 @@ public class Gallery extends BaseActivity implements OnClickListener, OnPageChan
+         if (!isHide && !isFromPrivateAlbum) {
+             ObjectAnimator.ofFloat(buttonAdd, "translationY", 0, 300).setDuration(200).start();
+             isHide = true;
+-        } else if (isHide && !isFromPrivateAlbum){
++        } else if (isHide && !isFromPrivateAlbum) {
+             ObjectAnimator.ofFloat(buttonAdd, "translationY", 300, 0).setDuration(200).start();
+             isHide = false;
+-        } else if (!isHide && isFromPrivateAlbum){
++        } else if (!isHide && isFromPrivateAlbum) {
+             ObjectAnimator.ofFloat(buttonMin, "translationY", 0, 300).setDuration(200).start();
+             isHide = true;
+-        } else if (isHide && isFromPrivateAlbum){
++        } else if (isHide && isFromPrivateAlbum) {
+             ObjectAnimator.ofFloat(buttonMin, "translationY", 300, 0).setDuration(200).start();
+             isHide = false;
+         }

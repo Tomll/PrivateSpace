@@ -1,0 +1,476 @@
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index 8f80527..9ae63cd 100755
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -28,6 +28,7 @@
+                 android:protectionLevel="signature"/>
+ 
+     <application
++        android:name=".PrivateSpaceApplication"
+         android:allowBackup="true"
+         android:icon="@mipmap/logo"
+         android:label="@string/app_name"
+@@ -65,6 +66,8 @@
+         <!--wangmeng 20170802 end-->
+         <!-- Activity -->
+         <activity
++            android:name=".activity.BaseActivity"/>
++        <activity
+             android:name=".activity.Main"
+             android:screenOrientation="portrait"/>
+         <activity
+@@ -72,6 +75,7 @@
+             android:screenOrientation="portrait"/>
+         <activity
+             android:name=".activity.Login"
++            android:excludeFromRecents="true"
+             android:screenOrientation="portrait"
+             android:theme="@style/AppStartLoad"
+             android:windowSoftInputMode="stateHidden|stateAlwaysHidden">
+@@ -120,6 +124,8 @@
+             android:name=".activity.AddPeople"
+             android:screenOrientation="portrait"/>
+ 
++        <activity android:name=".activity.EmptyActivity"
++            android:theme="@style/ThemeTransparentBackground"/>
+         <provider
+             android:name=".provider.PrivateProvider"
+             android:exported="true"
+diff --git a/res/layout/activity_advance_setup.xml b/res/layout/activity_advance_setup.xml
+index 32032c8..5ca6933 100755
+--- a/res/layout/activity_advance_setup.xml
++++ b/res/layout/activity_advance_setup.xml
+@@ -240,7 +240,8 @@
+                 android:paddingTop="15dp"
+                 android:text="@string/change_private_fingerprint"
+                 android:textColor="@color/white"
+-                android:textSize="16sp"/>
++                android:textSize="16sp"
++                android:visibility="gone"/>
+ 
+             <TextView
+                 android:id="@+id/tv5"
+diff --git a/res/values/styles.xml b/res/values/styles.xml
+index 5488659..15c825c 100755
+--- a/res/values/styles.xml
++++ b/res/values/styles.xml
+@@ -29,4 +29,9 @@
+         <item name="windowNoTitle">true</item>
+         <item name="android:windowFullscreen">true</item>
+     </style>
++    <!--add by dongrp : ThemeTransparentBackground -->
++    <style name="ThemeTransparentBackground" parent="AppBaseTheme">
++        <item name="android:windowIsTranslucent">true</item>
++        <item name="android:windowNoTitle">true</item>
++    </style>
+ </resources>
+\ No newline at end of file
+diff --git a/src/com/transage/privatespace/PrivateSpaceApplication.java b/src/com/transage/privatespace/PrivateSpaceApplication.java
+new file mode 100755
+index 0000000..4e425c5
+--- /dev/null
++++ b/src/com/transage/privatespace/PrivateSpaceApplication.java
+@@ -0,0 +1,42 @@
++package com.transage.privatespace;
++
++import android.app.ActivityManager;
++import android.app.Application;
++import android.content.ComponentName;
++import android.content.Context;
++import android.content.Intent;
++import android.util.Log;
++
++import com.transage.privatespace.activity.EmptyActivity;
++
++import java.util.List;
++
++/**
++ * Created by ruipan.dong on 2017/8/21.
++ */
++
++public class PrivateSpaceApplication extends Application {
++
++    /**
++     * 当应用处于后台时，退出应用
++     */
++    public boolean exitAppOnPause() {
++        ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
++        List<ActivityManager.RunningTaskInfo> tasks = am.getRunningTasks(1);
++        if (!tasks.isEmpty()) {
++            ComponentName topActivity = tasks.get(0).topActivity;
++            Log.d("PrivateSpaceApplication", topActivity.getPackageName());
++            if (!topActivity.getPackageName().equals(getPackageName())) {
++                Log.d("PrivateSpaceApplication", "go to background");
++                Intent intent = new Intent(this,EmptyActivity.class);
++                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
++                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
++                startActivity(intent);
++                return true;
++            }
++        }
++        return false;
++    }
++
++
++}
+diff --git a/src/com/transage/privatespace/activity/AddApp.java b/src/com/transage/privatespace/activity/AddApp.java
+index 5c4349c..bfa3dbb 100755
+--- a/src/com/transage/privatespace/activity/AddApp.java
++++ b/src/com/transage/privatespace/activity/AddApp.java
+@@ -1,7 +1,6 @@
+ package com.transage.privatespace.activity;
+ 
+ import android.annotation.SuppressLint;
+-import android.app.Activity;
+ import android.content.Intent;
+ import android.content.pm.ActivityInfo;
+ import android.content.pm.PackageManager;
+@@ -31,7 +30,7 @@ import java.util.Map;
+  * Created by dongrp on 2016/8/18. 添加APP界面
+  */
+ @SuppressLint("NewApi")
+-public class AddApp extends Activity implements View.OnClickListener, AdapterView.OnItemClickListener {
++public class AddApp extends BaseActivity implements View.OnClickListener, AdapterView.OnItemClickListener {
+     private ArrayList<AppInfo> appInfoList = new ArrayList<AppInfo>();// 所有app的list
+     private ListView appListView;
+     private AddAppListViewAdapter appListViewAdapter;
+diff --git a/src/com/transage/privatespace/activity/AddPeople.java b/src/com/transage/privatespace/activity/AddPeople.java
+index 2a3eda4..ea2cdc0 100755
+--- a/src/com/transage/privatespace/activity/AddPeople.java
++++ b/src/com/transage/privatespace/activity/AddPeople.java
+@@ -36,7 +36,7 @@ import java.util.Map;
+ /**
+  * Created by dongrp on 2016/9/2. 添加联系人界面
+  */
+-public class AddPeople extends Activity implements AdapterView.OnItemClickListener, View.OnClickListener {
++public class AddPeople extends BaseActivity implements AdapterView.OnItemClickListener, View.OnClickListener {
+     public static final String TAG = "AddPeople";
+ 
+     public static final String SELECTED_PEOPLE = "selected_people";
+diff --git a/src/com/transage/privatespace/activity/AdvancedSetup.java b/src/com/transage/privatespace/activity/AdvancedSetup.java
+index 28c0ff9..4cf5d36 100755
+--- a/src/com/transage/privatespace/activity/AdvancedSetup.java
++++ b/src/com/transage/privatespace/activity/AdvancedSetup.java
+@@ -1,6 +1,5 @@
+ package com.transage.privatespace.activity;
+ 
+-import android.app.Activity;
+ import android.content.Intent;
+ import android.content.SharedPreferences;
+ import android.os.Bundle;
+@@ -20,7 +19,7 @@ import static com.transage.privatespace.activity.Login.ChangePrivateMarkFromAdva
+ /**
+  * Created by dongrp on 2016/8/15. 高级设置界面
+  */
+-public class AdvancedSetup extends Activity implements View.OnClickListener, CompoundButton.OnCheckedChangeListener {
++public class AdvancedSetup extends BaseActivity implements View.OnClickListener, CompoundButton.OnCheckedChangeListener {
+ 
+     private SharedPreferences mVcfSP;
+ 
+diff --git a/src/com/transage/privatespace/activity/BaseActivity.java b/src/com/transage/privatespace/activity/BaseActivity.java
+new file mode 100755
+index 0000000..a0a41e0
+--- /dev/null
++++ b/src/com/transage/privatespace/activity/BaseActivity.java
+@@ -0,0 +1,19 @@
++package com.transage.privatespace.activity;
++
++import android.app.Activity;
++
++import com.transage.privatespace.PrivateSpaceApplication;
++
++/**
++ * Created by ruipan.dong on 2017/8/18.
++ */
++
++public class BaseActivity extends Activity {
++
++    @Override
++    protected void onPause() {
++        super.onPause();
++        ((PrivateSpaceApplication) getApplication()).exitAppOnPause();//退出应用
++    }
++
++}
+diff --git a/src/com/transage/privatespace/activity/EmptyActivity.java b/src/com/transage/privatespace/activity/EmptyActivity.java
+new file mode 100755
+index 0000000..283be79
+--- /dev/null
++++ b/src/com/transage/privatespace/activity/EmptyActivity.java
+@@ -0,0 +1,18 @@
++package com.transage.privatespace.activity;
++
++import android.app.Activity;
++import android.os.Bundle;
++import android.support.annotation.Nullable;
++
++/**
++ * Created by ruipan.dong on 2017/8/21.
++ */
++
++public class EmptyActivity extends Activity {
++
++    @Override
++    protected void onCreate(@Nullable Bundle savedInstanceState) {
++        super.onCreate(savedInstanceState);
++        finish();
++    }
++}
+diff --git a/src/com/transage/privatespace/activity/Login.java b/src/com/transage/privatespace/activity/Login.java
+index 4fbbf31..33630d2 100755
+--- a/src/com/transage/privatespace/activity/Login.java
++++ b/src/com/transage/privatespace/activity/Login.java
+@@ -47,7 +47,7 @@ import java.security.NoSuchAlgorithmException;
+  * Created by dongrp on 2016/8/16. 登录界面
+  */
+ @SuppressLint("NewApi")
+-public class Login extends Activity implements View.OnClickListener, CompoundButton.OnCheckedChangeListener,EditText.OnEditorActionListener {
++public class Login extends BaseActivity implements View.OnClickListener, CompoundButton.OnCheckedChangeListener,EditText.OnEditorActionListener {
+     private static String TAG = "Login_1";
+     private TextView textView1, textView2, textView3;
+     private FrameLayout frameLayout2;
+@@ -88,9 +88,11 @@ public class Login extends Activity implements View.OnClickListener, CompoundBut
+     protected void onResume() {
+         super.onResume();
+         //注册指纹监听
+-        if(!isFirstRun && sp.getBoolean("enterByPrivateFingerprint",false) && FingerprintManagerCompat.from(this).hasEnrolledFingerprints()){
++        if (!isFirstRun && sp.getBoolean("enterByPrivateFingerprint", false)
++                && FingerprintManagerCompat.from(this).hasEnrolledFingerprints()
++                && !resetPrivateMarkFromAdvancedSetup && !resetPrivateMarkFromSecurityQuestion) {
+             retryFingerprint();
+-            if (null != dialogFingerPrint && !dialogFingerPrint.isShowing()){
++            if (null != dialogFingerPrint && !dialogFingerPrint.isShowing()) {
+                 dialogFingerPrint.show();
+             }
+             btFingerprint.setVisibility(View.VISIBLE);
+diff --git a/src/com/transage/privatespace/activity/Main.java b/src/com/transage/privatespace/activity/Main.java
+index 9a31161..57541cb 100755
+--- a/src/com/transage/privatespace/activity/Main.java
++++ b/src/com/transage/privatespace/activity/Main.java
+@@ -1,7 +1,6 @@
+ package com.transage.privatespace.activity;
+ 
+ import android.annotation.TargetApi;
+-import android.app.Activity;
+ import android.content.Intent;
+ import android.content.pm.PackageManager;
+ import android.graphics.Rect;
+@@ -13,6 +12,7 @@ import android.support.v7.widget.RecyclerView;
+ import android.view.View;
+ import android.view.Window;
+ import android.view.WindowManager;
++
+ import com.transage.privatespace.R;
+ import com.transage.privatespace.adapter.AppRecyclerAdapter;
+ import com.transage.privatespace.bean.AppInfo;
+@@ -24,7 +24,7 @@ import java.util.ArrayList;
+ /**
+  * Created by dongrp on 2016/8/13. 主界面
+  */
+-public class Main extends Activity implements View.OnClickListener, AppRecyclerAdapter.RecycleView_OnItemClickListener,
++public class Main extends BaseActivity implements View.OnClickListener, AppRecyclerAdapter.RecycleView_OnItemClickListener,
+         AppRecyclerAdapter.RecycleView_OnItemLongClickListener {
+     private ArrayList<AppInfo> appList = new ArrayList<AppInfo>();// 数据
+     private RecyclerView recyclerView;// 控件
+diff --git a/src/com/transage/privatespace/activity/PrivateContacts.java b/src/com/transage/privatespace/activity/PrivateContacts.java
+index 0398db5..b5a9ea8 100755
+--- a/src/com/transage/privatespace/activity/PrivateContacts.java
++++ b/src/com/transage/privatespace/activity/PrivateContacts.java
+@@ -5,7 +5,7 @@ import android.content.Intent;
+ import android.database.ContentObserver;
+ import android.net.Uri;
+ import android.os.Bundle;
+-import android.os.Handler;
++import android.provider.Telephony;
+ import android.support.annotation.Nullable;
+ import android.support.v4.app.Fragment;
+ import android.support.v4.app.FragmentActivity;
+@@ -19,6 +19,8 @@ import android.view.Window;
+ import android.view.WindowManager;
+ import android.widget.TextView;
+ 
++import com.android.internal.telephony.SmsApplication;
++import com.transage.privatespace.PrivateSpaceApplication;
+ import com.transage.privatespace.R;
+ import com.transage.privatespace.bean.People;
+ import com.transage.privatespace.fragment.BaseFragment;
+@@ -28,8 +30,7 @@ import com.transage.privatespace.fragment.FG_PrivateSms;
+ import com.transage.privatespace.loader.OnLoadListener;
+ import com.transage.privatespace.loader.PrivateSpaceLoader;
+ import com.transage.privatespace.provider.PrivateObserver;
+-import android.provider.Telephony;
+-import com.android.internal.telephony.SmsApplication;
++
+ import java.util.ArrayList;
+ import java.util.List;
+ 
+@@ -82,6 +83,7 @@ public class PrivateContacts extends FragmentActivity implements View.OnClickLis
+         Log.e("wangmeng ","######mDefaultSmsApp######" +mDefaultSmsApp);
+         setRestoreDefaultSms(PrivateContacts.this);//恢复默认短信
+         super.onPause();
++        ((PrivateSpaceApplication) getApplication()).exitAppOnPause();//退出应用
+     }
+ 
+     @Override
+diff --git a/src/com/transage/privatespace/activity/SecurityQuestion.java b/src/com/transage/privatespace/activity/SecurityQuestion.java
+index e6edce7..4970400 100755
+--- a/src/com/transage/privatespace/activity/SecurityQuestion.java
++++ b/src/com/transage/privatespace/activity/SecurityQuestion.java
+@@ -1,6 +1,5 @@
+ package com.transage.privatespace.activity;
+ 
+-import android.app.Activity;
+ import android.app.AlertDialog;
+ import android.content.DialogInterface;
+ import android.content.Intent;
+@@ -24,7 +23,7 @@ import java.util.ArrayList;
+ /**
+  * Created by dongrp on 2016/8/22. 密保问题界面
+  */
+-public class SecurityQuestion extends Activity implements View.OnClickListener, AdapterView.OnItemSelectedListener {
++public class SecurityQuestion extends BaseActivity implements View.OnClickListener, AdapterView.OnItemSelectedListener {
+     private Spinner spinner;
+     private EditText editText;
+     private Button button;
+diff --git a/src/com/transage/privatespace/gallery/activity/GalleryMainActivity.java b/src/com/transage/privatespace/gallery/activity/GalleryMainActivity.java
+index 9077966..0c22419 100755
+--- a/src/com/transage/privatespace/gallery/activity/GalleryMainActivity.java
++++ b/src/com/transage/privatespace/gallery/activity/GalleryMainActivity.java
+@@ -6,21 +6,18 @@ import android.content.pm.PackageManager;
+ import android.os.Bundle;
+ import android.os.Environment;
+ import android.support.v4.app.ActivityCompat;
+-import android.support.v7.app.AppCompatActivity;
+ import android.view.View;
+-import android.widget.Button;
+-import android.widget.EditText;
+ 
+ import com.transage.privatespace.R;
++import com.transage.privatespace.activity.BaseActivity;
+ import com.transage.privatespace.gallery.photozoom.Folders;
+-import com.transage.privatespace.gallery.util.AESEncryptionUtil;
+ 
+ /**
+  * Created by dongrp on 2017/7/1.
+  * 私密图库的主界面
+  */
+ 
+-public class GalleryMainActivity extends AppCompatActivity implements View.OnClickListener {
++public class GalleryMainActivity extends BaseActivity implements View.OnClickListener {
+ 
+     //private final String SDcardPath = "storage/emulated/0/";
+     private final String SDcardPath = Environment.getExternalStorageDirectory().toString() + "/";
+diff --git a/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java b/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
+index e736dd4..2d3f705 100755
+--- a/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
++++ b/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
+@@ -8,7 +8,6 @@ import android.os.AsyncTask;
+ import android.os.Bundle;
+ import android.provider.MediaStore;
+ import android.support.annotation.Nullable;
+-import android.support.v7.app.AppCompatActivity;
+ import android.util.Log;
+ import android.view.View;
+ import android.widget.AbsListView;
+@@ -19,6 +18,7 @@ import android.widget.Toast;
+ 
+ import com.bumptech.glide.Glide;
+ import com.transage.privatespace.R;
++import com.transage.privatespace.activity.BaseActivity;
+ import com.transage.privatespace.database.DatabaseAdapter;
+ import com.transage.privatespace.gallery.adapter.PrivateAlbumGridViewAdapter;
+ import com.transage.privatespace.gallery.photozoom.Bimp;
+@@ -39,7 +39,7 @@ import java.util.concurrent.Future;
+  * 私密相册界面
+  */
+ 
+-public class PrivateAlbum extends AppCompatActivity implements View.OnClickListener, AbsListView.OnScrollListener {
++public class PrivateAlbum extends BaseActivity implements View.OnClickListener, AbsListView.OnScrollListener {
+     private GridView gridView;
+     public static ArrayList<ImageItem> dateList;
+     private PrivateAlbumGridViewAdapter privateAlbumGridViewAdapter;
+diff --git a/src/com/transage/privatespace/gallery/photozoom/Album.java b/src/com/transage/privatespace/gallery/photozoom/Album.java
+index 0d0b972..27173f5 100755
+--- a/src/com/transage/privatespace/gallery/photozoom/Album.java
++++ b/src/com/transage/privatespace/gallery/photozoom/Album.java
+@@ -7,7 +7,6 @@ import android.net.Uri;
+ import android.os.AsyncTask;
+ import android.os.Bundle;
+ import android.provider.MediaStore;
+-import android.support.v7.app.AppCompatActivity;
+ import android.util.Log;
+ import android.view.View;
+ import android.view.View.OnClickListener;
+@@ -16,6 +15,7 @@ import android.widget.GridView;
+ import android.widget.Toast;
+ 
+ import com.transage.privatespace.R;
++import com.transage.privatespace.activity.BaseActivity;
+ import com.transage.privatespace.database.DatabaseAdapter;
+ import com.transage.privatespace.database.PsDatabaseHelper;
+ import com.transage.privatespace.gallery.util.AESEncryptionUtil;
+@@ -31,7 +31,7 @@ import java.util.concurrent.Executors;
+  *
+  * @author Tom
+  */
+-public class Album extends AppCompatActivity implements OnClickListener {
++public class Album extends BaseActivity implements OnClickListener {
+     private GridView gridView;
+     private AlbumGridViewAdapter gridImageAdapter;
+     //这个静态 成员变量 在FolderGirdViewAdapter的item点击事件中 就已经赋值了
+diff --git a/src/com/transage/privatespace/gallery/photozoom/Folders.java b/src/com/transage/privatespace/gallery/photozoom/Folders.java
+index 60b9d3e..bcc4af1 100755
+--- a/src/com/transage/privatespace/gallery/photozoom/Folders.java
++++ b/src/com/transage/privatespace/gallery/photozoom/Folders.java
+@@ -2,12 +2,12 @@ package com.transage.privatespace.gallery.photozoom;
+ 
+ 
+ import android.os.Bundle;
+-import android.support.v7.app.AppCompatActivity;
+ import android.view.View;
+ import android.view.View.OnClickListener;
+ import android.widget.GridView;
+ 
+ import com.transage.privatespace.R;
++import com.transage.privatespace.activity.BaseActivity;
+ 
+ import java.util.List;
+ 
+@@ -16,7 +16,7 @@ import java.util.List;
+  * 这个类主要是用来:将所有包含图片的文件夹  以GridView的形式展示出来
+  * @author Tom
+  */
+-public class Folders extends AppCompatActivity {
++public class Folders extends BaseActivity {
+ 
+ 	private AlbumHelper helper;
+ 	public static List<ImageBucket> contentList;
+diff --git a/src/com/transage/privatespace/gallery/photozoom/Gallery.java b/src/com/transage/privatespace/gallery/photozoom/Gallery.java
+index 3b4d207..6d54d34 100755
+--- a/src/com/transage/privatespace/gallery/photozoom/Gallery.java
++++ b/src/com/transage/privatespace/gallery/photozoom/Gallery.java
+@@ -5,7 +5,6 @@ import android.content.Intent;
+ import android.os.AsyncTask;
+ import android.os.Bundle;
+ import android.support.v4.view.ViewPager.OnPageChangeListener;
+-import android.support.v7.app.AppCompatActivity;
+ import android.view.View;
+ import android.view.View.OnClickListener;
+ import android.widget.Button;
+@@ -13,6 +12,7 @@ import android.widget.ProgressBar;
+ import android.widget.Toast;
+ 
+ import com.transage.privatespace.R;
++import com.transage.privatespace.activity.BaseActivity;
+ import com.transage.privatespace.gallery.activity.PrivateAlbum;
+ import com.transage.privatespace.gallery.util.AESEncryptionUtil;
+ 
+@@ -22,7 +22,7 @@ import com.transage.privatespace.gallery.util.AESEncryptionUtil;
+  *
+  * @author Tom
+  */
+-public class Gallery extends AppCompatActivity implements OnClickListener, OnPageChangeListener {
++public class Gallery extends BaseActivity implements OnClickListener, OnPageChangeListener {
+     private Intent intent;
+     public static boolean isFromPrivateAlbum;
+     private int location;//当前的位置

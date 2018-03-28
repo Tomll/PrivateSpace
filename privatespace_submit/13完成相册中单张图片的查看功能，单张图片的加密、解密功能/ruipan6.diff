@@ -1,0 +1,1059 @@
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index e5c23aa..27940a0 100755
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -54,6 +54,7 @@
+             android:screenOrientation="portrait"/>
+         <activity
+             android:name=".gallery.photozoom.Gallery"
++            android:theme="@style/ThemeNoStatusBar"
+             android:screenOrientation="portrait"/>
+         <activity
+             android:name=".gallery.activity.PrivateAlbum"
+diff --git a/res/layout/activity_gallery.xml b/res/layout/activity_gallery.xml
+index 63876f4..baf8884 100755
+--- a/res/layout/activity_gallery.xml
++++ b/res/layout/activity_gallery.xml
+@@ -1,38 +1,42 @@
+ <?xml version="1.0" encoding="utf-8"?>
+-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+-    android:layout_width="match_parent"
+-    android:layout_height="match_parent"
+-    android:background="@color/backcolor"
+-    android:orientation="vertical" >
++<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
++             android:layout_width="match_parent"
++             android:layout_height="match_parent"
++             android:background="@color/lightblack">
+ 
+-    <RelativeLayout
++    <com.transage.privatespace.gallery.photozoom.ViewPagerFixed
++        android:id="@+id/gallery01"
+         android:layout_width="match_parent"
+-        android:layout_height="48dp"
+-        android:background="@color/lightblack" >
+-
+-        <ImageButton
+-            android:id="@+id/button_back"
+-            android:layout_width="44dp"
+-            android:layout_height="match_parent"
+-            android:background="@drawable/selector0"
+-            android:onClick="onClick"
+-            android:src="@mipmap/button_back" />
++        android:layout_height="match_parent"
++        android:unselectedAlpha="1"/>
+ 
+-        <ImageButton
+-            android:id="@+id/button_del"
+-            android:layout_width="44dp"
+-            android:layout_height="match_parent"
+-            android:layout_alignParentRight="true"
+-            android:layout_alignParentTop="true"
+-            android:background="@drawable/selector0"
+-            android:onClick="onClick"
+-            android:src="@drawable/del_unfocused" />
+-    </RelativeLayout>
++    <Button
++        android:id="@+id/buttonAdd"
++        android:layout_width="match_parent"
++        android:layout_height="50dp"
++        android:layout_gravity="bottom"
++        android:layout_marginBottom="10dp"
++        android:layout_marginEnd="70dp"
++        android:layout_marginStart="70dp"
++        android:text="@string/encrypt"
++        android:textSize="16sp"/>
+ 
+-    <transage.com.aes_encrypt.photozoom.ViewPagerFixed
+-        android:id="@+id/gallery01"
++    <Button
++        android:id="@+id/buttonMin"
+         android:layout_width="match_parent"
+-        android:layout_height="match_parent"
+-        android:unselectedAlpha="1" />
++        android:layout_height="50dp"
++        android:layout_gravity="bottom"
++        android:layout_marginBottom="10dp"
++        android:layout_marginEnd="70dp"
++        android:layout_marginStart="70dp"
++        android:text="@string/decrypt"
++        android:textSize="16sp"
++        android:visibility="gone"/>
+ 
+-</LinearLayout>
+\ No newline at end of file
++    <ProgressBar
++        android:id="@+id/progressBar"
++        android:layout_width="70dp"
++        android:layout_height="70dp"
++        android:layout_gravity="center"
++        android:visibility="gone"/>
++</FrameLayout>
+\ No newline at end of file
+diff --git a/res/layout/item_album_gridview.xml b/res/layout/item_album_gridview.xml
+index 8de3bef..6dac58b 100755
+--- a/res/layout/item_album_gridview.xml
++++ b/res/layout/item_album_gridview.xml
+@@ -1,7 +1,7 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+-    android:layout_width="match_parent"
+-    android:layout_height="300px" >
++                android:layout_width="match_parent"
++                android:layout_height="300px">
+ 
+     <ImageView
+         android:id="@+id/image_view"
+@@ -10,28 +10,19 @@
+         android:layout_gravity="center"
+         android:adjustViewBounds="true"
+         android:background="@drawable/plugin_camera_no_pictures"
+-        android:scaleType="centerCrop" />
++        android:scaleType="centerCrop"/>
+ 
+     <RelativeLayout
+         android:id="@+id/toggle"
+         android:layout_width="match_parent"
+-        android:layout_height="match_parent" >
+-
+-        <ToggleButton
+-            android:id="@+id/toggle_button"
+-            android:layout_width="match_parent"
+-            android:layout_height="match_parent"
+-            android:background="@drawable/plugin_camera_pic_choose_selector"
+-            android:textOff="@null"
+-            android:textOn="@null"
+-            android:checked="false" />
++        android:layout_height="match_parent">
+ 
+         <CheckBox
+             android:id="@+id/choosedbt"
+             android:layout_width="wrap_content"
+             android:layout_height="wrap_content"
+             android:layout_alignParentRight="true"
+-            android:layout_alignParentTop="true" />
++            android:layout_alignParentTop="true"/>
+     </RelativeLayout>
+ 
+ </RelativeLayout>
+\ No newline at end of file
+diff --git a/res/layout/item_private_album_gridview.xml b/res/layout/item_private_album_gridview.xml
+index 8de3bef..6dac58b 100755
+--- a/res/layout/item_private_album_gridview.xml
++++ b/res/layout/item_private_album_gridview.xml
+@@ -1,7 +1,7 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+-    android:layout_width="match_parent"
+-    android:layout_height="300px" >
++                android:layout_width="match_parent"
++                android:layout_height="300px">
+ 
+     <ImageView
+         android:id="@+id/image_view"
+@@ -10,28 +10,19 @@
+         android:layout_gravity="center"
+         android:adjustViewBounds="true"
+         android:background="@drawable/plugin_camera_no_pictures"
+-        android:scaleType="centerCrop" />
++        android:scaleType="centerCrop"/>
+ 
+     <RelativeLayout
+         android:id="@+id/toggle"
+         android:layout_width="match_parent"
+-        android:layout_height="match_parent" >
+-
+-        <ToggleButton
+-            android:id="@+id/toggle_button"
+-            android:layout_width="match_parent"
+-            android:layout_height="match_parent"
+-            android:background="@drawable/plugin_camera_pic_choose_selector"
+-            android:textOff="@null"
+-            android:textOn="@null"
+-            android:checked="false" />
++        android:layout_height="match_parent">
+ 
+         <CheckBox
+             android:id="@+id/choosedbt"
+             android:layout_width="wrap_content"
+             android:layout_height="wrap_content"
+             android:layout_alignParentRight="true"
+-            android:layout_alignParentTop="true" />
++            android:layout_alignParentTop="true"/>
+     </RelativeLayout>
+ 
+ </RelativeLayout>
+\ No newline at end of file
+diff --git a/res/values/styles.xml b/res/values/styles.xml
+index df7809b..5488659 100755
+--- a/res/values/styles.xml
++++ b/res/values/styles.xml
+@@ -20,9 +20,13 @@
+         <item name="colorAccent">@color/colorAccent</item>
+     </style>
+ 
+-    <!-- theme for app start black or white screen problem -->
++    <!--add by dongrp : theme for app start black or white screen problem -->
+     <style name="AppStartLoad" parent="AppBaseTheme">
+         <item name="android:windowBackground">@color/lightblack</item>
+     </style>
+-
++    <!-- add by dongrp -->
++    <style name="ThemeNoStatusBar" parent="AppBaseTheme">
++        <item name="windowNoTitle">true</item>
++        <item name="android:windowFullscreen">true</item>
++    </style>
+ </resources>
+\ No newline at end of file
+diff --git a/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java b/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
+index 09bce13..6aa4645 100755
+--- a/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
++++ b/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
+@@ -3,8 +3,6 @@ package com.transage.privatespace.gallery.activity;
+ import android.app.ProgressDialog;
+ import android.content.ContentResolver;
+ import android.content.ContentValues;
+-import android.content.res.Configuration;
+-import android.media.Image;
+ import android.net.Uri;
+ import android.os.AsyncTask;
+ import android.os.Bundle;
+@@ -22,7 +20,6 @@ import android.widget.Toast;
+ import com.bumptech.glide.Glide;
+ import com.transage.privatespace.R;
+ import com.transage.privatespace.database.DatabaseAdapter;
+-import com.transage.privatespace.database.PsDatabaseHelper;
+ import com.transage.privatespace.gallery.adapter.PrivateAlbumGridViewAdapter;
+ import com.transage.privatespace.gallery.photozoom.ImageItem;
+ import com.transage.privatespace.gallery.util.AESEncryptionUtil;
+@@ -43,11 +40,11 @@ import java.util.concurrent.Future;
+ 
+ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListener,AbsListView.OnScrollListener {
+     private GridView gridView;
+-    private ArrayList<ImageItem> dateList;
++    public static ArrayList<ImageItem> dateList;
+     private PrivateAlbumGridViewAdapter privateAlbumGridViewAdapter;
+     private ExecutorService executorService; //线程池
+     private int mFirstVisibleItem, mVisibleItemCount, mTotalItemCount;
+-    private DatabaseAdapter databaseAdapter;
++    private static DatabaseAdapter databaseAdapter;
+     private ProgressDialog progressDialog;
+ 
+     @Override
+@@ -199,9 +196,6 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+     }
+ 
+ 
+-
+-
+-
+     /**
+      * 批量解密异步任务
+      */
+@@ -234,7 +228,7 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+         protected void onPostExecute(Boolean result) {
+             super.onPostExecute(result);
+             privateAlbumGridViewAdapter.refreshDataAfterDecrypt();
+-            String showMessage = result ? "解密完成" : "部分文件解密失败！";
++            String showMessage = result ? "解密成功" : "部分文件解密失败！";
+             Toast.makeText(PrivateAlbum.this, showMessage, Toast.LENGTH_SHORT).show();
+             progressDialog.dismiss();
+         }
+@@ -257,7 +251,7 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+                 public void run() {
+                     boolean b = AESEncryptionUtil.decryptFile(privImagePath, imagePath);
+                     if (b) {//解密成功，删除私密文件
+-                        delete(item,imagePath);
++                        delete(item,imagePath,getContentResolver());
+                     } else {//解密失败，设置结果为false
+                         result = b;
+                     }
+@@ -273,7 +267,7 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+     /**
+      * 密文件删除、私密数据库记录删除、还原文件条目到系统数据库
+      */
+-    public void delete(ImageItem item,String imagePath) {
++    public static void delete(ImageItem item,String imagePath,ContentResolver contentResolver) {
+         //删除密文件
+         File file = new File(item.getImagePath());
+         file.delete();
+@@ -282,7 +276,6 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+ 
+         //还原文件条目到系统数据库中
+         Uri baseUri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+-        ContentResolver contentResolver = getContentResolver();
+         ContentValues contentValues = new ContentValues();
+         contentValues.put(MediaStore.Images.Media._ID,item.getImageId());
+         contentValues.put(MediaStore.Images.Media.DATA,imagePath);
+diff --git a/src/com/transage/privatespace/gallery/adapter/PrivateAlbumGridViewAdapter.java b/src/com/transage/privatespace/gallery/adapter/PrivateAlbumGridViewAdapter.java
+index 14f0e9d..c02891c 100755
+--- a/src/com/transage/privatespace/gallery/adapter/PrivateAlbumGridViewAdapter.java
++++ b/src/com/transage/privatespace/gallery/adapter/PrivateAlbumGridViewAdapter.java
+@@ -1,20 +1,17 @@
+ package com.transage.privatespace.gallery.adapter;
+ 
+ import android.content.Context;
+-import android.graphics.Bitmap;
++import android.content.Intent;
+ import android.view.LayoutInflater;
+ import android.view.View;
+ import android.view.ViewGroup;
+ import android.widget.BaseAdapter;
+ import android.widget.CheckBox;
+ import android.widget.ImageView;
+-import android.widget.ToggleButton;
+ 
+-import com.bumptech.glide.Glide;
+ import com.transage.privatespace.R;
+-import com.transage.privatespace.gallery.photozoom.Bimp;
++import com.transage.privatespace.gallery.photozoom.Gallery;
+ import com.transage.privatespace.gallery.photozoom.ImageItem;
+-import com.transage.privatespace.gallery.util.AESEncryptionUtil;
+ 
+ import java.util.ArrayList;
+ 
+@@ -77,8 +74,6 @@ public class PrivateAlbumGridViewAdapter extends BaseAdapter {
+     }
+ 
+ 
+-
+-
+     public int getCount() {
+         return listPrivFliePath.size();
+     }
+@@ -91,7 +86,6 @@ public class PrivateAlbumGridViewAdapter extends BaseAdapter {
+         return position;
+     }
+ 
+-
+ //    BitmapCache.ImageCallback callback = new BitmapCache.ImageCallback() {
+ //        @Override
+ //        public void imageLoad(ImageView imageView, Bitmap bitmap, Object... params) {
+@@ -108,29 +102,18 @@ public class PrivateAlbumGridViewAdapter extends BaseAdapter {
+ //        }
+ //    };
+ 
+-
+     public View getView(final int position, View convertView, ViewGroup parent) {
+         final PrivateAlbumGridViewAdapter.ViewHolder viewHolder;
+         if (convertView == null) {
+             viewHolder = new PrivateAlbumGridViewAdapter.ViewHolder();
+             convertView = LayoutInflater.from(mContext).inflate(R.layout.item_private_album_gridview, parent, false);
+             viewHolder.imageView = (ImageView) convertView.findViewById(R.id.image_view);
+-            viewHolder.toggleButton = (ToggleButton) convertView.findViewById(R.id.toggle_button);
+-            viewHolder.choosetoggle = (CheckBox) convertView.findViewById(R.id.choosedbt);
++            viewHolder.checkBox = (CheckBox) convertView.findViewById(R.id.choosedbt);
+             convertView.setTag(viewHolder);
+-            //AutoLayout:对于ListView的item的适配，注意添加这一行，即可在item上使用px高度
+-	        //AutoUtils.autoSize(convertView);
+         } else {
+             viewHolder = (PrivateAlbumGridViewAdapter.ViewHolder) convertView.getTag();
+         }
+ 
+-        //decryptFileToInputStream 解密文件太耗时了，需要设计加速 解密文件优化方案
+-        //加载解密输入流 Bitmap bitmap = Bimp.handleBitmap(AESEncryptionUtil.decryptFileToInputStream(listPrivFliePath.get(position)));
+-        //viewHolder.imageView.setImageBitmap(bitmap);
+-        //加载解密字节数组 Glide.with(mContext).load(AESEncryptionUtil.decryptFileToByteArray(((ImageItem)listPrivFliePath.get(position)).getImagePath()))
+-        // .into(viewHolder.imageView);
+-
+-
+ /*        String path;
+         if (dataList != null && dataList.size() > position)
+             path = dataList.get(position).imagePath;
+@@ -144,28 +127,30 @@ public class PrivateAlbumGridViewAdapter extends BaseAdapter {
+             cache.displayBmp(viewHolder.imageView, item.thumbnailPath, item.imagePath,callback);
+         }*/
+ 
+-        viewHolder.toggleButton.setTag(position);
+-        viewHolder.choosetoggle.setTag(position);
+-        viewHolder.toggleButton.setOnClickListener(new View.OnClickListener() {
++        viewHolder.checkBox.setTag(position);
++        viewHolder.checkBox.setOnClickListener(new View.OnClickListener() {
+             @Override
+             public void onClick(View view) {
+-                if (viewHolder.toggleButton.isChecked()){
+-                    viewHolder.choosetoggle.setChecked(true);
++                if (viewHolder.checkBox.isChecked()){
+                     selectedDataList.add(listPrivFliePath.get(position));
+                 }else {
+-                    viewHolder.choosetoggle.setChecked(false);
+                     selectedDataList.remove(listPrivFliePath.get(position));
+                 }
+             }
+         });
+         //防止滑动的时候由于控件复用而导致数据错乱，所以控件的适配必须有数据源中的内容决定
+         if (selectedDataList.contains(listPrivFliePath.get(position))) {
+-            viewHolder.toggleButton.setChecked(true);
+-            viewHolder.choosetoggle.setChecked(true);
++            viewHolder.checkBox.setChecked(true);
+         } else {
+-            viewHolder.toggleButton.setChecked(false);
+-            viewHolder.choosetoggle.setChecked(false);
++            viewHolder.checkBox.setChecked(false);
+         }
++        //点击item进入Gallery进行单张查看
++        viewHolder.imageView.setOnClickListener(new View.OnClickListener() {
++            @Override
++            public void onClick(View v) {
++                mContext.startActivity(new Intent(mContext, Gallery.class).putExtra("position",position).putExtra("isFromPrivateAlbum",true));
++            }
++        });
+         return convertView;
+     }
+ 
+@@ -174,11 +159,8 @@ public class PrivateAlbumGridViewAdapter extends BaseAdapter {
+      */
+     public class ViewHolder {
+         public ImageView imageView;
+-        public ToggleButton toggleButton;
+-        public CheckBox choosetoggle;
++        public CheckBox checkBox;
+     }
+ 
+ 
+-
+-
+ }
+diff --git a/src/com/transage/privatespace/gallery/photozoom/Album.java b/src/com/transage/privatespace/gallery/photozoom/Album.java
+index fde4010..d971000 100755
+--- a/src/com/transage/privatespace/gallery/photozoom/Album.java
++++ b/src/com/transage/privatespace/gallery/photozoom/Album.java
+@@ -1,12 +1,8 @@
+ package com.transage.privatespace.gallery.photozoom;
+ 
+ import android.app.ProgressDialog;
+-import android.content.BroadcastReceiver;
+ import android.content.ContentResolver;
+ import android.content.ContentValues;
+-import android.content.Context;
+-import android.content.Intent;
+-import android.content.IntentFilter;
+ import android.net.Uri;
+ import android.os.AsyncTask;
+ import android.os.Bundle;
+@@ -40,9 +36,9 @@ public class Album extends AppCompatActivity implements OnClickListener {
+     private AlbumGridViewAdapter gridImageAdapter;
+     //这个静态 成员变量 在FolderGirdViewAdapter的item点击事件中 就已经赋值了
+     public static ArrayList<ImageItem> dataList = new ArrayList<ImageItem>();
+-    private EncryptionOrDecryptionTask mTask = null;
+-    private ExecutorService executorService; //线程池
+-    private DatabaseAdapter databaseAdapter;
++    private EncryptionTask mTask = null;
++    public static ExecutorService executorService; //线程池
++    private static DatabaseAdapter databaseAdapter;
+ 
+     @Override
+     protected void onCreate(Bundle savedInstanceState) {
+@@ -52,7 +48,7 @@ public class Album extends AppCompatActivity implements OnClickListener {
+         executorService = Executors.newFixedThreadPool(20);//创建一个缓存线程池
+         databaseAdapter = new DatabaseAdapter(Album.this);//数据库操作工具类
+ 
+-        init();
++//        init();
+     }
+ 
+     /**
+@@ -65,6 +61,12 @@ public class Album extends AppCompatActivity implements OnClickListener {
+         }
+     };*/
+ 
++    @Override
++    protected void onResume() {
++        super.onResume();
++        init();
++    }
++
+     /**
+      * view初始化
+      */
+@@ -111,7 +113,7 @@ public class Album extends AppCompatActivity implements OnClickListener {
+                 if (mTask != null) {
+                     mTask.cancel(true);
+                 }
+-                mTask = new EncryptionOrDecryptionTask(Bimp.tempSelectBitmap);
++                mTask = new EncryptionTask(Bimp.tempSelectBitmap);
+                 mTask.execute();
+                 break;
+             default:
+@@ -121,14 +123,14 @@ public class Album extends AppCompatActivity implements OnClickListener {
+     }
+ 
+     /**
+-     * 加密异步任务
++     * 批量加密异步任务
+      */
+     public ProgressDialog progressDialog;
+ 
+-    public class EncryptionOrDecryptionTask extends AsyncTask<Void, Void, Boolean> {
++    public class EncryptionTask extends AsyncTask<Void, Void, Boolean> {
+         private ArrayList<ImageItem> mImageArrayList;
+ 
+-        public EncryptionOrDecryptionTask(ArrayList<ImageItem> imageArrayList) {
++        public EncryptionTask(ArrayList<ImageItem> imageArrayList) {
+             this.mImageArrayList = imageArrayList;
+             progressDialog = new ProgressDialog(Album.this);
+             progressDialog.setCancelable(false);
+@@ -154,7 +156,7 @@ public class Album extends AppCompatActivity implements OnClickListener {
+         protected void onPostExecute(Boolean result) {
+             super.onPostExecute(result);
+             gridImageAdapter.refreshDataAfterEncrypt();
+-            String showMessage = result ? "加密完成" : "部分文件加密失败！";
++            String showMessage = result ? "加密成功" : "部分文件加密失败！";
+             Toast.makeText(Album.this, showMessage, Toast.LENGTH_SHORT).show();
+             progressDialog.dismiss();
+         }
+@@ -180,7 +182,7 @@ public class Album extends AppCompatActivity implements OnClickListener {
+                 public void run() {
+                     boolean b = AESEncryptionUtil.encryptFile(imagePath, privImagePath);
+                     if (b) {//加密成功，删除源文件
+-                        delete(item,privImagePath);
++                        delete(item,privImagePath,getContentResolver());
+                     } else { //加密失败，设置结果为false
+                         result = b;
+                     }
+@@ -197,13 +199,12 @@ public class Album extends AppCompatActivity implements OnClickListener {
+      * 明文件删除、明文件数据库条目删除、私密数据库插入
+      * @param item
+      */
+-    public void delete(ImageItem item,String privImagePath) {
++    public static void delete(ImageItem item, String privImagePath,ContentResolver contentResolver) {
+         //删除明文件
+         File file = new File(item.getImagePath());
+         file.delete();
+         //删除数据库中该条明文件记录
+         Uri baseUri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+-        ContentResolver contentResolver = getContentResolver();
+         contentResolver.delete(baseUri, "_id=?", new String[]{item.getImageId()});
+         //将加密后的文件条目插入私密数据库
+         Log.d("Album", item.toString());
+diff --git a/src/com/transage/privatespace/gallery/photozoom/AlbumGridViewAdapter.java b/src/com/transage/privatespace/gallery/photozoom/AlbumGridViewAdapter.java
+index 2e6ad46..5531e0b 100755
+--- a/src/com/transage/privatespace/gallery/photozoom/AlbumGridViewAdapter.java
++++ b/src/com/transage/privatespace/gallery/photozoom/AlbumGridViewAdapter.java
+@@ -1,6 +1,7 @@
+ package com.transage.privatespace.gallery.photozoom;
+ 
+ import android.content.Context;
++import android.content.Intent;
+ import android.graphics.Bitmap;
+ import android.util.Log;
+ import android.view.LayoutInflater;
+@@ -10,7 +11,6 @@ import android.view.ViewGroup;
+ import android.widget.BaseAdapter;
+ import android.widget.CheckBox;
+ import android.widget.ImageView;
+-import android.widget.ToggleButton;
+ 
+ import com.transage.privatespace.R;
+ 
+@@ -101,8 +101,7 @@ public class AlbumGridViewAdapter extends BaseAdapter {
+ 	 */
+ 	private class ViewHolder {
+ 		public ImageView imageView;
+-		public ToggleButton toggleButton;
+-		public CheckBox choosetoggle;
++		public CheckBox checkBox;
+ 	}
+ 
+ 	public View getView(final int position, View convertView, ViewGroup parent) {
+@@ -111,11 +110,8 @@ public class AlbumGridViewAdapter extends BaseAdapter {
+ 			viewHolder = new ViewHolder();
+ 			convertView = LayoutInflater.from(context).inflate(R.layout.item_album_gridview, parent, false);
+ 			viewHolder.imageView = (ImageView) convertView.findViewById(R.id.image_view);
+-			viewHolder.toggleButton = (ToggleButton) convertView.findViewById(R.id.toggle_button);
+-			viewHolder.choosetoggle = (CheckBox) convertView.findViewById(R.id.choosedbt);
++			viewHolder.checkBox = (CheckBox) convertView.findViewById(R.id.choosedbt);
+ 			convertView.setTag(viewHolder);
+-	        //AutoLayout:对于ListView的item的适配，注意添加这一行，即可在item上使用px高度
+-	        //AutoUtils.autoSize(convertView);
+ 		} else {
+ 			viewHolder = (ViewHolder) convertView.getTag();
+ 		}
+@@ -131,28 +127,29 @@ public class AlbumGridViewAdapter extends BaseAdapter {
+ 			viewHolder.imageView.setTag(item.imagePath);
+ 			cache.displayBmp(viewHolder.imageView, item.thumbnailPath, item.imagePath,callback);
+ 		}
+-		viewHolder.toggleButton.setTag(position);
+-		viewHolder.choosetoggle.setTag(position);
+-		viewHolder.toggleButton.setOnClickListener(new OnClickListener() {
++		viewHolder.checkBox.setTag(position);
++		viewHolder.checkBox.setOnClickListener(new OnClickListener() {
+ 			@Override
+ 			public void onClick(View view) {
+-				if (viewHolder.toggleButton.isChecked()){
+-					viewHolder.choosetoggle.setChecked(true);
++				if (viewHolder.checkBox.isChecked()){
+                     Bimp.tempSelectBitmap.add(dataList.get(position));
+ 				}else {
+-					viewHolder.choosetoggle.setChecked(false);
+                     Bimp.tempSelectBitmap.remove(dataList.get(position));
+ 				}
+ 			}
+ 		});
+ 		//防止滑动的时候由于控件复用而导致数据错乱，所以控件的适配必须有数据源中的内容决定
+ 		if (Bimp.tempSelectBitmap.contains(dataList.get(position))) {
+-			viewHolder.toggleButton.setChecked(true);
+-			viewHolder.choosetoggle.setChecked(true);
++			viewHolder.checkBox.setChecked(true);
+ 		} else {
+-			viewHolder.toggleButton.setChecked(false);
+-			viewHolder.choosetoggle.setChecked(false);
++			viewHolder.checkBox.setChecked(false);
+ 		}
++		//点击viewHolder.imageView 进入Gallery进行单张查看
++		viewHolder.imageView.setOnClickListener(new OnClickListener() {
++			public void onClick(View v) {
++				context.startActivity(new Intent(context,Gallery.class).putExtra("position",position).putExtra("isFromPrivateAlbum",false));
++			}
++		});
+ 		return convertView;
+ 	}
+ 
+diff --git a/src/com/transage/privatespace/gallery/photozoom/Gallery.java b/src/com/transage/privatespace/gallery/photozoom/Gallery.java
+index 578be2d..6a78770 100755
+--- a/src/com/transage/privatespace/gallery/photozoom/Gallery.java
++++ b/src/com/transage/privatespace/gallery/photozoom/Gallery.java
+@@ -1,125 +1,199 @@
+ package com.transage.privatespace.gallery.photozoom;
+ 
++import android.animation.ObjectAnimator;
+ import android.content.Intent;
+-import android.graphics.Bitmap;
++import android.os.AsyncTask;
+ import android.os.Bundle;
+ import android.support.v4.view.ViewPager.OnPageChangeListener;
+ import android.support.v7.app.AppCompatActivity;
+ import android.view.View;
+ import android.view.View.OnClickListener;
+-import android.view.ViewGroup.LayoutParams;
+-import android.widget.RelativeLayout;
++import android.widget.Button;
++import android.widget.ProgressBar;
++import android.widget.Toast;
+ 
+ import com.transage.privatespace.R;
+-
+-import java.util.ArrayList;
+-import java.util.List;
++import com.transage.privatespace.gallery.activity.PrivateAlbum;
++import com.transage.privatespace.gallery.util.AESEncryptionUtil;
+ 
+ 
+ /**
+  * 这个类是用于：对选定图片  进行预览
++ *
+  * @author Tom
+  */
+-public class Gallery extends AppCompatActivity implements OnClickListener,OnPageChangeListener {
+-	private Intent intent;
+-//	private TextView positionTextView;//顶部显示预览图片位置的textview
+-//	private int position;//获取前一个activity传过来的position
+-	//当前的位置
+-	private int location = 0;
+-	//viewPager中展示的多个图片view,都存放在这个views_list中
+-	private ArrayList<View> views_list = new ArrayList<View>();
+-	private ViewPagerFixed pager;
+-	private GalleryViewPagerAdapter adapter;
+-
+-	public List<Bitmap> bmp = new ArrayList<Bitmap>();
+-	public List<String> drr = new ArrayList<String>();
+-	public List<String> del = new ArrayList<String>();
+-	
+-
+-	RelativeLayout photo_relativeLayout;
+-	@Override
+-	public void onCreate(Bundle savedInstanceState) {
+-		super.onCreate(savedInstanceState);
+-		setContentView(R.layout.activity_gallery);
+-		
+-		initViewsList(); //初始化数据
+-		initViewAndCtrl(); //初始化view 和 ctrl
+-		
+-	}
+-	
+-	/**
+-	 * 初始化ViewPager中展示的 图片views（相当于数据的初始化）
+-	 */
+-	private void initViewsList() {
+-		for (int i = 0; i < Bimp.tempSelectBitmap.size(); i++) {
+-			Bitmap bitmap = Bimp.tempSelectBitmap.get(i).getBitmap();
+-			PhotoView img = new PhotoView(this);
+-			img.setBackgroundColor(0xff000000);
+-			img.setImageBitmap(bitmap);
+-			img.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+-			views_list.add(img);
+-		}
+-	}
+-	/**
+-	 * 初始化view和适配器ctrl
+-	 */
+-	private void initViewAndCtrl() {
+-		//get到intent
+-		intent = getIntent();
+-		
+-		//ViewPagerFixed
+-		pager = (ViewPagerFixed) findViewById(R.id.gallery01);
+-		pager.setOnPageChangeListener(this); //注册滑动监听
+-
+-		//MyPageAdapter
+-		adapter = new GalleryViewPagerAdapter(views_list);
+-		pager.setAdapter(adapter); //绑定适配器
+-		int id = intent.getIntExtra("ID", 0);
+-		pager.setCurrentItem(id);
+-	}
+-	
+-	//监听ViewPager滑动的三个方法
+-	@Override
+-	public void onPageSelected(int arg0) {
+-		location = arg0;
+-	}
+-	@Override
+-	public void onPageScrolled(int arg0, float arg1, int arg2) {
+-	}
+-
+-	@Override
+-	public void onPageScrollStateChanged(int arg0) {
+-	}
+-	
+-	//点击监听
+-	@Override
+-	public void onClick(View v) {
+-		switch (v.getId()) {
+-		case R.id.button_back: //“返回” 按钮
+-			finish();
+-			break;
+-		case R.id.button_del: //“删除”按钮
+-			if (views_list.size() == 1) { //删除最后一张图片
+-				Bimp.tempSelectBitmap.clear();
+-				Bimp.max = 0;
+-				Intent intent = new Intent("data.broadcast.action"); //通知相册展示页面，图片以全部删除：将已选中的图片更改为未选中
+-                sendBroadcast(intent);  
+-				finish();
+-			} else {
+-				Bimp.tempSelectBitmap.remove(location);
+-				Bimp.max--;
+-				pager.removeAllViews();
+-				views_list.remove(location);
+-				adapter.setListViews(views_list);
+-				adapter.notifyDataSetChanged();
+-			}
+-			break;
+-
+-		default:
+-			break;
+-		}
+-		
+-	}
+-	
++public class Gallery extends AppCompatActivity implements OnClickListener, OnPageChangeListener {
++    private Intent intent;
++    public static boolean isFromPrivateAlbum;
++    private int location;//当前的位置
++    private static Button buttonAdd,buttonMin;
++    private ProgressBar progressBar;
++    private GalleryViewPagerAdapter adapter;
++    private ViewPagerFixed pager;
++
++    @Override
++    public void onCreate(Bundle savedInstanceState) {
++        super.onCreate(savedInstanceState);
++        setContentView(R.layout.activity_gallery);
++    }
++
++    protected void onResume() {
++        super.onResume();
++        initViewAndCtrl(); //初始化view 和 ctrl
++    }
++
++    /**
++     * 初始化view和适配器ctrl
++     */
++    private void initViewAndCtrl() {
++        intent = getIntent();
++        isFromPrivateAlbum = intent.getBooleanExtra("isFromPrivateAlbum",false);
++        //加密、解密按钮
++        progressBar = (ProgressBar) findViewById(R.id.progressBar);
++        buttonAdd = (Button) findViewById(R.id.buttonAdd);
++        buttonMin = (Button) findViewById(R.id.buttonMin);
++        buttonAdd.setOnClickListener(this);
++        buttonMin.setOnClickListener(this);
++        if (isFromPrivateAlbum){//私密相册
++            buttonAdd.setVisibility(View.GONE);
++            buttonMin.setVisibility(View.VISIBLE);
++        }else {
++            buttonAdd.setVisibility(View.VISIBLE);
++            buttonMin.setVisibility(View.GONE);
++        }
++
++        //ViewPagerFixed
++        pager = (ViewPagerFixed) findViewById(R.id.gallery01);
++        pager.setOnPageChangeListener(this); //注册滑动监听
++        //GalleryViewPagerAdapter
++        adapter = new GalleryViewPagerAdapter(Gallery.this);
++        pager.setAdapter(adapter); //绑定适配器
++        //调用者希望从第几张开始显示,就setCurrentItem到目标位置
++        int id = intent.getIntExtra("position", 0);
++        pager.setCurrentItem(id);
++    }
++
++    //监听ViewPager滑动的三个方法
++    @Override
++    public void onPageSelected(int arg0) {
++        location = arg0;
++    }
++
++    @Override
++    public void onPageScrolled(int arg0, float arg1, int arg2) {
++    }
++
++    @Override
++    public void onPageScrollStateChanged(int arg0) {
++    }
++
++    //点击监听
++    @Override
++    public void onClick(View v) {
++        switch (v.getId()) {
++            case R.id.buttonAdd://加密
++                new SingleEncryptionOrDecryptionTask().execute();
++                break;
++            case R.id.buttonMin://解密
++                new SingleEncryptionOrDecryptionTask().execute();
++                break;
++            default:
++                break;
++        }
++    }
++
++    /**
++     * 单个文件 加密 或 解密 的异步任务，通过isFromPrivateAlbum区分加密、解密
++     */
++    public class SingleEncryptionOrDecryptionTask extends AsyncTask<Void, Void, Boolean> {
++
++        @Override
++        protected void onPreExecute() {
++            super.onPreExecute();
++            progressBar.setVisibility(View.VISIBLE);
++        }
++
++        @Override
++        protected Boolean doInBackground(Void... params) {
++            boolean result = false;
++            if (isFromPrivateAlbum){//从私密相册来，肯定是要解密了
++                result = decryptSinglePhoto();//解密单张图片
++            }else {//从正常相册来，肯定是要加密了
++                result = encryptSinglePhoto();//加密单张图片
++            }
++            return result;
++        }
++
++        @Override
++        protected void onPostExecute(Boolean result) {
++            super.onPostExecute(result);
++            if (adapter.getCount() == 0){
++                finish();
++            }else {
++                adapter.notifyDataSetChanged();
++            }
++            String showMessage = result ? "成功" : "失败";
++            Toast.makeText(Gallery.this, showMessage, Toast.LENGTH_SHORT).show();
++            progressBar.setVisibility(View.GONE);
++        }
++
++    }
++
++    /**
++     * 加密单张图片的方法
++     */
++    public boolean encryptSinglePhoto() {
++        ImageItem item = Album.dataList.get(location);
++        String imagePath = item.getImagePath();
++        String privImagePath = imagePath.replaceFirst("/storage/emulated/0", "/data/data/" + getPackageName() + "/files/storage/emulated/0");
++        boolean b = AESEncryptionUtil.encryptFile(imagePath, privImagePath);
++        if (b) {//成功
++            Album.dataList.remove(location);
++            //adapter.notifyDataSetChanged(); 在异步任务的子线程中不能刷新UI线程，所以注释了
++            Album.delete(item, privImagePath, getContentResolver());
++            return true;
++        } else {//失败
++            return false;
++        }
++    }
++
++    /**
++     * 解密单张图片
++     */
++    public boolean decryptSinglePhoto() {
++        ImageItem item = PrivateAlbum.dateList.get(location);
++        String privImagePath = item.getImagePath(); //这个私密文件的绝对路径
++        String imagePath = privImagePath.replaceFirst("/data/data/" + getPackageName() + "/files/storage/emulated/0", "/storage/emulated/0");
++        boolean b = AESEncryptionUtil.decryptFile(privImagePath, imagePath);
++        if (b){
++            PrivateAlbum.dateList.remove(location);
++            PrivateAlbum.delete(item,imagePath,getContentResolver());
++            return true;
++        }else {
++            return false;
++        }
++    }
++
++    /**
++     * 切换 “加密” “解密” 按钮的显示与隐藏
++     */
++    static boolean isHide = false;
++
++    public static void switchButtonVisibility() {
++        if (!isHide && !isFromPrivateAlbum) {
++            ObjectAnimator.ofFloat(buttonAdd, "translationY", 0, 300).setDuration(200).start();
++            isHide = true;
++        } else if (isHide && !isFromPrivateAlbum){
++            ObjectAnimator.ofFloat(buttonAdd, "translationY", 300, 0).setDuration(200).start();
++            isHide = false;
++        } else if (!isHide && isFromPrivateAlbum){
++            ObjectAnimator.ofFloat(buttonMin, "translationY", 0, 300).setDuration(200).start();
++            isHide = true;
++        } else if (isHide && isFromPrivateAlbum){
++            ObjectAnimator.ofFloat(buttonMin, "translationY", 300, 0).setDuration(200).start();
++            isHide = false;
++        }
++    }
++
+ 
+ }
+diff --git a/src/com/transage/privatespace/gallery/photozoom/GalleryViewPagerAdapter.java b/src/com/transage/privatespace/gallery/photozoom/GalleryViewPagerAdapter.java
+index d2f22ff..9cf4426 100755
+--- a/src/com/transage/privatespace/gallery/photozoom/GalleryViewPagerAdapter.java
++++ b/src/com/transage/privatespace/gallery/photozoom/GalleryViewPagerAdapter.java
+@@ -1,9 +1,16 @@
+ package com.transage.privatespace.gallery.photozoom;
+ 
++import android.content.Context;
+ import android.support.v4.view.PagerAdapter;
+ import android.view.View;
++import android.view.ViewGroup;
++import android.view.ViewGroup.LayoutParams;
+ 
+-import java.util.ArrayList;
++import com.bumptech.glide.Glide;
++import com.transage.privatespace.gallery.activity.PrivateAlbum;
++import com.transage.privatespace.gallery.util.AESEncryptionUtil;
++
++import java.io.File;
+ 
+ /**
+  * 自定义的PagerAdapter：用于GalleryActivity界面的ViewPagerFixed的适配
+@@ -13,46 +20,75 @@ import java.util.ArrayList;
+  */
+ public class GalleryViewPagerAdapter extends PagerAdapter {
+ 
+-	private ArrayList<View> views_list;
+-	private int size;
++	private Context mContext;
+ 	//构造
+-	public GalleryViewPagerAdapter(ArrayList<View> views_list) {
++	public GalleryViewPagerAdapter(Context context) {
+ 		super();
+-		this.views_list = views_list;
+-		size = views_list == null ? 0 : views_list.size();
+-	}
+-	//set()方法
+-	public void setListViews(ArrayList<View> listViews) {
+-		this.views_list = listViews;
+-		size = listViews == null ? 0 : listViews.size();
++		mContext = context;
+ 	}
+ 
+ 	public int getCount() {
+-		return size;
++		if (Gallery.isFromPrivateAlbum){
++			return PrivateAlbum.dateList.size();
++		}else {
++			return Album.dataList.size();
++		}
+ 	}
+ 
+-	public int getItemPosition(Object object) {
+-		return POSITION_NONE;
++	public boolean isViewFromObject(View view, Object object) {
++		return view == object;
+ 	}
+ 
+-	public void destroyItem(View arg0, int arg1, Object arg2) {
+-		((ViewPagerFixed) arg0).removeView(views_list.get(arg1 % size));
++	public Object instantiateItem(ViewGroup container, int position) {
++		PhotoView photoView = new PhotoView(mContext);
++		photoView.setOnPhotoTapListener(new PhotoViewAttacher.OnPhotoTapListener() {
++			@Override
++			public void onPhotoTap(View view, float x, float y) {
++				Gallery.switchButtonVisibility();
++			}
++		});
++		if (Gallery.isFromPrivateAlbum){
++			ImageItem item = PrivateAlbum.dateList.get(position);
++			String privImagePath = item.getImagePath();
++			String fileName = privImagePath.substring(privImagePath.lastIndexOf("/") + 1);
++			String imagePath = "/data/data/" + mContext.getPackageName() + "/files/cache/" + fileName;
++			File file = AESEncryptionUtil.decryptFile2(privImagePath, imagePath);
++			Glide.with(mContext).load(file).into(photoView);
++//			photoView.setImageBitmap(Bimp.handleBitmap(file.getAbsolutePath()));
++		}else {
++//			photoView.setImageBitmap(Bimp.handleBitmap(((ImageItem)Album.dataList.get(position)).getImagePath()));
++			Glide.with(mContext).load(((ImageItem)Album.dataList.get(position)).getImagePath()).into(photoView);
++		}
++		photoView.setBackgroundColor(0xff000000);
++		photoView.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
++		container.addView(photoView);
++		return photoView;
+ 	}
+ 
+-	public void finishUpdate(View arg0) {
++	public void destroyItem(ViewGroup container, int position, Object object) {
++		//super.destroyItem(container, position, object);
+ 	}
+ 
+-	public Object instantiateItem(View arg0, int arg1) {
+-		try {
+-			((ViewPagerFixed) arg0).addView(views_list.get(arg1 % size), 0);
++/*	int mChildCount;
++	@Override
++	public void notifyDataSetChanged() {
++		mChildCount = getCount();
++		super.notifyDataSetChanged();
++	}
+ 
+-		} catch (Exception e) {
++	@Override
++	public int getItemPosition(Object object)   {
++		if ( mChildCount > 0) {
++			mChildCount --;
++			return POSITION_NONE;
+ 		}
+-		return views_list.get(arg1 % size);
+-	}
++		return super.getItemPosition(object);
++	}*/
+ 
+-	public boolean isViewFromObject(View arg0, Object arg1) {
+-		return arg0 == arg1;
++	@Override
++	public int getItemPosition(Object object)   {
++		return POSITION_NONE;
+ 	}
+ 
++
+ }
+diff --git a/src/com/transage/privatespace/gallery/util/AESEncryptionUtil.java b/src/com/transage/privatespace/gallery/util/AESEncryptionUtil.java
+index 3787aa1..a6a4449 100755
+--- a/src/com/transage/privatespace/gallery/util/AESEncryptionUtil.java
++++ b/src/com/transage/privatespace/gallery/util/AESEncryptionUtil.java
+@@ -199,7 +199,9 @@ public class AESEncryptionUtil {
+         return null;
+     }
+ 
+-
++    /**
++     * 将私密文件解密, 解密后的文件以File的形式返回
++     */
+     public static File decryptFile2(String sourceFilePath, String destFilePath) {
+         Log.d("AESEncryptionUtil", "hahah");
+         FileInputStream in;

@@ -1,0 +1,145 @@
+diff --git a/Android.mk b/Android.mk
+index 2819bc3..874e3b1 100755
+--- a/Android.mk
++++ b/Android.mk
+@@ -3,17 +3,33 @@ include $(CLEAR_VARS)
+ LOCAL_MODULE_TAGS := optional 
+ LOCAL_SRC_FILES := $(call all-java-files-under, src) 
+ LOCAL_PACKAGE_NAME := PrivateSpace
+-LOCAL_STATIC_JAVA_LIBRARIES := supportv4 supportv7appcompat supportv7recyclerview supportdesign
++LOCAL_STATIC_JAVA_LIBRARIES := \
++    android-support-v4 \
++    android-support-v7-recyclerview \
++    android-support-v7-appcompat \
++    android-support-design
++
++LOCAL_RESOURCE_DIR = $(LOCAL_PATH)/res \
++    frameworks/support/v7/recyclerview/res \
++    frameworks/support/v7/appcompat/res \
++    frameworks/support/design/res
++
++LOCAL_AAPT_FLAGS := \
++    --auto-add-overlay \
++    --extra-packages android.support.v7.recyclerview \
++    --extra-packages android.support.v7.appcompat \
++    --extra-packages android.support.design
++
+ LOCAL_PROGUARD_ENABLED := disabled
+ #LOCAL_MODULE_CLASS := APPS
+ LOCAL_CERTIFICATE := platform
+ #LOCAL_MODULE_SUFFIX := $(COMMON_ANDROID_PACKAGE_SUFFIX)
+ include $(BUILD_PACKAGE)
+ include $(CLEAR_VARS)
+-LOCAL_PREBUILT_STATIC_JAVA_LIBRARIES +=supportv4:libs/android-support-v4.jar
+-LOCAL_PREBUILT_STATIC_JAVA_LIBRARIES +=supportv7appcompat:libs/android-support-v7-appcompat.jar
+-LOCAL_PREBUILT_STATIC_JAVA_LIBRARIES +=supportv7recyclerview:libs/android-support-v7-recyclerview.jar
+-LOCAL_PREBUILT_STATIC_JAVA_LIBRARIES +=supportdesign:libs/android-support-design.jar
++###LOCAL_PREBUILT_STATIC_JAVA_LIBRARIES +=supportv4:libs/android-support-v4.jar
++###LOCAL_PREBUILT_STATIC_JAVA_LIBRARIES +=supportv7appcompat:libs/android-support-v7-appcompat.jar
++###LOCAL_PREBUILT_STATIC_JAVA_LIBRARIES +=supportv7recyclerview:libs/android-support-v7-recyclerview.jar
++###LOCAL_PREBUILT_STATIC_JAVA_LIBRARIES +=supportdesign:libs/android-support-design.jar
+ include $(BUILD_MULTI_PREBUILT)
+ include $(call all-makefiles-under,$(LOCAL_PATH))
+ 
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index 65b43f2..81d1409 100755
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -25,11 +25,17 @@
+         android:theme="@style/AppBaseTheme">
+ 
+         <!-- Activity -->
+-        <activity android:name=".activity.Main">
+-        </activity>
+-        <activity android:name=".activity.AdvancedSetup"/>
++        <activity
++            android:name=".activity.Main"
++            android:screenOrientation="portrait"/>
++
++        <activity
++            android:name=".activity.AdvancedSetup"
++            android:screenOrientation="portrait"/>
++
+         <activity
+             android:name=".activity.Login"
++            android:screenOrientation="portrait"
+             android:windowSoftInputMode="stateVisible">
+             <!-- android:windowSoftInputMode="adjustPan"  -->
+             <intent-filter>
+@@ -38,10 +44,18 @@
+                 <category android:name="android.intent.category.LAUNCHER"/>
+             </intent-filter>
+         </activity>
+-        <activity android:name=".activity.AddApp"/>
+-        <activity android:name=".activity.SecurityQuestion"/>
+-        <activity android:name=".activity.PrivateContacts"/>
+-        <activity android:name=".activity.AddPeople"/>
++        <activity
++            android:name=".activity.AddApp"
++            android:screenOrientation="portrait"/>
++        <activity
++            android:name=".activity.SecurityQuestion"
++            android:screenOrientation="portrait"/>
++        <activity
++            android:name=".activity.PrivateContacts"
++            android:screenOrientation="portrait"/>
++        <activity
++            android:name=".activity.AddPeople"
++            android:screenOrientation="portrait"/>
+     </application>
+ 
+ </manifest>
+\ No newline at end of file
+diff --git a/res/layout/fragment_people.xml b/res/layout/fragment_people.xml
+index 9157826..c868706 100755
+--- a/res/layout/fragment_people.xml
++++ b/res/layout/fragment_people.xml
+@@ -16,6 +16,7 @@
+         android:layout_alignParentBottom="true"
+         android:layout_centerHorizontal="true"
+         android:layout_margin="15dp"
++        android:background="@null"
+         android:src="@mipmap/add" />
+ 
+ </RelativeLayout>
+\ No newline at end of file
+diff --git a/res/values/styles.xml b/res/values/styles.xml
+index 979233c..5b52a39 100755
+--- a/res/values/styles.xml
++++ b/res/values/styles.xml
+@@ -3,13 +3,19 @@
+     <!--
+         Base application theme, dependent on API level. This theme is replaced
+         by AppBaseTheme from res/values-vXX/styles.xml on newer devices.
++
+     -->
+-    <style name="AppBaseTheme" parent="android:Theme.Light">
++    <style name="AppBaseTheme" parent="Theme.AppCompat.Light.NoActionBar">
+         <!--
+             Theme customizations available in newer API levels can go in
+             res/values-vXX/styles.xml, while customizations related to
+             backward-compatibility can go here.
++
+         -->
++        <!-- Customize your theme here. -->
++        <item name="colorPrimary">@color/colorPrimary</item>
++        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
++        <item name="colorAccent">@color/colorAccent</item>
+     </style>
+ 
+     <!-- Application theme. -->
+diff --git a/src/com/transage/privatespace/activity/Login.java b/src/com/transage/privatespace/activity/Login.java
+index 6d56394..e657a0c 100755
+--- a/src/com/transage/privatespace/activity/Login.java
++++ b/src/com/transage/privatespace/activity/Login.java
+@@ -8,6 +8,10 @@ import android.content.SharedPreferences;
+ import android.os.Build;
+ import android.os.Bundle;
+ import android.support.annotation.Nullable;
++import android.support.v7.app.AppCompatActivity;
++import android.support.v7.widget.DefaultItemAnimator;
++import android.support.v7.widget.LinearLayoutManager;
++import android.support.v7.widget.RecyclerView;
+ import android.text.TextUtils;
+ import android.text.method.HideReturnsTransformationMethod;
+ import android.text.method.PasswordTransformationMethod;

@@ -1,0 +1,12 @@
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index b94a45c..86c7cee 100755
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -122,6 +122,7 @@
+ 
+         <provider
+             android:name=".provider.PrivateProvider"
++            android:exported="true"
+             android:authorities="com.transage.privatespace.provider.PrivateProvider"/>
+     </application>
+ 

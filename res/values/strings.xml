@@ -1,0 +1,130 @@
+<resources>
+    <string name="app_name">私密空间</string>
+    <string name="private_phone">私密电话</string>
+    <string name="private_contacts">私密联系人</string>
+    <string name="advanced_setup">高级设置</string>
+    <string name="entrance_mode">你可以通过以下几种方式进入私密空间</string>
+    <string name="private_fingerprint">私密指纹</string>
+    <string name="enter_private_space_by_private_fingerprint">通过私密指纹进入私密空间</string>
+    <string name="double_refers_to_decline">双指下滑手势</string>
+    <string name="open_login_activity_by_double_decline">通过双指下滑手势打开私密空间的登录界面</string>
+    <string name="save_vcf">加密模式</string>
+    <string name="enter_private_space_by_save_vcf_mark">是否将私密联系人保存到vcf文件</string>
+    <string name="fast_exit">快速退出</string>
+    <string name="fast_exit_when_press_home_key">按Homed键 / 最近任务键,即关闭私密空间</string>
+    <string name="other_settings">其他设置</string>
+    <string name="change_private_mark">更改密码</string>
+    <string name="using_help">使用帮助</string>
+    <string name="set_private_mark">设置密码</string>
+    <string name="please_set_private_mark">请设置进入私密空间的密码</string>
+    <string name="input_private_mark">输入6位密码</string>
+    <string name="confirm_again">确认密码</string>
+    <string name="confirm_private_mark">验证密码</string>
+    <string name="successful_set_private_mark">密码设置成功</string>
+    <string name="successful_reset_private_mark">密码修改成功</string>
+    <string name="successful_set_private_question">密保问题设置成功</string>
+    <string name="wrong_private_mark">密码错误</string>
+    <string name="forget_private_mark">忘记密码</string>
+    <string name="favorite_sport">我最喜欢的运动</string>
+    <string name="name_of_class_teacher">我高中班主任的名字</string>
+    <string name="favorite_dish">我最喜欢吃的一道菜</string>
+    <string name="name_of_pet">我的宠物叫什么名字</string>
+    <string name="user_question">自定义密保问题</string>
+    <string name="please_input_user_question">请输入自定义密保问题</string>
+    <string name="question_cant_be_empty">问题不能为空</string>
+    <string name="security_question">密保问题</string>
+    <string name="enter_your_answer">请输入问题的答案</string>
+    <string name="answer_cant_be_empty">答案不能为空</string>
+    <string name="answer_is_wrong">答案错误</string>
+    <string name="commit">提交</string>
+    <string name="password_cant_be_empty">密码不能为空</string>
+    <string name="the_length_of_password_must_be_6">密码长度必须为6位</string>
+    <string name="two_different_input">两次输入的密码不相同，请重新输入</string>
+    <string name="done">完成</string>
+    <string name="add_app">添加应用</string>
+    <string name="have_selected">已选中</string>
+    <string name="item">项</string>
+    <string name="call_record">通话记录</string>
+    <string name="people">联系人</string>
+    <string name="sms">短信</string>
+    <string name="ok">确定</string>
+    <string name="cancel">取消</string>
+    <string name="success">成功</string>
+    <string name="fail">失败</string>
+    <string name="relieve_selected_private_people">解除选中的私密联系人？</string>
+    <string name="relieve_private">解除私密</string>
+    <string name="private_gallery">私密图库</string>
+    <string name="select_album">选择相册</string>
+    <string name="select_photo">选择图片</string>
+    <string name="select_all">全选</string>
+    <string name="deselect_all">取消全选</string>
+    <string name="choose_at_least_one_picture">请至少选择一张图片</string>
+    <string name="choose_at_least_one_video">请至少选择一个视频</string>
+    <string name="encrypt">加密</string>
+    <string name="encrypting">正在加密，请稍后...</string>
+    <string name="encrypt_success">加密成功</string>
+    <string name="partial_picture_encryption_failed">部分图片加密失败！</string>
+    <string name="partial_video_encryption_failed">部分视频加密失败！</string>
+    <string name="decrypt">解密</string>
+    <string name="decrypting">正在解密，请稍后...</string>
+    <string name="decrypt_success">解密成功</string>
+    <string name="partial_picture_decryption_failed">部分图片解密失败！</string>
+    <string name="partial_video_decryption_failed">部分视频解密失败！</string>
+    <string name="private_album">私密相册</string>
+    <string name="add_private_photo">添加私密图片</string>
+    <string name="click_login_by_finger_print">点击进行指纹登录</string>
+    <string name="private_video_album">私密视频</string>
+    <string name="add_private_video">添加私密视频</string>
+    <string name="select_video">选择视频</string>
+    <string name="no_picture">没 有 图 片</string>
+    <string name="no_video">没 有 视 频</string>
+    <string name="check_private_video">查看私密视频</string>
+    <string name="check_private_album">查看私密相册</string>
+    <string name="about_private_space">关于“私密空间”</string>
+    <string name="about_private_space_desc">打开私密空间应用，即进入了私密模式，您可以把手机中的联系人、短信、图片、视频等内容直接添加到私密空间，进而保护您的个人隐私。</string>
+    <string name="about_enter">登录“私密空间”</string>
+    <string name="about_enter_desc">私密空间支持密码、指纹两种登录方式，在登录界面可以输入密码登录，也可以在点击指纹登录按钮后，通过验证指纹登录（需先录入指纹信息）。</string>
+    <string name="about_exit">退出“私密空间”</string>
+    <string name="about_exit_desc">私密空间支持快速退出应用，在设置界面开启快速退出开关后，按Home键、菜单键即可快速退出应用。请注意应用的退出方式，以免个人隐私泄漏！</string>
+    <string name="about_forget_pwd">忘记密码</string>
+    <string name="about_forget_pwd_desc">当你忘记密码时，可以在验证界面点击“忘记密码” 通过验证密保问题来重置密码，所以请牢记你的密保问题！</string>
+
+    <!-- contacts -->
+    <string name="toast_sim_nonsupport_private">Sim卡联系人不支持私密！</string>
+    <string name="toast_no_phone_number">该联系人没有电话号码！</string>
+    <string name="load_more">加载数据...</string>
+    <string name="no_load_more">已无更多数据...</string>
+    <string name="notification_title_add">添加私密联系人</string>
+    <string name="notification_title_remove">删除私密联系人</string>
+    <string name="notification_pause">暂停</string>
+    <string name="notification_cancel">取消</string>
+    <string name="notification_sync_title">请等待当前操作完成！</string>
+    <string name="backup_successful">备份成功！</string>
+    <string name="title">标题</string>
+    <string name="contact_details_title">联系人详情</string>
+    <string name="delete_contact_title">删除联系人</string>
+    <string name="confirm_delete_contact">确定删除该联系人吗？</string>
+    <string name="dialog_add_choose">选择联系人</string>
+    <string name="dialog_add_create">新建联系人</string>
+    <string name="dialog_add_cancel">取消</string>
+    <string name="send_email_title">请选择邮件类应用</string>
+
+    <!-- dialer -->
+    <string name="call_details_title">通话详情</string>
+    <string name="call_in_label">来电</string>
+    <string name="call_out_label">去电</string>
+    <string name="call_missed_label">未接</string>
+    <string name="delete_call_record">删除通话记录</string>
+    <string name="confirm_delete_call_record">确定删除该通话记录吗？</string>
+
+    <!-- sms -->
+    <string name="confirm_delete">确定删除？</string>
+    <string name="hint">提示</string>
+    <string name="delete_success">删除成功</string>
+    <string name="delete_fail">删除失败</string>
+
+    <item type="id" name="tag_recv"></item>
+    <item type="id" name="tag_send"></item>
+
+
+</resources>

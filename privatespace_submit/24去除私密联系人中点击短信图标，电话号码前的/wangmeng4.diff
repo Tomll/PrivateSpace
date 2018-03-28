@@ -1,0 +1,13 @@
+diff --git a/src/com/transage/privatespace/adapter/PeopleListViewAdapter.java b/src/com/transage/privatespace/adapter/PeopleListViewAdapter.java
+index 772dcbe..2358e08 100755
+--- a/src/com/transage/privatespace/adapter/PeopleListViewAdapter.java
++++ b/src/com/transage/privatespace/adapter/PeopleListViewAdapter.java
+@@ -142,7 +142,7 @@ public class PeopleListViewAdapter extends BaseAdapter {
+ 				ActivityCompat.requestPermissions((Activity) context, new String[] { Manifest.permission.SEND_SMS }, 1);// 申请发短信权限
+ 				return;
+ 			}
+-			intent = new Intent(android.content.Intent.ACTION_SENDTO, Uri.parse("smsto://" + phoneNum));
++			intent = new Intent(android.content.Intent.ACTION_SENDTO, Uri.parse("smsto:" + phoneNum));
+ 		}
+ 		context.startActivity(intent);
+ 	}

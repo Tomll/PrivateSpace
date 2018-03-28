@@ -1,0 +1,120 @@
+diff --git a/res/layout/activity_private_album.xml b/res/layout/activity_private_album.xml
+index a88e76a..e3bea4b 100755
+--- a/res/layout/activity_private_album.xml
++++ b/res/layout/activity_private_album.xml
+@@ -44,6 +44,16 @@
+         android:layout_width="match_parent"
+         android:layout_height="match_parent">
+ 
++        <TextView
++            android:id="@+id/tv_no_picture"
++            android:layout_width="wrap_content"
++            android:text="@string/no_picture"
++            android:visibility="gone"
++            android:textSize="18sp"
++            android:textColor="@color/greytext"
++            android:layout_gravity="center"
++            android:layout_height="wrap_content"/>
++
+         <GridView
+             android:id="@+id/album_GridView"
+             android:layout_width="match_parent"
+diff --git a/res/values/strings.xml b/res/values/strings.xml
+index 1d23ed7..d7194b0 100755
+--- a/res/values/strings.xml
++++ b/res/values/strings.xml
+@@ -64,5 +64,6 @@
+     <string name="private_album">私密相册</string>
+     <string name="add_private_photo">添加私密图片</string>
+     <string name="click_login_by_finger_print">点击进行指纹登录</string>
++    <string name="no_picture">没 有 图 片</string>
+ 
+ </resources>
+diff --git a/src/com/transage/privatespace/database/DatabaseAdapter.java b/src/com/transage/privatespace/database/DatabaseAdapter.java
+index fc22fa2..d14dc96 100755
+--- a/src/com/transage/privatespace/database/DatabaseAdapter.java
++++ b/src/com/transage/privatespace/database/DatabaseAdapter.java
+@@ -429,7 +429,7 @@ public class DatabaseAdapter {
+      * 获取私密数据库中图片数据的操作
+      */
+     public ArrayList<ImageItem> getPhoto() {
+-        String sql = "SELECT * " + " FROM " + PsDatabaseHelper.Tables.FILES;
++        String sql = "SELECT * " + " FROM " + PsDatabaseHelper.Tables.FILES + " ORDER BY " + PsDatabaseHelper.FilesClumns._ID + " DESC ";
+         Log.i(TAG, "sql = " + sql);
+         ArrayList<ImageItem> list = new ArrayList<>();
+         Cursor cursor = query(sql, null);
+diff --git a/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java b/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
+index 7a62729..f873e0b 100755
+--- a/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
++++ b/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
+@@ -14,6 +14,7 @@ import android.widget.AbsListView;
+ import android.widget.CheckBox;
+ import android.widget.GridView;
+ import android.widget.ImageView;
++import android.widget.TextView;
+ import android.widget.Toast;
+ 
+ import com.bumptech.glide.Glide;
+@@ -48,6 +49,7 @@ public class PrivateAlbum extends BaseActivity implements View.OnClickListener,
+     private static DatabaseAdapter databaseAdapter;
+     private ProgressDialog progressDialog;
+     private VisibleImageDecryptionTask visibleImageDecryptionTask;
++    private static TextView tvNoPicture;
+ 
+     @Override
+     protected void onCreate(@Nullable Bundle savedInstanceState) {
+@@ -80,6 +82,7 @@ public class PrivateAlbum extends BaseActivity implements View.OnClickListener,
+         findViewById(R.id.checkbox_select_all).setOnClickListener(this);
+         findViewById(R.id.button_back).setOnClickListener(this);
+         findViewById(R.id.button_min).setOnClickListener(this);
++        tvNoPicture = (TextView) findViewById(R.id.tv_no_picture);
+ 
+ //        dateList = databaseAdapter.getPhoto();//数据
+         Log.d("PrivateAlbum", "dateList.size():" + dateList.size());
+@@ -92,6 +95,11 @@ public class PrivateAlbum extends BaseActivity implements View.OnClickListener,
+ 
+     }
+ 
++    //无图片时，展示提示语
++    public static void showNoPictureTip(){
++        tvNoPicture.setVisibility(View.VISIBLE);
++    }
++
+     /**
+      * 加载首屏数据的方法
+      */
+diff --git a/src/com/transage/privatespace/gallery/adapter/PrivateAlbumGridViewAdapter.java b/src/com/transage/privatespace/gallery/adapter/PrivateAlbumGridViewAdapter.java
+index 2cc3284..e82b740 100755
+--- a/src/com/transage/privatespace/gallery/adapter/PrivateAlbumGridViewAdapter.java
++++ b/src/com/transage/privatespace/gallery/adapter/PrivateAlbumGridViewAdapter.java
+@@ -11,6 +11,7 @@ import android.widget.ImageView;
+ 
+ import com.bumptech.glide.Glide;
+ import com.transage.privatespace.R;
++import com.transage.privatespace.gallery.activity.PrivateAlbum;
+ import com.transage.privatespace.gallery.photozoom.Bimp;
+ import com.transage.privatespace.gallery.photozoom.Gallery;
+ import com.transage.privatespace.gallery.photozoom.ImageItem;
+@@ -77,6 +78,9 @@ public class PrivateAlbumGridViewAdapter extends BaseAdapter {
+ 
+ 
+     public int getCount() {
++        if (listPrivFlies.size() == 0){
++            PrivateAlbum.showNoPictureTip();
++        }
+         return listPrivFlies.size();
+     }
+ 
+diff --git a/src/com/transage/privatespace/gallery/photozoom/AlbumHelper.java b/src/com/transage/privatespace/gallery/photozoom/AlbumHelper.java
+index 08e2fe0..f831e70 100755
+--- a/src/com/transage/privatespace/gallery/photozoom/AlbumHelper.java
++++ b/src/com/transage/privatespace/gallery/photozoom/AlbumHelper.java
+@@ -139,7 +139,7 @@ public class AlbumHelper {
+ 		String columns[] = new String[] { Media._ID, Media.BUCKET_ID,
+ 				Media.PICASA_ID, Media.DATA, Media.DISPLAY_NAME, Media.TITLE,
+ 				Media.SIZE, Media.BUCKET_DISPLAY_NAME ,Media.DATE_ADDED,Media.MIME_TYPE,Media.WIDTH,Media.HEIGHT};
+-		Cursor cur = cr.query(Media.EXTERNAL_CONTENT_URI, columns, null, null, Media.DATE_ADDED+" desc");
++		Cursor cur = cr.query(Media.EXTERNAL_CONTENT_URI, columns, null, null, Media._ID+" DESC ");
+ 		bucketList.clear();//add by dongrp
+ 		if (cur.moveToFirst()) {
+ 			int photoIDIndex = cur.getColumnIndexOrThrow(Media._ID);

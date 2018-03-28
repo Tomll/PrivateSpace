@@ -1,0 +1,224 @@
+diff --git a/res/layout/item_private_album_gridview.xml b/res/layout/item_private_album_gridview.xml
+index 6dac58b..1d35c72 100755
+--- a/res/layout/item_private_album_gridview.xml
++++ b/res/layout/item_private_album_gridview.xml
+@@ -9,7 +9,6 @@
+         android:layout_height="match_parent"
+         android:layout_gravity="center"
+         android:adjustViewBounds="true"
+-        android:background="@drawable/plugin_camera_no_pictures"
+         android:scaleType="centerCrop"/>
+ 
+     <RelativeLayout
+diff --git a/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java b/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
+index 6aa4645..ef545a0 100755
+--- a/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
++++ b/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
+@@ -46,6 +46,7 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+     private int mFirstVisibleItem, mVisibleItemCount, mTotalItemCount;
+     private static DatabaseAdapter databaseAdapter;
+     private ProgressDialog progressDialog;
++    private VisibleImageDecryptionTask visibleImageDecryptionTask;
+ 
+     @Override
+     protected void onCreate(@Nullable Bundle savedInstanceState) {
+@@ -86,27 +87,17 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+     }
+ 
+     public void onScrollStateChanged(AbsListView view, int scrollState) {
+-
+         if (scrollState == SCROLL_STATE_IDLE){
+-            Log.d("PrivateAlbum", "mScrollState == IDEL ");
+-            Log.d("PrivateAlbum", "mFirstVisibleItem: " + mFirstVisibleItem +  "   mVisibleItemCount: " + mVisibleItemCount);
+-
+-            long l2 = System.currentTimeMillis();
+             List<ImageItem> listImageItem = dateList.subList(mFirstVisibleItem, (mFirstVisibleItem + mVisibleItemCount));
+-            ArrayList<File> files = decryptFileListForCache(listImageItem);
+-            long l = System.currentTimeMillis();
+-            Log.d("PrivateAlbum", "解密当前屏幕图片 耗时:" + (l - l2) + " ms");
+-
+-            long l3 = System.currentTimeMillis();
+-            for (int i=0 ; i<mVisibleItemCount;i++){
+-                ImageView imageView = (ImageView) gridView.getChildAt(i).findViewById(R.id.image_view);
+-                Glide.with(PrivateAlbum.this).load(files.get(i)).into(imageView);
++            visibleImageDecryptionTask = new VisibleImageDecryptionTask(listImageItem);
++            visibleImageDecryptionTask.execute();
++        } else if (scrollState == SCROLL_STATE_TOUCH_SCROLL) {
++            if (null != visibleImageDecryptionTask  && !visibleImageDecryptionTask.isCancelled()
++                    && visibleImageDecryptionTask.getStatus() == AsyncTask.Status.RUNNING) {
++                visibleImageDecryptionTask.cancel(true);//设置异步任务的cancle状态为true
++                visibleImageDecryptionTask = null;
+             }
+-            long l4 = System.currentTimeMillis();
+-            Log.d("PrivateAlbum", "for 循环加载耗时:" + (l4 - l3) + " ms");
+-
+         }
+-
+     }
+ 
+     public void onScroll(AbsListView view, int firstVisibleItem, int visibleItemCount, int totalItemCount) {
+@@ -115,6 +106,52 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+         mTotalItemCount = totalItemCount;
+     }
+ 
++    /**
++     * 当前屏幕可见图片的异步解密任务
++     */
++    public class VisibleImageDecryptionTask extends AsyncTask<Void, Void, ArrayList<File>> {
++        List<ImageItem> lists;
++
++        public VisibleImageDecryptionTask(List<ImageItem> list) {
++            lists = list;
++        }
++
++        @Override
++        protected void onPreExecute() {
++            super.onPreExecute();
++            if (visibleImageDecryptionTask.isCancelled()) {
++                return;
++            }
++        }
++
++        @Override
++        protected ArrayList<File> doInBackground(Void... voids) {
++            if (visibleImageDecryptionTask.isCancelled()) {
++                return null;
++            }
++            ArrayList<File> files = decryptFileListForCache(lists);
++            return files;
++        }
++
++        @Override
++        protected void onProgressUpdate(Void... values) {
++            super.onProgressUpdate(values);
++            if (visibleImageDecryptionTask.isCancelled()) {
++                return;
++            }
++        }
++
++        @Override
++        protected void onPostExecute(ArrayList<File> files) {
++            super.onPostExecute(files);
++            for (int i = 0; i < mVisibleItemCount; i++) {
++                ImageView imageView = (ImageView) gridView.getChildAt(i).findViewById(R.id.image_view);
++                Glide.with(PrivateAlbum.this).load(files.get(i)).into(imageView);
++            }
++        }
++    }
++
++
+ 
+     //清空缓存文件夹
+     private void delectCacheDirectory(File file) {
+@@ -135,8 +172,9 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+         return;
+     }
+ 
+-    boolean result1 = true ;
+-    //解密当前屏幕显示的文件
++    /**
++     * 解密当前屏幕显示的文件（存放在一个缓存文件夹中）
++     */
+     public ArrayList<File> decryptFileListForCache(final List<ImageItem> arrayList) {
+         delectCacheDirectory(new File("/data/data/" + getPackageName() + "/files/cache/"));
+ 
+@@ -235,11 +273,11 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+     }
+ 
+ 
++
++    boolean result = true;
+     /**
+      * 解密文件集合
+      */
+-    boolean result = true;
+-
+     public boolean decryptFileList(final ArrayList<ImageItem> arrayList) {
+         long l2 = System.currentTimeMillis();
+         for (final ImageItem item : arrayList) {
+diff --git a/src/com/transage/privatespace/gallery/adapter/PrivateAlbumGridViewAdapter.java b/src/com/transage/privatespace/gallery/adapter/PrivateAlbumGridViewAdapter.java
+index c02891c..d2bec1f 100755
+--- a/src/com/transage/privatespace/gallery/adapter/PrivateAlbumGridViewAdapter.java
++++ b/src/com/transage/privatespace/gallery/adapter/PrivateAlbumGridViewAdapter.java
+@@ -22,7 +22,7 @@ import java.util.ArrayList;
+ public class PrivateAlbumGridViewAdapter extends BaseAdapter {
+ 
+     private final String TAG = getClass().getSimpleName();
+-    private ArrayList<ImageItem> listPrivFliePath = new ArrayList<ImageItem>();
++    private ArrayList<ImageItem> listPrivFlies = new ArrayList<ImageItem>();
+     private ArrayList<ImageItem> selectedDataList = new ArrayList<ImageItem>();
+     private Context mContext;
+     //private BitmapCache cache;
+@@ -30,7 +30,7 @@ public class PrivateAlbumGridViewAdapter extends BaseAdapter {
+ 
+     public PrivateAlbumGridViewAdapter(Context c, ArrayList<ImageItem> list) {
+         mContext = c;
+-        listPrivFliePath = list;
++        listPrivFlies = list;
+         //cache = new BitmapCache();
+         //dm = new DisplayMetrics();
+         //((Activity) mContext).getWindowManager().getDefaultDisplay().getMetrics(dm);
+@@ -43,7 +43,7 @@ public class PrivateAlbumGridViewAdapter extends BaseAdapter {
+     public void selectAll(boolean isSelectedAll){
+         selectedDataList.clear();
+         if (isSelectedAll){
+-            selectedDataList.addAll(listPrivFliePath);
++            selectedDataList.addAll(listPrivFlies);
+         }
+         notifyDataSetChanged();
+     }
+@@ -53,7 +53,7 @@ public class PrivateAlbumGridViewAdapter extends BaseAdapter {
+      * @return
+      */
+     public ArrayList<ImageItem> getDataList(){
+-        return listPrivFliePath;
++        return listPrivFlies;
+     }
+ 
+     /**
+@@ -68,18 +68,18 @@ public class PrivateAlbumGridViewAdapter extends BaseAdapter {
+      * 解密完成后，刷新适配器的方法
+      */
+     public void refreshDataAfterDecrypt(){
+-        listPrivFliePath.removeAll(selectedDataList);
++        listPrivFlies.removeAll(selectedDataList);
+         notifyDataSetChanged();
+         selectedDataList.clear();
+     }
+ 
+ 
+     public int getCount() {
+-        return listPrivFliePath.size();
++        return listPrivFlies.size();
+     }
+ 
+     public ImageItem getItem(int position) {
+-        return listPrivFliePath.get(position);
++        return listPrivFlies.get(position);
+     }
+ 
+     public long getItemId(int position) {
+@@ -127,19 +127,20 @@ public class PrivateAlbumGridViewAdapter extends BaseAdapter {
+             cache.displayBmp(viewHolder.imageView, item.thumbnailPath, item.imagePath,callback);
+         }*/
+ 
++        viewHolder.imageView.setImageResource(R.drawable.plugin_camera_no_pictures);
+         viewHolder.checkBox.setTag(position);
+         viewHolder.checkBox.setOnClickListener(new View.OnClickListener() {
+             @Override
+             public void onClick(View view) {
+                 if (viewHolder.checkBox.isChecked()){
+-                    selectedDataList.add(listPrivFliePath.get(position));
++                    selectedDataList.add(listPrivFlies.get(position));
+                 }else {
+-                    selectedDataList.remove(listPrivFliePath.get(position));
++                    selectedDataList.remove(listPrivFlies.get(position));
+                 }
+             }
+         });
+         //防止滑动的时候由于控件复用而导致数据错乱，所以控件的适配必须有数据源中的内容决定
+-        if (selectedDataList.contains(listPrivFliePath.get(position))) {
++        if (selectedDataList.contains(listPrivFlies.get(position))) {
+             viewHolder.checkBox.setChecked(true);
+         } else {
+             viewHolder.checkBox.setChecked(false);

@@ -1,0 +1,218 @@
+diff --git a/src/com/transage/privatespace/bean/SmsInfo.java b/src/com/transage/privatespace/bean/SmsInfo.java
+index 0cfc731..3e0acd6 100755
+--- a/src/com/transage/privatespace/bean/SmsInfo.java
++++ b/src/com/transage/privatespace/bean/SmsInfo.java
+@@ -4,14 +4,22 @@ package com.transage.privatespace.bean;
+  * Created by dongrp on 2016/9/12.
+  */
+ public class SmsInfo {
++    //短信消息序号
+     private int id;
++    //对话序号
+     private long thread_id;
++    //电话号码
+     private String address;
++    //内容
+     private String body;
++    //日期
+     private long date;
++    //发件人
+     private String person;
++    //类型 发送或接收
+     private int type;
+-
++    //是否已读
++    private String read;
+     public int getId() {
+         return id;
+     }
+@@ -66,4 +74,11 @@ public class SmsInfo {
+     public void setPerson(String person) {
+         this.person = person;
+     }
++    public String getRead() {
++        return read;
++    }
++
++    public void setRead(String read) {
++        this.read = read;
++    }
+ }
+diff --git a/src/com/transage/privatespace/database/DatabaseAdapter.java b/src/com/transage/privatespace/database/DatabaseAdapter.java
+index cab7681..649cfdb 100755
+--- a/src/com/transage/privatespace/database/DatabaseAdapter.java
++++ b/src/com/transage/privatespace/database/DatabaseAdapter.java
+@@ -235,6 +235,7 @@ public class DatabaseAdapter {
+         values.put(PsDatabaseHelper.SmsColumns.SMS_DATE, Long.valueOf(sms.getDate()));
+         values.put(PsDatabaseHelper.SmsColumns.SMS_PERSON, sms.getPerson());
+         values.put(PsDatabaseHelper.SmsColumns.SMS_TYPE, String.valueOf(sms.getType()));
++        values.put(PsDatabaseHelper.SmsColumns.SMS_READ, sms.getRead());
+         //Log.e("wangmeng","===add===threadId: "+sms.getThread_id());
+         //Log.e("wangmeng","===add===address: "+sms.getAddress());
+        // Log.e("wangmeng","===add===body: "+sms.getBody());
+@@ -254,7 +255,8 @@ public class DatabaseAdapter {
+             PsDatabaseHelper.SmsColumns.SMS_BODY + "," +
+             PsDatabaseHelper.SmsColumns.SMS_DATE + "," +
+             PsDatabaseHelper.SmsColumns.SMS_PERSON + "," +
+-            PsDatabaseHelper.SmsColumns.SMS_TYPE +
++            PsDatabaseHelper.SmsColumns.SMS_TYPE + "," +
++            PsDatabaseHelper.SmsColumns.SMS_READ +
+                 " FROM " + PsDatabaseHelper.Tables.SMS +
+                 " WHERE " + PsDatabaseHelper.SmsColumns.SMS_ADDRESS + "=?" ;
+         Log.i(TAG, "sql = " + sql);
+@@ -270,6 +272,7 @@ public class DatabaseAdapter {
+                 sms.setDate(cursor.getLong(4));
+                 sms.setPerson(cursor.getString(5));
+                 sms.setType(cursor.getInt(6));
++                sms.setRead(cursor.getString(7));
+                 list.add(sms);
+             }
+         } catch (Exception e) {
+@@ -287,7 +290,8 @@ public class DatabaseAdapter {
+                 PsDatabaseHelper.SmsColumns.SMS_BODY + "," +
+                 PsDatabaseHelper.SmsColumns.SMS_DATE + "," +
+                 PsDatabaseHelper.SmsColumns.SMS_PERSON + "," +
+-                PsDatabaseHelper.SmsColumns.SMS_TYPE +
++                PsDatabaseHelper.SmsColumns.SMS_TYPE + "," +
++                PsDatabaseHelper.SmsColumns.SMS_READ +
+                 " FROM " + PsDatabaseHelper.Tables.SMS;
+         Log.i(TAG, "sql = " + sql);
+         List<SmsInfo> list = new ArrayList<>();
+@@ -302,6 +306,7 @@ public class DatabaseAdapter {
+                 sms.setDate(cursor.getLong(4));
+                 sms.setPerson(cursor.getString(5));
+                 sms.setType(cursor.getInt(6));
++                sms.setRead(cursor.getString(7));
+                 list.add(sms);
+             }
+         } catch (Exception e) {
+diff --git a/src/com/transage/privatespace/database/PsDatabaseHelper.java b/src/com/transage/privatespace/database/PsDatabaseHelper.java
+index 6f7a174..e0ffcbc 100755
+--- a/src/com/transage/privatespace/database/PsDatabaseHelper.java
++++ b/src/com/transage/privatespace/database/PsDatabaseHelper.java
+@@ -47,6 +47,7 @@ public class PsDatabaseHelper extends SQLiteOpenHelper {
+         public static final String SMS_TYPE = "sms_type";
+         public static final String SMS_ADDRESS = "sms_address";
+         public static final String SMS_BODY = "sms_body";
++        public static final String SMS_READ = "sms_read";
+     }
+ 
+     public interface CallRecordClumns {
+@@ -126,7 +127,8 @@ public class PsDatabaseHelper extends SQLiteOpenHelper {
+                 SmsColumns.SMS_BODY + " TEXT," +
+                 SmsColumns.SMS_DATE + " TEXT," +
+                 SmsColumns.SMS_PERSON + " TEXT," +
+-                SmsColumns.SMS_TYPE + " TEXT" +
++                SmsColumns.SMS_TYPE + " TEXT," +
++                SmsColumns.SMS_READ + " TEXT" +
+                 ");";
+         Log.i(TAG, "sql = " + sqlCreateSmsTable);
+         sqLiteDatabase.execSQL(sqlCreateSmsTable);
+diff --git a/src/com/transage/privatespace/loader/PrivateSpaceLoader.java b/src/com/transage/privatespace/loader/PrivateSpaceLoader.java
+index c0f0854..0acf6bb 100755
+--- a/src/com/transage/privatespace/loader/PrivateSpaceLoader.java
++++ b/src/com/transage/privatespace/loader/PrivateSpaceLoader.java
+@@ -15,17 +15,15 @@ import android.os.Handler;
+ import android.os.Message;
+ import android.provider.CallLog;
+ import android.provider.ContactsContract;
+-import android.provider.Telephony;
+ import android.support.v4.app.ActivityCompat;
+ import android.util.Log;
+-import android.provider.Telephony.Sms;
++
+ import com.android.internal.telephony.SmsApplication;
+ import com.transage.privatespace.activity.PrivateContacts;
+ import com.transage.privatespace.bean.CallRecord;
+ import com.transage.privatespace.bean.People;
+ import com.transage.privatespace.bean.SmsInfo;
+ import com.transage.privatespace.database.DatabaseAdapter;
+-import com.transage.privatespace.database.PsDatabaseHelper;
+ import com.transage.privatespace.utils.ImportExportUtils;
+ 
+ import java.io.File;
+@@ -115,10 +113,11 @@ public class PrivateSpaceLoader {
+                 getThreadPool().execute(new Runnable() {
+                     @Override
+                     public void run() {
++                        String phoneNum = formatNumber(people.getPhoneNum());//格式化电话号码
+                         //还原短信到数据库中
+-                        insertSmstoSystem(activity,databaseAdapter.getSmsByNum(people.getPhoneNum()));
++                        insertSmstoSystem(activity,databaseAdapter.getSmsByNum(phoneNum));
+                         //删除私密短信
+-                        new DatabaseAdapter(activity).deleteSmsByAddress(people.getPhoneNum());
++                        new DatabaseAdapter(activity).deleteSmsByAddress(phoneNum);
+                         databaseAdapter.deleteContactsById(people.getId());
+                         mHandler.sendEmptyMessage(REFRESHE_SMS);
+                     }
+@@ -243,9 +242,20 @@ public class PrivateSpaceLoader {
+             values.put("body", sms.getBody());
+             values.put("date", String.valueOf(sms.getDate()));
+             values.put("type", String.valueOf(sms.getType()));
++            values.put("read",sms.getRead());
+             context.getContentResolver().insert(Uri.parse("content://sms/"), values);
+         }
+     }
++    //格式化电话号码 add by wangmeng 20170821
++    public String formatNumber(String number){
++        String phoneNumStr = null;
++        if(number.contains("+86")){
++            phoneNumStr = number.replace("+86","").trim();
++        }else{
++            phoneNumStr = number.trim();
++        }
++        return phoneNumStr;
++    }
+     //添加短信到私密 add by wangmeng 20170707
+     public void addSmstoPrivate(Activity activity, People phone) {
+         // 1.先获取到所有私密联系人
+@@ -254,14 +264,19 @@ public class PrivateSpaceLoader {
+         //Log.e("wangmeng","=====111111111========>");
+         // 2.获取私密联系人的短信记录
+         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("MM-dd HH:mm", Locale.getDefault());
+-        String[] projection = new String[]{"_id", "thread_id", "address", "person", "body", "date", "type"};
++        String[] projection = new String[]{"_id", "thread_id", "address", "person", "body", "date", "type","read"};
+ //        for (int i = 0; i < listPrivatePeople.size(); i++) {
+ //            String phone = listPrivatePeople.get(i).getPhoneNum();
+         if (phone != null) {
+             Log.e("wangmeng","=====222222222========>");
+-            Cursor cursor2 = activity.getContentResolver().query(Uri.parse("content://sms/"), projection,
+-                    "address=?", new String[]{phone.getPhoneNum()}, "date desc");
++//            Cursor cursor2 = activity.getContentResolver().query(Uri.parse("content://sms/"), projection,
++//                    "address=?", new String[]{phone.getPhoneNum()}, "date desc");
++            String phoneNum = formatNumber(phone.getPhoneNum());
++            Cursor cursor2 = activity.getContentResolver().query(Uri.parse("content://sms/"), projection , "address"+"  LIKE ? ",
++                    new String[] { "%" + phoneNum + "%" }, "date desc");
++            Log.e("wangmeng","=====phone.getPhoneNum========>"+phoneNum);
+             Log.e("wangmeng","=====cursor2========>"+cursor2);
++            Log.e("wangmeng","=====cursor2.moveToFirst========>"+cursor2.moveToFirst());
+             if (cursor2 != null && cursor2.moveToFirst()) {
+                 // ArrayList<Sms> listSms = new ArrayList<Sms>();
+                 do {
+@@ -273,21 +288,23 @@ public class PrivateSpaceLoader {
+                     long date = cursor2.getLong(cursor2.getColumnIndex("date"));//收发时间
+                     //String date = simpleDateFormat.format(new Date(cursor2.getLong(cursor2.getColumnIndex("date"))));// 收发时间
+                     int type = cursor2.getInt(cursor2.getColumnIndex("type"));// 收发类型
++                    String read = cursor2.getString(cursor2.getColumnIndex("read"));//是否阅读
+ //                        Log.e("wangmeng","======threadId: "+threadId);
+ //                        Log.e("wangmeng","======address: "+address);
+ //                        Log.e("wangmeng","======body: "+body);
+-                        Log.e("wangmeng","======date: "+date);
++                    Log.e("wangmeng","======date: "+date);
++                    Log.e("wangmeng","======read: "+read);
+ //                        Log.e("wangmeng","======type: "+type);
+                     // 添加一条短息数据到listSms
+                     SmsInfo sms = new SmsInfo();
+                     sms.setId(id);
+                     sms.setThread_id(threadId);
+-                    sms.setAddress(address);
++                    sms.setAddress(formatNumber(address));
+                     sms.setPerson(phone.getDisplayName());
+                     sms.setBody(body);
+                     sms.setDate(date);
+                     sms.setType(type);
+-
++                    sms.setRead(read);
+                     new DatabaseAdapter(activity).addSms(sms);
+ 					//wangmeng delete mms data
+ 					int result = activity.getContentResolver().delete(Uri.parse("content://sms/"), "address = ?", new String[]{address});

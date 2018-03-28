@@ -1,0 +1,29 @@
+diff --git a/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java b/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
+index fc438ec..09bce13 100755
+--- a/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
++++ b/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
+@@ -74,12 +74,18 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+         gridView.setAdapter(privateAlbumGridViewAdapter);//绑定适配器
+         gridView.setOnScrollListener(this);//设置滑动监听
+         //由于滑动才会加载数据，所以刚进入页面的时候，需要主动加载第一页的数据
+-        List<ImageItem> listImageItem = dateList.subList(0, 21);
+-        ArrayList<File> files = decryptFileListForCache(listImageItem);
+-        for (int i=0 ; i<files.size();i++){
+-            ImageView imageView = (ImageView) gridView.getChildAt(i).findViewById(R.id.image_view);
+-            Glide.with(PrivateAlbum.this).load(files.get(i)).into(imageView);
+-        }
++        gridView.post(new Runnable() {
++            public void run() {
++                int firstVisiblePosition = gridView.getFirstVisiblePosition();
++                int lastVisiblePosition = gridView.getLastVisiblePosition();
++                List<ImageItem> listImageItem = dateList.subList(firstVisiblePosition, lastVisiblePosition+1);
++                ArrayList<File> files = decryptFileListForCache(listImageItem);
++                for (int i=0 ; i<files.size();i++){
++                    ImageView imageView = (ImageView) gridView.getChildAt(i).findViewById(R.id.image_view);
++                    Glide.with(PrivateAlbum.this).load(files.get(i)).into(imageView);
++                }
++            }
++        });
+     }
+ 
+     public void onScrollStateChanged(AbsListView view, int scrollState) {

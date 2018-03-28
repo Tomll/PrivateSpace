@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.v7.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/item_call_list_itemview"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="4dp"
+    android:layout_marginLeft="8dp"
+    android:layout_marginRight="8dp"
+    android:layout_marginTop="4dp"
+    android:foreground="?attr/selectableItemBackground"
+    app:cardCornerRadius="3dp"
+    app:elevation="10dp">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/item_hight">
+
+        <com.transage.privatespace.view.CircleImageView
+            android:id="@+id/item_call_photo"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_centerVertical="true"
+            android:layout_marginStart="10dp"
+            android:src="@drawable/ic_person_black_128dp" />
+
+        <TextView
+            android:id="@+id/item_call_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="15dp"
+            android:textColor="@color/greytext"
+            android:textSize="18sp"
+            android:layout_alignTop="@+id/item_call_photo"
+            android:layout_toEndOf="@+id/item_call_photo" />
+
+        <ImageView
+            android:id="@+id/item_call_type"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_alignBottom="@+id/item_call_info"
+            android:layout_alignStart="@id/item_call_name" />
+
+        <TextView
+            android:id="@+id/item_call_info"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/greytext"
+            android:textSize="14sp"
+            android:layout_alignBottom="@+id/item_call_photo"
+            android:layout_toEndOf="@id/item_call_type" />
+
+        <ImageView
+            android:id="@+id/item_call_action_call"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_alignParentEnd="true"
+            android:padding="20dp"
+            android:src="@android:drawable/sym_action_call" />
+
+    </RelativeLayout>
+
+</android.support.v7.widget.CardView>

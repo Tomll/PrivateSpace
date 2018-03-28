@@ -1,0 +1,952 @@
+diff --git a/res/layout/activity_album.xml b/res/layout/activity_album.xml
+index bcbc8c5..2c0f313 100755
+--- a/res/layout/activity_album.xml
++++ b/res/layout/activity_album.xml
+@@ -16,26 +16,30 @@
+             android:layout_width="44dp"
+             android:layout_height="match_parent"
+             android:background="@drawable/selector0"
++            android:onClick="onClick"
+             android:src="@mipmap/button_back"/>
+ 
+         <TextView
++            android:id="@+id/title"
+             android:layout_width="wrap_content"
+             android:layout_height="wrap_content"
+             android:layout_centerInParent="true"
+             android:text="@string/select_photo"
+             android:textColor="@color/white"
+             android:textSize="20sp"/>
++
+         <CheckBox
+             android:id="@+id/checkbox_select_all"
+             android:layout_width="wrap_content"
++            android:layout_height="wrap_content"
+             android:layout_alignParentEnd="true"
+             android:layout_centerVertical="true"
+-            android:text="@string/select_all"
+-            android:clickable="true"
+             android:layout_marginEnd="15dp"
+             android:button="@null"
+-            android:textColor="@color/white"
+-            android:layout_height="wrap_content"/>
++            android:clickable="true"
++            android:onClick="onClick"
++            android:text="@string/select_all"
++            android:textColor="@color/white"/>
+     </RelativeLayout>
+ 
+ 
+@@ -51,16 +55,17 @@
+             android:numColumns="4"
+             android:verticalSpacing="2dp"/>
+ 
+-            <Button
+-                android:id="@+id/button_add"
+-                android:layout_width="match_parent"
+-                android:layout_height="50dp"
+-                android:layout_gravity="bottom"
+-                android:layout_marginBottom="10dp"
+-                android:layout_marginEnd="70dp"
+-                android:layout_marginStart="70dp"
+-                android:textSize="16sp"
+-                android:text="@string/encrypt"/>
++        <Button
++            android:id="@+id/button_add"
++            android:layout_width="match_parent"
++            android:layout_height="50dp"
++            android:layout_gravity="bottom"
++            android:layout_marginBottom="10dp"
++            android:layout_marginEnd="70dp"
++            android:layout_marginStart="70dp"
++            android:onClick="onClick"
++            android:text="@string/encrypt"
++            android:textSize="16sp"/>
+ 
+     </FrameLayout>
+ 
+diff --git a/res/layout/gallery_activity_main.xml b/res/layout/gallery_activity_main.xml
+index 3e1cda9..0171175 100755
+--- a/res/layout/gallery_activity_main.xml
++++ b/res/layout/gallery_activity_main.xml
+@@ -5,9 +5,9 @@
+     android:id="@+id/activity_main"
+     android:layout_width="match_parent"
+     android:layout_height="match_parent"
++    android:background="@color/lightblack"
+     android:gravity="center"
+     android:orientation="vertical"
+-    android:background="@color/lightblack"
+     android:padding="30dp">
+ 
+ 
+@@ -16,7 +16,9 @@
+         android:layout_width="match_parent"
+         android:layout_height="60dp"
+         android:gravity="center"
+-        android:text="@string/private_album"/>
++        android:onClick="onClick"
++        android:text="@string/private_album"
++        android:visibility="gone"/>
+ 
+     <Button
+         android:id="@+id/button_add_priv_photo"
+@@ -24,7 +26,28 @@
+         android:layout_height="60dp"
+         android:layout_marginTop="50dp"
+         android:gravity="center"
+-        android:text="@string/add_private_photo"/>
++        android:onClick="onClick"
++        android:text="@string/add_private_photo"
++        android:visibility="gone"/>
++
++    <Button
++        android:id="@+id/button_priv_video_album"
++        android:layout_width="match_parent"
++        android:layout_height="60dp"
++        android:gravity="center"
++        android:onClick="onClick"
++        android:text="@string/private_video_album"
++        android:visibility="gone"/>
++
++    <Button
++        android:id="@+id/button_add_priv_video"
++        android:layout_width="match_parent"
++        android:layout_height="60dp"
++        android:layout_marginTop="50dp"
++        android:gravity="center"
++        android:onClick="onClick"
++        android:text="@string/add_private_video"
++        android:visibility="gone"/>
+ 
+ 
+ </LinearLayout>
+diff --git a/res/layout/item_album_gridview.xml b/res/layout/item_album_gridview.xml
+index 82e6fa7..648ae48 100755
+--- a/res/layout/item_album_gridview.xml
++++ b/res/layout/item_album_gridview.xml
+@@ -16,11 +16,23 @@
+         android:id="@+id/checkBox"
+         android:layout_width="wrap_content"
+         android:layout_height="wrap_content"
+-        android:layoutDirection="rtl"
++        android:layout_alignParentEnd="true"
++        android:layout_alignParentTop="true"
+         android:gravity="top"
++        android:layoutDirection="rtl"
+         android:paddingBottom="30dp"
+-        android:paddingEnd="30dp"
+-        android:layout_alignParentTop="true"
+-        android:layout_alignParentEnd="true"/>
++        android:paddingEnd="30dp"/>
++
++    <ImageView
++        android:id="@+id/image_play"
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"
++        android:layout_alignParentStart="true"
++        android:layout_centerVertical="true"
++        android:layout_marginBottom="20dp"
++        android:layout_marginTop="20dp"
++        android:scaleType="centerCrop"
++        android:src="@mipmap/ic_video_thumb"
++        android:visibility="gone"/>
+ 
+ </RelativeLayout>
+\ No newline at end of file
+diff --git a/res/mipmap-xhdpi/ic_launcher.png b/res/mipmap-xhdpi/ic_launcher.png
+deleted file mode 100755
+index bfa42f0..0000000
+Binary files a/res/mipmap-xhdpi/ic_launcher.png and /dev/null differ
+diff --git a/res/mipmap-xhdpi/ic_video_thumb.png b/res/mipmap-xhdpi/ic_video_thumb.png
+new file mode 100755
+index 0000000..e0f53b3
+Binary files /dev/null and b/res/mipmap-xhdpi/ic_video_thumb.png differ
+diff --git a/res/mipmap-xhdpi/icon_priv_video.png b/res/mipmap-xhdpi/icon_priv_video.png
+new file mode 100755
+index 0000000..54a4c34
+Binary files /dev/null and b/res/mipmap-xhdpi/icon_priv_video.png differ
+diff --git a/res/mipmap-xxhdpi/bt_finger_print.png b/res/mipmap-xxhdpi/bt_finger_print.png
+new file mode 100755
+index 0000000..aac02c5
+Binary files /dev/null and b/res/mipmap-xxhdpi/bt_finger_print.png differ
+diff --git a/res/mipmap-xxhdpi/ic_launcher.png b/res/mipmap-xxhdpi/ic_launcher.png
+deleted file mode 100755
+index 324e72c..0000000
+Binary files a/res/mipmap-xxhdpi/ic_launcher.png and /dev/null differ
+diff --git a/res/mipmap-xxhdpi/iv_finger_print.png b/res/mipmap-xxhdpi/iv_finger_print.png
+new file mode 100755
+index 0000000..be0d4d1
+Binary files /dev/null and b/res/mipmap-xxhdpi/iv_finger_print.png differ
+diff --git a/res/mipmap-xxxhdpi/bt_finger_print.png b/res/mipmap-xxxhdpi/bt_finger_print.png
+deleted file mode 100755
+index aac02c5..0000000
+Binary files a/res/mipmap-xxxhdpi/bt_finger_print.png and /dev/null differ
+diff --git a/res/mipmap-xxxhdpi/ic_launcher.jpg b/res/mipmap-xxxhdpi/ic_launcher.jpg
+new file mode 100755
+index 0000000..772d7be
+Binary files /dev/null and b/res/mipmap-xxxhdpi/ic_launcher.jpg differ
+diff --git a/res/mipmap-xxxhdpi/ic_launcher.png b/res/mipmap-xxxhdpi/ic_launcher.png
+deleted file mode 100755
+index aee44e1..0000000
+Binary files a/res/mipmap-xxxhdpi/ic_launcher.png and /dev/null differ
+diff --git a/res/mipmap-xxxhdpi/iv_finger_print.jpg b/res/mipmap-xxxhdpi/iv_finger_print.jpg
+deleted file mode 100755
+index 300f3d8..0000000
+Binary files a/res/mipmap-xxxhdpi/iv_finger_print.jpg and /dev/null differ
+diff --git a/res/mipmap-xxxhdpi/logo.jpg b/res/mipmap-xxxhdpi/logo.jpg
+deleted file mode 100755
+index 772d7be..0000000
+Binary files a/res/mipmap-xxxhdpi/logo.jpg and /dev/null differ
+diff --git a/res/values/strings.xml b/res/values/strings.xml
+index d7194b0..91bde4c 100755
+--- a/res/values/strings.xml
++++ b/res/values/strings.xml
+@@ -65,5 +65,9 @@
+     <string name="add_private_photo">添加私密图片</string>
+     <string name="click_login_by_finger_print">点击进行指纹登录</string>
+     <string name="no_picture">没 有 图 片</string>
++    <string name="private_video_album">私密视频</string>
++    <string name="add_private_video">添加私密视频</string>
++    <string name="select_video">选择视频</string>
++
+ 
+ </resources>
+diff --git a/src/com/transage/privatespace/activity/Main.java b/src/com/transage/privatespace/activity/Main.java
+index 57541cb..3636717 100755
+--- a/src/com/transage/privatespace/activity/Main.java
++++ b/src/com/transage/privatespace/activity/Main.java
+@@ -95,6 +95,12 @@ public class Main extends BaseActivity implements View.OnClickListener, AppRecyc
+         appInfo1.setAppIcon(getDrawable(R.mipmap.icon_priv_gallery));
+         appInfo1.setAppName(getString(R.string.private_gallery));
+         appList.add(0,appInfo1);
++        //添加“私密视频”
++        AppInfo appInfo2 = new AppInfo();
++        appInfo2.setAppIcon(getDrawable(R.mipmap.icon_priv_video));
++        appInfo2.setAppName(getString(R.string.private_video_album));
++        appList.add(1,appInfo2);
++
+         isShowDeleteImageView = false;
+         recycleAdapter.showDeletImageView(false);//不显示右上角的删除按钮,该方法内部包含notifyDataSetChanged（）,所以不需要下面的notify了
+         //recycleAdapter.notifyDataSetChanged();
+@@ -107,7 +113,10 @@ public class Main extends BaseActivity implements View.OnClickListener, AppRecyc
+             startActivity(new Intent(Main.this, AddApp.class));
+             return;
+         }else if (position == 0){//“私密图库”
+-            startActivity(new Intent(Main.this, GalleryMainActivity.class));
++            startActivity(new Intent(Main.this, GalleryMainActivity.class).putExtra("isPhoto",true));
++            return;
++        }else if (position == 1){//“私密视频”
++            startActivity(new Intent(Main.this, GalleryMainActivity.class).putExtra("isPhoto",false));
+             return;
+         }
+         if (view.getId() == R.id.iv_appIcon) {
+diff --git a/src/com/transage/privatespace/gallery/activity/GalleryMainActivity.java b/src/com/transage/privatespace/gallery/activity/GalleryMainActivity.java
+index 0c22419..26f9030 100755
+--- a/src/com/transage/privatespace/gallery/activity/GalleryMainActivity.java
++++ b/src/com/transage/privatespace/gallery/activity/GalleryMainActivity.java
+@@ -11,6 +11,7 @@ import android.view.View;
+ import com.transage.privatespace.R;
+ import com.transage.privatespace.activity.BaseActivity;
+ import com.transage.privatespace.gallery.photozoom.Folders;
++import com.transage.privatespace.gallery.videozoom.VideoAlbum;
+ 
+ /**
+  * Created by dongrp on 2017/7/1.
+@@ -39,8 +40,14 @@ public class GalleryMainActivity extends BaseActivity implements View.OnClickLis
+             ActivityCompat.requestPermissions(GalleryMainActivity.this, PERMISSIONS_STORAGE, REQUEST_EXTERNAL_STORAGE);
+         }
+ 
+-        findViewById(R.id.button_priv_album).setOnClickListener(this);
+-        findViewById(R.id.button_add_priv_photo).setOnClickListener(this);
++        //主界面点击 私密图片或私密视频，呈现不同的按钮
++        if (getIntent().getBooleanExtra("isPhoto",false)){
++            findViewById(R.id.button_priv_album).setVisibility(View.VISIBLE);
++            findViewById(R.id.button_add_priv_photo).setVisibility(View.VISIBLE);
++        }else {
++            findViewById(R.id.button_priv_video_album).setVisibility(View.VISIBLE);
++            findViewById(R.id.button_add_priv_video).setVisibility(View.VISIBLE);
++        }
+ 
+     }
+ 
+@@ -53,6 +60,12 @@ public class GalleryMainActivity extends BaseActivity implements View.OnClickLis
+             case R.id.button_add_priv_photo:
+                 startActivity(new Intent(GalleryMainActivity.this, Folders.class));
+                 break;
++            case R.id.button_priv_video_album:
++//                startActivity(new Intent(GalleryMainActivity.this, PrivateAlbum.class));
++                break;
++            case R.id.button_add_priv_video:
++                startActivity(new Intent(GalleryMainActivity.this, VideoAlbum.class));
++                break;
+             default:
+                 break;
+         }
+diff --git a/src/com/transage/privatespace/gallery/photozoom/Album.java b/src/com/transage/privatespace/gallery/photozoom/Album.java
+index e30a8ca..87129f8 100755
+--- a/src/com/transage/privatespace/gallery/photozoom/Album.java
++++ b/src/com/transage/privatespace/gallery/photozoom/Album.java
+@@ -58,9 +58,6 @@ public class Album extends BaseActivity implements OnClickListener {
+      * view初始化
+      */
+     private void init() {
+-        findViewById(R.id.checkbox_select_all).setOnClickListener(this);
+-        findViewById(R.id.button_back).setOnClickListener(this);
+-        findViewById(R.id.button_add).setOnClickListener(this);
+         //创建gridView并绑定适配器
+         gridView = (GridView) findViewById(R.id.album_GridView);
+         gridImageAdapter = new AlbumGridViewAdapter(this, dataList);
+@@ -202,7 +199,7 @@ public class Album extends BaseActivity implements OnClickListener {
+         Uri baseUri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+         contentResolver.delete(baseUri, "_id=?", new String[]{item.getImageId()});
+         //将加密后的文件条目插入私密数据库
+-        Log.d("Album", item.toString());
++        Log.d("VideoAlbum", item.toString());
+         ContentValues contentValues = new ContentValues();
+         contentValues.put(PsDatabaseHelper.FilesClumns._ID,Integer.valueOf(item.getImageId()));
+         contentValues.put(PsDatabaseHelper.FilesClumns._DATA,privImagePath);
+diff --git a/src/com/transage/privatespace/gallery/photozoom/AlbumHelper.java b/src/com/transage/privatespace/gallery/photozoom/AlbumHelper.java
+index f831e70..a967744 100755
+--- a/src/com/transage/privatespace/gallery/photozoom/AlbumHelper.java
++++ b/src/com/transage/privatespace/gallery/photozoom/AlbumHelper.java
+@@ -3,10 +3,13 @@ package com.transage.privatespace.gallery.photozoom;
+ import android.content.ContentResolver;
+ import android.content.Context;
+ import android.database.Cursor;
++import android.provider.MediaStore;
+ import android.provider.MediaStore.Audio.Albums;
+ import android.provider.MediaStore.Images.Media;
+ import android.provider.MediaStore.Images.Thumbnails;
+ 
++import com.transage.privatespace.gallery.videozoom.VideoItem;
++
+ import java.util.ArrayList;
+ import java.util.HashMap;
+ import java.util.Iterator;
+@@ -16,7 +19,7 @@ import java.util.Map.Entry;
+ public class AlbumHelper {
+ 	final String TAG = getClass().getSimpleName();
+ 	Context context;
+-	ContentResolver cr;
++	static ContentResolver cr;
+ 	
+ 	HashMap<String, String> thumbnailList = new HashMap<String, String>();
+ 
+@@ -251,4 +254,61 @@ public class AlbumHelper {
+ 		return path;
+ 	}
+ 
++
++//***************************************************
++	/**
++	 * 获取系统数据库中的视频文件数据信息
++	 */
++	public static ArrayList<VideoItem> getSystemVideoList(Context context) {
++		ArrayList<VideoItem> sysVideoList = new ArrayList<>();
++
++		// MediaStore.Video.Thumbnails.DATA:视频缩略图的文件路径
++		String[] videoThumbColumns = { MediaStore.Video.Thumbnails.DATA,
++				MediaStore.Video.Thumbnails.VIDEO_ID };
++
++		// MediaStore.Video.Media.DATA：视频文件路径；
++		String[] videoColumns = { MediaStore.Video.Media._ID,MediaStore.Video.Media.DATA,
++				MediaStore.Video.Media.DISPLAY_NAME, MediaStore.Video.Media.SIZE,
++				MediaStore.Video.Media.MIME_TYPE, MediaStore.Video.Media.DATE_ADDED,
++				MediaStore.Video.Media.TITLE, MediaStore.Video.Media.ALBUM,
++				MediaStore.Video.Media.BUCKET_ID, MediaStore.Video.Media.BUCKET_DISPLAY_NAME,
++				MediaStore.Video.Media.WIDTH, MediaStore.Video.Media.HEIGHT};
++
++		Cursor cursor = context.getContentResolver().query(MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
++				videoColumns, null, null, MediaStore.Video.Media._ID+" DESC ");
++
++/*		if(cursor==null){
++			Toast.makeText(SystemVideoChooseActivity.this, "没有找到可播放视频文件", 1).show();
++			return;
++		}*/
++
++		if (cursor.moveToFirst()) {
++			do {
++				VideoItem videoItem = new VideoItem();
++				int id = cursor.getInt(cursor.getColumnIndex(MediaStore.Video.Media._ID));
++				Cursor thumbCursor = context.getContentResolver().query(MediaStore.Video.Thumbnails.EXTERNAL_CONTENT_URI,videoThumbColumns,
++						MediaStore.Video.Thumbnails.VIDEO_ID + "=" + id, null, null);
++				if (thumbCursor.moveToFirst()) {
++					videoItem.setThumbPath(thumbCursor.getString(thumbCursor.getColumnIndex(MediaStore.Video.Thumbnails.DATA)));
++				}
++				videoItem.setId(String.valueOf(id));
++				videoItem.setPath(cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATA)));
++				videoItem.setDisplayName(cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)));
++				videoItem.setSize(cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE)));
++				videoItem.setMimeType(cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.MIME_TYPE)));
++				videoItem.setDateAdded(cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_ADDED)));
++				videoItem.setTitle(cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.TITLE)));
++				videoItem.setAlbum(cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.ALBUM)));
++				videoItem.setBucketId(cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.BUCKET_ID)));
++				videoItem.setBucketDisplayName(cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.BUCKET_DISPLAY_NAME)));
++				videoItem.setWidth(cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.WIDTH)));
++				videoItem.setHeight(cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.HEIGHT)));
++				sysVideoList.add(videoItem);
++			} while (cursor.moveToNext());
++		}
++		return sysVideoList;
++	}
++
++
++
+ }
+diff --git a/src/com/transage/privatespace/gallery/photozoom/Bimp.java b/src/com/transage/privatespace/gallery/photozoom/Bimp.java
+index f2dff06..05ca34b 100755
+--- a/src/com/transage/privatespace/gallery/photozoom/Bimp.java
++++ b/src/com/transage/privatespace/gallery/photozoom/Bimp.java
+@@ -6,6 +6,8 @@ import android.graphics.BitmapFactory;
+ import android.net.Uri;
+ import android.util.Base64;
+ 
++import com.transage.privatespace.gallery.videozoom.VideoItem;
++
+ import java.io.ByteArrayInputStream;
+ import java.io.ByteArrayOutputStream;
+ import java.io.FileNotFoundException;
+@@ -20,10 +22,11 @@ import javax.crypto.CipherInputStream;
+ public class Bimp {
+ 	public static int max = 0;
+ 	/**
+-	 * Bimp类中的这个ArryList用于存放自定义的ImageItem对象
++	 * Bimp类中的这个ArryList用于存放自定义的ImageItem对象,VideoItem对象
+ 	 */
+-	public static ArrayList<ImageItem> tempSelectBitmap = new ArrayList<ImageItem>();
+-	
++	public static ArrayList<ImageItem> tempSelectBitmap = new ArrayList<>();
++	public static ArrayList<VideoItem> tempSelectVideo = new ArrayList<>();
++
+ 
+ 	/**
+ 	 * 这个方法 通过循环质量压缩， 将图片的质量压缩到 一个合理的（设置好的）大小
+diff --git a/src/com/transage/privatespace/gallery/videozoom/VideoAlbum.java b/src/com/transage/privatespace/gallery/videozoom/VideoAlbum.java
+new file mode 100755
+index 0000000..ccdf957
+--- /dev/null
++++ b/src/com/transage/privatespace/gallery/videozoom/VideoAlbum.java
+@@ -0,0 +1,220 @@
++package com.transage.privatespace.gallery.videozoom;
++
++import android.app.ProgressDialog;
++import android.os.Bundle;
++import android.view.View;
++import android.view.View.OnClickListener;
++import android.widget.CheckBox;
++import android.widget.GridView;
++import android.widget.TextView;
++
++import com.transage.privatespace.R;
++import com.transage.privatespace.activity.BaseActivity;
++import com.transage.privatespace.database.DatabaseAdapter;
++import com.transage.privatespace.gallery.photozoom.AlbumHelper;
++import com.transage.privatespace.gallery.photozoom.Bimp;
++
++import java.util.ArrayList;
++import java.util.concurrent.ExecutorService;
++import java.util.concurrent.Executors;
++
++
++/**
++ * 这个类用于：将ImageFolders中选定的Folder(含图片的文件夹)中所有图片 以GridView的形式 展示出来
++ *
++ * @author Tom
++ */
++public class VideoAlbum extends BaseActivity implements OnClickListener {
++    private GridView gridView;
++    private VideoAlbumGridViewAdapter gridImageAdapter;
++    //这个静态 成员变量 在FolderGirdViewAdapter的item点击事件中 就已经赋值了
++    public static ArrayList<VideoItem> videoList;
++//    private EncryptionTask mTask = null;
++    public static ExecutorService executorService; //线程池
++    private static DatabaseAdapter databaseAdapter;
++
++    @Override
++    protected void onCreate(Bundle savedInstanceState) {
++        super.onCreate(savedInstanceState);
++        setContentView(R.layout.activity_album);
++        executorService = Executors.newFixedThreadPool(20);//创建一个缓存线程池
++        databaseAdapter = new DatabaseAdapter(VideoAlbum.this);//数据库操作工具类
++    }
++
++    @Override
++    protected void onResume() {
++        super.onResume();
++        init();
++    }
++
++    /**
++     * view初始化
++     */
++    private void init() {
++        TextView tvTitle = (TextView) findViewById(R.id.title);
++        tvTitle.setText(R.string.select_video);
++        //数据
++        videoList = AlbumHelper.getSystemVideoList(VideoAlbum.this);
++        //创建gridView并绑定适配器
++        gridView = (GridView) findViewById(R.id.album_GridView);
++        gridImageAdapter = new VideoAlbumGridViewAdapter(this,videoList);
++        gridView.setAdapter(gridImageAdapter);
++    }
++
++    @Override
++    protected void onDestroy() {
++        super.onDestroy();
++        Bimp.tempSelectVideo.clear();
++        if (null != progressDialog && progressDialog.isShowing()) {
++            progressDialog.dismiss();
++        }
++/*        if (null != mTask && !mTask.isCancelled()){
++            mTask.cancel(true);
++        }*/
++    }
++
++    //////////////////////////////////////////////////////////////////////////////////////////
++
++    @Override
++    public void onClick(View view) {
++        switch (view.getId()) {
++            case R.id.button_back:
++                finish();
++                break;
++            case R.id.checkbox_select_all:
++                ((CheckBox) view).setText(((CheckBox) view).isChecked() ? "取消全选" : "全选");
++                gridImageAdapter.selectAll(((CheckBox) view).isChecked());
++                break;
++/*            case R.id.button_add:
++                if (Bimp.tempSelectBitmap.size() == 0){
++                    Toast.makeText(this, "请至少选择一张图片", Toast.LENGTH_SHORT).show();
++                    break;
++                }
++                if (mTask != null) {
++                    mTask.cancel(true);
++                }
++                mTask = new EncryptionTask(Bimp.tempSelectBitmap);
++                mTask.execute();
++                break;*/
++            default:
++                break;
++        }
++
++    }
++
++    /**
++     * 批量加密异步任务
++     */
++    public ProgressDialog progressDialog;
++
++/*    public class EncryptionTask extends AsyncTask<Void, Void, Boolean> {
++        private ArrayList<ImageItem> mImageArrayList;
++        int startSize;
++
++        public EncryptionTask(ArrayList<ImageItem> imageArrayList) {
++            this.mImageArrayList = imageArrayList;
++            progressDialog = new ProgressDialog(VideoAlbum.this);
++            progressDialog.setCancelable(false);
++        }
++
++        @Override
++        protected void onPreExecute() {
++            super.onPreExecute();
++            startSize = databaseAdapter.getPhoto().size();
++            progressDialog.setMessage("正在加密，请稍后...");
++            progressDialog.show();
++        }
++
++        @Override
++        protected Boolean doInBackground(Void... params) {
++            boolean result = false;
++            result = encryptFileList(mImageArrayList); //加密文件集合
++            int totalTime = 0;
++            while (result && databaseAdapter.getPhoto().size() != (startSize + mImageArrayList.size()) && totalTime < mImageArrayList.size()) {
++                try {
++                    Thread.sleep(2000);
++                    totalTime += 2;
++                    //Log.d("EncryptionTask", "totalTime:" + totalTime);
++                } catch (InterruptedException e) {
++                    e.printStackTrace();
++                }
++            }
++            return result;
++        }
++
++        @Override
++        protected void onPostExecute(Boolean result) {
++            super.onPostExecute(result);
++            gridImageAdapter.refreshDataAfterEncrypt();
++            String showMessage = result ? "加密成功" : "部分文件加密失败！";
++            Toast.makeText(VideoAlbum.this, showMessage, Toast.LENGTH_SHORT).show();
++            progressDialog.dismiss();
++        }
++
++    }*/
++
++    /**
++     * 加密文件集合
++     *
++     * @param arrayList
++     * @return
++     */
++    boolean result = true;//最后返回的加密结果
++
++/*    public boolean encryptFileList(ArrayList<ImageItem> arrayList) {
++        long l2 = System.currentTimeMillis();
++        for (final ImageItem item : arrayList) {
++            final String imagePath = item.getImagePath();
++            final String privImagePath = imagePath.replaceFirst("/storage/emulated/0", "/data/data/" + getPackageName() + "/files/storage/emulated/0");
++            executorService.submit(new Runnable() {
++                @Override
++                public void run() {
++                    boolean b = AESEncryptionUtil.encryptFile(imagePath, privImagePath);
++                    if (b) {//加密成功，删除源文件
++                        delete(item,privImagePath,getContentResolver());
++                    } else { //加密失败，设置结果为false
++                        result = b;
++                    }
++                }
++            });
++        }
++        long l = System.currentTimeMillis();
++        Log.d("dongrp", "加密for循环耗时:" + (l - l2) + " ms");
++        return result;
++    }*/
++
++
++    /**
++     * 明文件删除、明文件数据库条目删除、私密数据库插入
++     * @param item
++     */
++/*    public static void delete(ImageItem item, String privImagePath,ContentResolver contentResolver) {
++        //删除明文件
++        File file = new File(item.getImagePath());
++        file.delete();
++        //删除系统数据库中该条明文件记录
++        Uri baseUri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
++        contentResolver.delete(baseUri, "_id=?", new String[]{item.getImageId()});
++        //将加密后的文件条目插入私密数据库
++        Log.d("VideoAlbum", item.toString());
++        ContentValues contentValues = new ContentValues();
++        contentValues.put(PsDatabaseHelper.FilesClumns._ID,Integer.valueOf(item.getImageId()));
++        contentValues.put(PsDatabaseHelper.FilesClumns._DATA,privImagePath);
++        contentValues.put(PsDatabaseHelper.FilesClumns._SOURCE_DATA,item.getImagePath());
++        contentValues.put(PsDatabaseHelper.FilesClumns._SIZE,Integer.valueOf(item.getSize()));
++        contentValues.put(PsDatabaseHelper.FilesClumns._DISPLAY_NAME,item.getDisplayName());
++        contentValues.put(PsDatabaseHelper.FilesClumns.TITLE,item.getTitle());
++        contentValues.put(PsDatabaseHelper.FilesClumns.DATE_ADDED,Long.valueOf(item.getDateAdded()));
++        contentValues.put(PsDatabaseHelper.FilesClumns.MIME_TYPE,item.getMimeType());
++        contentValues.put(PsDatabaseHelper.FilesClumns.BUCKET_ID,item.getBucketId());
++        contentValues.put(PsDatabaseHelper.FilesClumns.BUCKET_DISPLAY_NAME,item.getBucket_display_name());
++        try {
++            contentValues.put(PsDatabaseHelper.FilesClumns.WIDTH,Integer.valueOf(item.getWidth()));
++            contentValues.put(PsDatabaseHelper.FilesClumns.HEIGHT,Integer.valueOf(item.getHeight()));
++        } catch (NumberFormatException e) {
++            e.printStackTrace();
++        }
++        databaseAdapter.insertPhoto(contentValues);
++    }*/
++
++}
+diff --git a/src/com/transage/privatespace/gallery/videozoom/VideoAlbumGridViewAdapter.java b/src/com/transage/privatespace/gallery/videozoom/VideoAlbumGridViewAdapter.java
+new file mode 100755
+index 0000000..499daad
+--- /dev/null
++++ b/src/com/transage/privatespace/gallery/videozoom/VideoAlbumGridViewAdapter.java
+@@ -0,0 +1,163 @@
++package com.transage.privatespace.gallery.videozoom;
++
++import android.content.Context;
++import android.content.Intent;
++import android.graphics.Bitmap;
++import android.net.Uri;
++import android.util.Log;
++import android.view.LayoutInflater;
++import android.view.View;
++import android.view.View.OnClickListener;
++import android.view.ViewGroup;
++import android.widget.BaseAdapter;
++import android.widget.CheckBox;
++import android.widget.ImageView;
++
++import com.bumptech.glide.Glide;
++import com.transage.privatespace.R;
++import com.transage.privatespace.gallery.photozoom.Bimp;
++import com.transage.privatespace.gallery.photozoom.BitmapCache;
++
++import java.util.ArrayList;
++
++
++/**
++ * 适配器：将某一个相册中图片，以GridView的形式进行适配
++ *
++ * @author Tom
++ */
++public class VideoAlbumGridViewAdapter extends BaseAdapter {
++
++	private final String TAG = getClass().getSimpleName();
++    private ArrayList<VideoItem> dataList;
++    private Context context;
++    private BitmapCache cache;
++    //private DisplayMetrics dm;
++
++    public VideoAlbumGridViewAdapter(Context context, ArrayList<VideoItem> dataList) {
++		this.context = context;
++		this.dataList = dataList;
++        cache = new BitmapCache();
++	}
++
++	/**
++	 * 数据全选、取消全选 的方法
++	 *
++	 * @param selectAll
++	 */
++	public void selectAll(boolean selectAll) {
++		Bimp.tempSelectVideo.clear();
++		if (selectAll) {
++			Bimp.tempSelectVideo.addAll(dataList);
++		}
++		notifyDataSetChanged();
++	}
++
++    /**
++     * 解密完成后，刷新适配器的方法
++     */
++    public void refreshDataAfterEncrypt(){
++        dataList.removeAll(Bimp.tempSelectVideo);
++        notifyDataSetChanged();
++        Bimp.tempSelectVideo.clear();
++    }
++
++	public int getCount() {
++		return dataList.size();
++	}
++
++	public Object getItem(int position) {
++		return dataList.get(position);
++	}
++
++	public long getItemId(int position) {
++		return 0;
++	}
++
++	BitmapCache.ImageCallback callback = new BitmapCache.ImageCallback() {
++        @Override
++		public void imageLoad(ImageView imageView, Bitmap bitmap, Object... params) {
++			if (imageView != null && bitmap != null) {
++				String url = (String) params[0];
++				if (url != null && url.equals((String) imageView.getTag())) {
++					((ImageView) imageView).setImageBitmap(bitmap);
++				} else {
++					Log.e(TAG, "callback, bmp not match");
++				}
++			} else {
++				Log.e(TAG, "callback, bmp null");
++			}
++		}
++	};
++
++	/**
++	 * 存放列表项控件句柄
++	 */
++	private class ViewHolder {
++		public ImageView imageView;
++		public CheckBox checkBox;
++		public ImageView imagePlay;
++	}
++
++	public View getView(final int position, View convertView, ViewGroup parent) {
++		final ViewHolder viewHolder;
++		if (convertView == null) {
++			viewHolder = new ViewHolder();
++			convertView = LayoutInflater.from(context).inflate(R.layout.item_album_gridview, parent, false);
++			viewHolder.imageView = (ImageView) convertView.findViewById(R.id.image_view);
++			viewHolder.checkBox = (CheckBox) convertView.findViewById(R.id.checkBox);
++			viewHolder.imagePlay = (ImageView) convertView.findViewById(R.id.image_play);
++			viewHolder.imagePlay.setVisibility(View.VISIBLE);
++			convertView.setTag(viewHolder);
++		} else {
++			viewHolder = (ViewHolder) convertView.getTag();
++		}
++/*		String path;
++		if (dataList != null && dataList.size() > position)
++			path = dataList.get(position).getPath();
++		else
++			path = "camera_default";
++		if (path.contains("camera_default")) {
++			viewHolder.imageView.setImageResource(R.color.greytext);
++		} else {
++			final VideoItem item = dataList.get(position);
++			viewHolder.imageView.setTag(item.getPath());
++			cache.displayBmp(viewHolder.imageView, item.getThumbPath(), null ,callback);
++		}*/
++		Glide.with(context).load(dataList.get(position).getThumbPath()).into(viewHolder.imageView);
++		viewHolder.checkBox.setTag(position);
++		viewHolder.checkBox.setOnClickListener(new OnClickListener() {
++			@Override
++			public void onClick(View view) {
++				if (viewHolder.checkBox.isChecked()){
++                    Bimp.tempSelectVideo.add(dataList.get(position));
++				}else {
++                    Bimp.tempSelectVideo.remove(dataList.get(position));
++				}
++			}
++		});
++		//防止滑动的时候由于控件复用而导致数据错乱，所以控件的适配必须有数据源中的内容决定
++		if (Bimp.tempSelectVideo.contains(dataList.get(position))) {
++			viewHolder.checkBox.setChecked(true);
++		} else {
++			viewHolder.checkBox.setChecked(false);
++		}
++		//点击viewHolder.imageView 开始播放视频
++		viewHolder.imageView.setOnClickListener(new OnClickListener() {
++			public void onClick(View v) {
++//				context.startActivity(new Intent(context,Gallery.class).putExtra("position",position).putExtra("isFromPrivateAlbum",false));
++//				Toast.makeText(context, "播放视频", Toast.LENGTH_SHORT).show();
++				Uri uri = Uri.parse(dataList.get(position).getPath());
++				Intent intent = new Intent(Intent.ACTION_VIEW);
++				intent.setDataAndType(uri, "video/*");
++				context.startActivity(intent);
++			}
++		});
++		return convertView;
++	}
++
++/*	public int dipToPx(int dip) {
++		return (int) (dip * dm.density + 0.5f);
++	}*/
++
++}
+diff --git a/src/com/transage/privatespace/gallery/videozoom/VideoItem.java b/src/com/transage/privatespace/gallery/videozoom/VideoItem.java
+new file mode 100755
+index 0000000..dc99e90
+--- /dev/null
++++ b/src/com/transage/privatespace/gallery/videozoom/VideoItem.java
+@@ -0,0 +1,126 @@
++package com.transage.privatespace.gallery.videozoom;
++
++/**
++ * Created by ruipan.dong on 2017/9/4.
++ */
++
++public class VideoItem {
++
++    private String id;
++    private String path;
++    private String thumbPath;
++    private String displayName;
++    private String size;
++    private String mimeType;
++    private String dateAdded;
++    private String title;
++    private String album;
++    private String bucketId;
++    private String bucketDisplayName;
++    private String width;
++    private String height;
++
++    public String getId() {
++        return id;
++    }
++
++    public void setId(String id) {
++        this.id = id;
++    }
++
++    public String getPath() {
++        return path;
++    }
++
++    public void setPath(String path) {
++        this.path = path;
++    }
++
++    public String getThumbPath() {
++        return thumbPath;
++    }
++
++    public void setThumbPath(String thumbPath) {
++        this.thumbPath = thumbPath;
++    }
++
++    public String getDisplayName() {
++        return displayName;
++    }
++
++    public void setDisplayName(String displayName) {
++        this.displayName = displayName;
++    }
++
++    public String getSize() {
++        return size;
++    }
++
++    public void setSize(String size) {
++        this.size = size;
++    }
++
++    public String getMimeType() {
++        return mimeType;
++    }
++
++    public void setMimeType(String mimeType) {
++        this.mimeType = mimeType;
++    }
++
++    public String getDateAdded() {
++        return dateAdded;
++    }
++
++    public void setDateAdded(String dateAdded) {
++        this.dateAdded = dateAdded;
++    }
++
++    public String getTitle() {
++        return title;
++    }
++
++    public void setTitle(String title) {
++        this.title = title;
++    }
++
++    public String getAlbum() {
++        return album;
++    }
++
++    public void setAlbum(String album) {
++        this.album = album;
++    }
++
++    public String getBucketId() {
++        return bucketId;
++    }
++
++    public void setBucketId(String bucketId) {
++        this.bucketId = bucketId;
++    }
++
++    public String getBucketDisplayName() {
++        return bucketDisplayName;
++    }
++
++    public void setBucketDisplayName(String bucketDisplayName) {
++        this.bucketDisplayName = bucketDisplayName;
++    }
++
++    public String getWidth() {
++        return width;
++    }
++
++    public void setWidth(String width) {
++        this.width = width;
++    }
++
++    public String getHeight() {
++        return height;
++    }
++
++    public void setHeight(String height) {
++        this.height = height;
++    }
++}

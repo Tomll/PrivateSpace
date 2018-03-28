@@ -1,0 +1,221 @@
+diff --git a/src/com/transage/privatespace/PrivateSpaceApplication.java b/src/com/transage/privatespace/PrivateSpaceApplication.java
+index 4e425c5..dee043e 100755
+--- a/src/com/transage/privatespace/PrivateSpaceApplication.java
++++ b/src/com/transage/privatespace/PrivateSpaceApplication.java
+@@ -5,7 +5,6 @@ import android.app.Application;
+ import android.content.ComponentName;
+ import android.content.Context;
+ import android.content.Intent;
+-import android.util.Log;
+ 
+ import com.transage.privatespace.activity.EmptyActivity;
+ 
+@@ -25,9 +24,9 @@ public class PrivateSpaceApplication extends Application {
+         List<ActivityManager.RunningTaskInfo> tasks = am.getRunningTasks(1);
+         if (!tasks.isEmpty()) {
+             ComponentName topActivity = tasks.get(0).topActivity;
+-            Log.d("PrivateSpaceApplication", topActivity.getPackageName());
++            //Log.d("PrivateSpaceApplication", topActivity.getPackageName());
+             if (!topActivity.getPackageName().equals(getPackageName())) {
+-                Log.d("PrivateSpaceApplication", "go to background");
++                //Log.d("PrivateSpaceApplication", "go to background");
+                 Intent intent = new Intent(this,EmptyActivity.class);
+                 intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+diff --git a/src/com/transage/privatespace/activity/AdvancedSetup.java b/src/com/transage/privatespace/activity/AdvancedSetup.java
+index 4cf5d36..9736d6f 100755
+--- a/src/com/transage/privatespace/activity/AdvancedSetup.java
++++ b/src/com/transage/privatespace/activity/AdvancedSetup.java
+@@ -45,11 +45,6 @@ public class AdvancedSetup extends BaseActivity implements View.OnClickListener,
+         Switch aSwitch3 = (Switch) findViewById(R.id.switch3);
+         Switch aSwitch4 = (Switch) findViewById(R.id.switch4);
+         Switch switchSaveVcf = (Switch) findViewById(R.id.switch_save_by_cvf);
+-        aSwitch1.setOnCheckedChangeListener(this);
+-        aSwitch2.setOnCheckedChangeListener(this);
+-        aSwitch3.setOnCheckedChangeListener(this);
+-        aSwitch4.setOnCheckedChangeListener(this);
+-        switchSaveVcf.setOnCheckedChangeListener(this);
+         // 根据xml中保存的开关状态 设置switch状态
+         if (Login.sp.getBoolean("enterByPrivateFingerprint", false)) {
+             aSwitch1.setChecked(true);
+@@ -71,8 +66,13 @@ public class AdvancedSetup extends BaseActivity implements View.OnClickListener,
+         } else {
+             aSwitch4.setChecked(false);
+         }
+-        
+         switchSaveVcf.setChecked(ImportExportUtils.isVcf(this));
++        //checkChange监听
++        aSwitch1.setOnCheckedChangeListener(this);
++        aSwitch2.setOnCheckedChangeListener(this);
++        aSwitch3.setOnCheckedChangeListener(this);
++        aSwitch4.setOnCheckedChangeListener(this);
++        switchSaveVcf.setOnCheckedChangeListener(this);
+     }
+ 
+     // switch的CheckedChanged监听
+diff --git a/src/com/transage/privatespace/activity/Login.java b/src/com/transage/privatespace/activity/Login.java
+index 33630d2..f85253e 100755
+--- a/src/com/transage/privatespace/activity/Login.java
++++ b/src/com/transage/privatespace/activity/Login.java
+@@ -3,7 +3,7 @@ package com.transage.privatespace.activity;
+ import android.animation.AnimatorSet;
+ import android.animation.ObjectAnimator;
+ import android.annotation.SuppressLint;
+-import android.app.Activity;
++import android.content.ComponentName;
+ import android.content.ContentResolver;
+ import android.content.Context;
+ import android.content.Intent;
+@@ -20,7 +20,6 @@ import android.support.v7.app.AlertDialog;
+ import android.text.TextUtils;
+ import android.text.method.HideReturnsTransformationMethod;
+ import android.text.method.PasswordTransformationMethod;
+-import android.util.Log;
+ import android.view.KeyEvent;
+ import android.view.LayoutInflater;
+ import android.view.View;
+@@ -89,10 +88,9 @@ public class Login extends BaseActivity implements View.OnClickListener, Compoun
+         super.onResume();
+         //注册指纹监听
+         if (!isFirstRun && sp.getBoolean("enterByPrivateFingerprint", false)
+-                && FingerprintManagerCompat.from(this).hasEnrolledFingerprints()
+                 && !resetPrivateMarkFromAdvancedSetup && !resetPrivateMarkFromSecurityQuestion) {
+-            retryFingerprint();
+-            if (null != dialogFingerPrint && !dialogFingerPrint.isShowing()) {
++            retryFingerprint();//注册指纹监听
++            if (FingerprintManagerCompat.from(this).hasEnrolledFingerprints() && null != dialogFingerPrint && !dialogFingerPrint.isShowing()) {
+                 dialogFingerPrint.show();
+             }
+             btFingerprint.setVisibility(View.VISIBLE);
+@@ -100,6 +98,12 @@ public class Login extends BaseActivity implements View.OnClickListener, Compoun
+         }
+     }
+ 
++    @Override
++    protected void onPause() {
++        stopFingerprint();//注销指纹监听
++        super.onPause();
++    }
++
+     /**
+      * 初始化数据
+      */
+@@ -163,6 +167,13 @@ public class Login extends BaseActivity implements View.OnClickListener, Compoun
+                 }
+                 break;
+             case R.id.bt_finger_print://指纹登录按钮
++                if (!FingerprintManagerCompat.from(this).hasEnrolledFingerprints()){
++                    Intent intent = new Intent();
++                    ComponentName cn = new ComponentName("com.android.settings", "com.android.settings.fingerprint.FingerprintLauncher");
++                    intent.setComponent(cn);
++                    startActivity(intent);
++                    break;
++                }
+                 retryFingerprint();
+                 dialogFingerPrint.show();
+                 break;
+@@ -301,23 +312,10 @@ public class Login extends BaseActivity implements View.OnClickListener, Compoun
+     // 返回键
+     @Override
+     public void onBackPressed() {
+-        if (!isFirstRun && !isChangePrivateMark) { // 处于日常登录界面
+-            finish();
+-        }
+         if (!isFirstRun && isChangePrivateMark) { // 处于修改密码界面
+             isChangePrivateMark = false;
+-            finish();
+-            return;
+-        }
+-        if (isFirstRun) { // 首次运行
+-            finish();
+         }
+-    }
+-
+-    @Override
+-    public void onStop(){
+-        super.onStop();
+-        stopFingerprint();//停止指纹监听
++        finish();
+     }
+ 
+     /**
+@@ -348,7 +346,7 @@ public class Login extends BaseActivity implements View.OnClickListener, Compoun
+                         textView3.setVisibility(View.GONE);
+                         frameLayout2.setVisibility(View.VISIBLE);
+                         editText1.setText(null);
+-                    } else { // 验证成功后：日常登录
++                    } else if (!Login.this.isFinishing()){ // 验证成功后：日常登录,且界面没有finish
+                         startActivity(new Intent(Login.this, Main.class));
+                         finish();
+                     }
+@@ -462,6 +460,7 @@ public class Login extends BaseActivity implements View.OnClickListener, Compoun
+     private void stopFingerprint() {
+         try {
+             mFingerprintCancel.cancel();
++            mFingerprintCancel = null;
+         } catch (Exception e) {
+             e.printStackTrace();
+         }
+diff --git a/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java b/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
+index 2d3f705..7a62729 100755
+--- a/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
++++ b/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
+@@ -288,11 +288,14 @@ public class PrivateAlbum extends BaseActivity implements View.OnClickListener,
+         protected Boolean doInBackground(Void... params) {
+             boolean result = false;
+             result = decryptFileList(listPrivFliePath); //解密文件集合
++            int totalTime = 0;
+             while (result && getApplicationContext().getContentResolver().
+                     query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, null, null, null, null).getCount()
+-                    != (startSize + listPrivFliePath.size())) {
++                    != (startSize + listPrivFliePath.size()) && totalTime < listPrivFliePath.size()/2) {
+                 try {
+                     Thread.sleep(2000);
++                    totalTime +=2;
++                    //Log.d("DecryptionTask", "totalTime:" + totalTime);
+                 } catch (InterruptedException e) {
+                     e.printStackTrace();
+                 }
+diff --git a/src/com/transage/privatespace/gallery/photozoom/Album.java b/src/com/transage/privatespace/gallery/photozoom/Album.java
+index 27173f5..e30a8ca 100755
+--- a/src/com/transage/privatespace/gallery/photozoom/Album.java
++++ b/src/com/transage/privatespace/gallery/photozoom/Album.java
+@@ -74,6 +74,9 @@ public class Album extends BaseActivity implements OnClickListener {
+         if (null != progressDialog && progressDialog.isShowing()) {
+             progressDialog.dismiss();
+         }
++/*        if (null != mTask && !mTask.isCancelled()){
++            mTask.cancel(true);
++        }*/
+     }
+ 
+     //////////////////////////////////////////////////////////////////////////////////////////
+@@ -132,9 +135,12 @@ public class Album extends BaseActivity implements OnClickListener {
+         protected Boolean doInBackground(Void... params) {
+             boolean result = false;
+             result = encryptFileList(mImageArrayList); //加密文件集合
+-            while (result && databaseAdapter.getPhoto().size() != (startSize + mImageArrayList.size())) {
++            int totalTime = 0;
++            while (result && databaseAdapter.getPhoto().size() != (startSize + mImageArrayList.size()) && totalTime < mImageArrayList.size()) {
+                 try {
+                     Thread.sleep(2000);
++                    totalTime += 2;
++                    //Log.d("EncryptionTask", "totalTime:" + totalTime);
+                 } catch (InterruptedException e) {
+                     e.printStackTrace();
+                 }
+@@ -208,8 +214,12 @@ public class Album extends BaseActivity implements OnClickListener {
+         contentValues.put(PsDatabaseHelper.FilesClumns.MIME_TYPE,item.getMimeType());
+         contentValues.put(PsDatabaseHelper.FilesClumns.BUCKET_ID,item.getBucketId());
+         contentValues.put(PsDatabaseHelper.FilesClumns.BUCKET_DISPLAY_NAME,item.getBucket_display_name());
+-        contentValues.put(PsDatabaseHelper.FilesClumns.WIDTH,Integer.valueOf(item.getWidth()));
+-        contentValues.put(PsDatabaseHelper.FilesClumns.HEIGHT,Integer.valueOf(item.getHeight()));
++        try {
++            contentValues.put(PsDatabaseHelper.FilesClumns.WIDTH,Integer.valueOf(item.getWidth()));
++            contentValues.put(PsDatabaseHelper.FilesClumns.HEIGHT,Integer.valueOf(item.getHeight()));
++        } catch (NumberFormatException e) {
++            e.printStackTrace();
++        }
+         databaseAdapter.insertPhoto(contentValues);
+     }
+ 

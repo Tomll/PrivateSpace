@@ -1,0 +1,2453 @@
+diff --git a/src/com/transage/privatespace/activity/AddPeople.java b/src/com/transage/privatespace/activity/AddPeople.java
+index ea2cdc0..d2ff213 100755
+--- a/src/com/transage/privatespace/activity/AddPeople.java
++++ b/src/com/transage/privatespace/activity/AddPeople.java
+@@ -2,13 +2,11 @@ package com.transage.privatespace.activity;
+ 
+ import android.Manifest;
+ import android.annotation.TargetApi;
+-import android.app.Activity;
+ import android.content.Intent;
+ import android.content.pm.PackageManager;
+-import android.database.Cursor;
++import android.os.AsyncTask;
+ import android.os.Build;
+ import android.os.Bundle;
+-import android.provider.ContactsContract;
+ import android.support.annotation.NonNull;
+ import android.support.annotation.Nullable;
+ import android.support.v4.app.ActivityCompat;
+@@ -19,12 +17,13 @@ import android.view.Window;
+ import android.view.WindowManager;
+ import android.widget.AdapterView;
+ import android.widget.ListView;
++import android.widget.Toast;
+ 
+ import com.transage.privatespace.R;
+ import com.transage.privatespace.adapter.AddPeopleListViewAdapter;
+ import com.transage.privatespace.adapter.AddPeopleListViewAdapter.ViewHolder1;
+ import com.transage.privatespace.bean.ContactInfo;
+-import com.transage.privatespace.bean.People;
++import com.transage.privatespace.utils.ContactUtils;
+ 
+ import java.io.Serializable;
+ import java.util.ArrayList;
+@@ -41,11 +40,12 @@ public class AddPeople extends BaseActivity implements AdapterView.OnItemClickLi
+ 
+     public static final String SELECTED_PEOPLE = "selected_people";
+ 
+-    private ArrayList<People> peopleList = new ArrayList<People>(); // 存放：所有未添加到私密空间的联系人
++    private List<ContactInfo> mContactInfos = new ArrayList<ContactInfo>(); // 存放：所有未添加到私密空间的联系人
+     // 该map记录最终选中的people
+-    private HashMap<Integer, People> map_selectedPeople = new HashMap<Integer, People>();
++    private HashMap<Integer, ContactInfo> map_selectedPeople = new HashMap<Integer, ContactInfo>();
+     // 将上面的map_selectedPeople中的值遍历，存入该list_selectedPeople集合
+-    private List<People> list_selectedPeople = new ArrayList<People>();
++    private List<ContactInfo> list_selectedPeople = new ArrayList<ContactInfo>();
++    private AddPeopleListViewAdapter mPeopleListViewAdapter;
+ 
+ 
+     @Override
+@@ -73,9 +73,9 @@ public class AddPeople extends BaseActivity implements AdapterView.OnItemClickLi
+             initData();
+             initViewAndAdapter();
+         } else if (requestCode == 2 && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+-            Iterator<Map.Entry<Integer, People>> iterator = map_selectedPeople.entrySet().iterator();
++            Iterator<Map.Entry<Integer, ContactInfo>> iterator = map_selectedPeople.entrySet().iterator();
+             while (iterator.hasNext()) {
+-                Map.Entry<Integer, People> next = iterator.next();
++                Map.Entry<Integer, ContactInfo> next = iterator.next();
+                 list_selectedPeople.add(next.getValue());
+             }
+             //将peopleList中的联系人加为私密
+@@ -131,67 +131,116 @@ public class AddPeople extends BaseActivity implements AdapterView.OnItemClickLi
+     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
+     private void initData() {
+         try {
+-            String contactNumber = null;
+-            String contactName;
+-            int contactId;
+-//            Cursor cursor = getContentResolver().query(ContactsContract.Contacts.CONTENT_URI, null,
+-//                    ContactsContract.Contacts.IS_PRIVATE_CONTACTS + "=?", new String[]{"0"}, null);
+-            Cursor cursor = getContentResolver().query(ContactsContract.Contacts.CONTENT_URI, null, null, null, null);
+-            if (cursor != null && cursor.moveToFirst()) {
+-                do {
+-                    contactId = cursor.getInt(cursor.getColumnIndex(ContactsContract.Contacts.NAME_RAW_CONTACT_ID));
+-                    contactName = cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
+-                    int phoneCount = cursor.getInt(cursor.getColumnIndex(ContactsContract.Contacts.HAS_PHONE_NUMBER));
+-                    Log.i(TAG, "phoneCount = " + phoneCount + "  cursor.getCount() = " + cursor.getCount());
+-                    //Fetch Phone Number：根据contactId去Data表中查询电话号码
+-                    if(phoneCount > 0){
+-//                        Cursor phoneCursor = getContentResolver().query(
+-//                                ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null,
+-//                                ContactsContract.CommonDataKinds.Phone.CONTACT_ID + "=? add " +
+-//                                ContactsContract.Data.MIMETYPE + "= ?",
++            GetContactTask task = new GetContactTask();
++            task.execute();
++
++
++//            String contactNumber = null;
++//            String contactName;
++//            int contactId;
++////            Cursor cursor = getContentResolver().query(ContactsContract.Contacts.CONTENT_URI, null,
++////                    ContactsContract.Contacts.IS_PRIVATE_CONTACTS + "=?", new String[]{"0"}, null);
++//            Cursor cursor = getContentResolver().query(ContactsContract.Contacts.CONTENT_URI, null, null, null, null);
++//            if (cursor != null && cursor.moveToFirst()) {
++//                do {
++//                    contactId = cursor.getInt(cursor.getColumnIndex(ContactsContract.Contacts.NAME_RAW_CONTACT_ID));
++//                    contactName = cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
++//                    int phoneCount = cursor.getInt(cursor.getColumnIndex(ContactsContract.Contacts.HAS_PHONE_NUMBER));
++//                    Log.i(TAG, "phoneCount = " + phoneCount + "  cursor.getCount() = " + cursor.getCount());
++//                    //Fetch Phone Number：根据contactId去Data表中查询电话号码
++//                    if(phoneCount > 0){
++////                        Cursor phoneCursor = getContentResolver().query(
++////                                ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null,
++////                                ContactsContract.CommonDataKinds.Phone.CONTACT_ID + "=? add " +
++////                                ContactsContract.Data.MIMETYPE + "= ?",
++////                                new String[]{String.valueOf(contactId), ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE}, null);
++//                        Cursor phoneCursor = getContentResolver().query(ContactsContract.Data.CONTENT_URI, new String[]{"data1"},
++//                                ContactsContract.Data.CONTACT_ID + "= ? and " + ContactsContract.Data.MIMETYPE + "= ?",
+ //                                new String[]{String.valueOf(contactId), ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE}, null);
+-                        Cursor phoneCursor = getContentResolver().query(ContactsContract.Data.CONTENT_URI, new String[]{"data1"},
+-                                ContactsContract.Data.CONTACT_ID + "= ? and " + ContactsContract.Data.MIMETYPE + "= ?",
+-                                new String[]{String.valueOf(contactId), ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE}, null);
+-                        while (phoneCursor.moveToNext()){
+-                            Log.i(TAG, "phoneCount = phoneCursor.getcount = " + phoneCursor.getCount());
+-                            contactNumber = phoneCursor.getString(phoneCursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
+-//                            contactNumber = phoneCursor.getString(0);
+-                        }
+-                        //添加一条数据到peopleList
+-                        People people = new People();
+-                        people.setDisplayName(contactName);
+-                        people.setRawContactId(contactId);
+-                        people.setPhoneNum(contactNumber);
+-                        peopleList.add(people);
+-                        phoneCursor.close();
+-                    }
+-                } while (cursor.moveToNext());
+-                cursor.close();// 使用完后一定要将cursor关闭，不然会造成内存泄露等问题
+-            }
++//                        while (phoneCursor.moveToNext()){
++//                            Log.i(TAG, "phoneCount = phoneCursor.getcount = " + phoneCursor.getCount());
++//                            contactNumber = phoneCursor.getString(phoneCursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
++////                            contactNumber = phoneCursor.getString(0);
++//                        }
++//                        //添加一条数据到peopleList
++//                        People people = new People();
++//                        people.setDisplayName(contactName);
++//                        people.setRawContactId(contactId);
++//                        people.setPhoneNum(contactNumber);
++//                        peopleList.add(people);
++//                        phoneCursor.close();
++//                    }
++//                } while (cursor.moveToNext());
++//                cursor.close();// 使用完后一定要将cursor关闭，不然会造成内存泄露等问题
++//            }
+         } catch (Exception e) {
+             e.printStackTrace();
+         }
+     }
+ 
++    class GetContactTask extends AsyncTask<Void, Integer, Integer> {
++        /**
++         * 运行在UI线程中，在调用doInBackground()之前执行
++         */
++        @Override
++        protected void onPreExecute() {
++        }
++
++        /**
++         * 后台运行的方法，可以运行非UI线程，可以执行耗时的方法
++         */
++        @Override
++        protected Integer doInBackground(Void... params) {
++            ContactUtils contactUtils = new ContactUtils(AddPeople.this);
++            mContactInfos = contactUtils.getContacts();
++            return null;
++        }
++
++        /**
++         * 运行在ui线程中，在doInBackground()执行完毕后执行
++         */
++        @Override
++        protected void onPostExecute(Integer integer) {
++            mPeopleListViewAdapter.setData(mContactInfos);
++            mPeopleListViewAdapter.notifyDataSetChanged();
++        }
++
++        /**
++         * 在publishProgress()被调用以后执行，publishProgress()用于更新进度
++         */
++        @Override
++        protected void onProgressUpdate(Integer... values) {
++        }
++    }
++
+     /**
+      * 初始化View 和 Adapter
+      */
+     private void initViewAndAdapter() {
+         ListView peopleListView = (ListView) findViewById(R.id.people_listView);
+-        AddPeopleListViewAdapter peopleListViewAdapter = new AddPeopleListViewAdapter(AddPeople.this, peopleList);
+-        peopleListView.setAdapter(peopleListViewAdapter);
++        mPeopleListViewAdapter = new AddPeopleListViewAdapter(AddPeople.this);
++        peopleListView.setAdapter(mPeopleListViewAdapter);
+         peopleListView.setOnItemClickListener(this);
+     }
+ 
+     // peopleListView的item点击监听
+     @Override
+     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
++        if (!mContactInfos.get(position).isPrivateEnable()){
++            Toast.makeText(this, "Sim卡联系人不支持私密！", Toast.LENGTH_SHORT).show();
++            return;
++        }
++
++        if (!(mContactInfos.get(position).getHasPhoneNumber() > 0)){
++            Toast.makeText(this, "该联系人没有电话号码！", Toast.LENGTH_SHORT).show();
++            return;
++        }
++
+         ViewHolder1 viewHolder1 = (ViewHolder1) view.getTag();
+         viewHolder1.checkBox.toggle(); // 置反
+         AddPeopleListViewAdapter.map_allCheckBoxSelectedStatus.put(position, viewHolder1.checkBox.isChecked());// 更新适配器中的map
+         if (viewHolder1.checkBox.isChecked()) { // 将选中的people记录到map_selectedPeople中
+-            map_selectedPeople.put(position, peopleList.get(position));
++            map_selectedPeople.put(position, mContactInfos.get(position));
+         } else {
+             map_selectedPeople.remove(position);
+         }
+@@ -206,9 +255,10 @@ public class AddPeople extends BaseActivity implements AdapterView.OnItemClickLi
+                     new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE}, 2);
+             return;
+         }
+-        Iterator<Map.Entry<Integer, People>> iterator = map_selectedPeople.entrySet().iterator();
++        Iterator<Map.Entry<Integer, ContactInfo>> iterator = map_selectedPeople.entrySet().iterator();
+         while (iterator.hasNext()) {
+-            Map.Entry<Integer, People> next = iterator.next();
++            Map.Entry<Integer, ContactInfo> next = iterator.next();
++            Log.i(TAG, "next.getValue().toString() = " + next.getValue().toString());
+             list_selectedPeople.add(next.getValue());
+         }
+         //将peopleList中的联系人加为私密
+diff --git a/src/com/transage/privatespace/activity/PrivateContacts.java b/src/com/transage/privatespace/activity/PrivateContacts.java
+index b5a9ea8..9ef0535 100755
+--- a/src/com/transage/privatespace/activity/PrivateContacts.java
++++ b/src/com/transage/privatespace/activity/PrivateContacts.java
+@@ -22,6 +22,7 @@ import android.widget.TextView;
+ import com.android.internal.telephony.SmsApplication;
+ import com.transage.privatespace.PrivateSpaceApplication;
+ import com.transage.privatespace.R;
++import com.transage.privatespace.bean.ContactInfo;
+ import com.transage.privatespace.bean.People;
+ import com.transage.privatespace.fragment.BaseFragment;
+ import com.transage.privatespace.fragment.FG_PrivateCallRecords;
+@@ -71,7 +72,7 @@ public class PrivateContacts extends FragmentActivity implements View.OnClickLis
+     @Override
+     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+         if (resultCode == RESULT_OK && data!=null){
+-            List<People> peopleList = (List<People>)data.getSerializableExtra(AddPeople.SELECTED_PEOPLE);
++            List<ContactInfo> peopleList = (List<ContactInfo>)data.getSerializableExtra(AddPeople.SELECTED_PEOPLE);
+             if (peopleList != null && peopleList.size() > 0){
+                 mLoader.loadPrivateContacts(peopleList, 1, this);
+             }
+diff --git a/src/com/transage/privatespace/adapter/AddPeopleListViewAdapter.java b/src/com/transage/privatespace/adapter/AddPeopleListViewAdapter.java
+index 46de672..c475c09 100755
+--- a/src/com/transage/privatespace/adapter/AddPeopleListViewAdapter.java
++++ b/src/com/transage/privatespace/adapter/AddPeopleListViewAdapter.java
+@@ -2,75 +2,92 @@ package com.transage.privatespace.adapter;
+ 
+ import java.util.ArrayList;
+ import java.util.HashMap;
++import java.util.List;
+ 
+ import android.content.Context;
++import android.util.Log;
+ import android.view.LayoutInflater;
+ import android.view.View;
+ import android.view.ViewGroup;
+ import android.widget.BaseAdapter;
+ import android.widget.CheckBox;
++import android.widget.ImageView;
+ import android.widget.TextView;
+-
+ import com.transage.privatespace.R;
+-import com.transage.privatespace.bean.People;
++import com.transage.privatespace.bean.ContactInfo;
+ 
+ /**
+  * Created by dongrp on 2016/8/19.
+  */
+ public class AddPeopleListViewAdapter extends BaseAdapter {
+-	private Context context;
+-	private ArrayList<People> peopleList;
+-	// 该map记录每一个item中的chengckBox的选中状态并根据状态进行设置，避免滑动的时候混乱错位
+-	public static HashMap<Integer, Boolean> map_allCheckBoxSelectedStatus;
++    private static final String TAG = "AddPeopleAdapter";
++
++    private Context mContext;
++    private List<ContactInfo> mContactList = new ArrayList<>();
++    // 该map记录每一个item中的chengckBox的选中状态并根据状态进行设置，避免滑动的时候混乱错位
++    public static HashMap<Integer, Boolean> map_allCheckBoxSelectedStatus;
++
++    public AddPeopleListViewAdapter(Context context) {
++        this.mContext = context;
++    }
++
++    @Override
++    public int getCount() {
++        return mContactList.size();
++    }
+ 
+-	public AddPeopleListViewAdapter(Context context, ArrayList<People> peopleList) {
+-		this.context = context;
+-		this.peopleList = peopleList;
+-		this.map_allCheckBoxSelectedStatus = new HashMap<Integer, Boolean>();
+-		// 初始化map_allCheckBoxSelectedStatus，默认value = false
+-		for (int i = 0; i < peopleList.size(); i++) {
+-			map_allCheckBoxSelectedStatus.put(i, false);
+-		}
+-	}
++    @Override
++    public Object getItem(int position) {
++        return mContactList.get(position);
++    }
+ 
+-	@Override
+-	public int getCount() {
+-		return peopleList.size();
+-	}
++    @Override
++    public long getItemId(int position) {
++        return position;
++    }
+ 
+-	@Override
+-	public Object getItem(int position) {
+-		return peopleList.get(position);
+-	}
++    @Override
++    public View getView(int position, View convertView, ViewGroup parent) {
++        ViewHolder1 viewHolder;
++        if (convertView == null) {
++            convertView = LayoutInflater.from(mContext).inflate(R.layout.item_add_people, null);
++            viewHolder = new ViewHolder1();
++            viewHolder.checkBox = (CheckBox) convertView.findViewById(R.id.checkBox);
++            viewHolder.name = (TextView) convertView.findViewById(R.id.tvName);
++            viewHolder.phoneNum = (TextView) convertView.findViewById(R.id.tvPhoneNum);
++            convertView.setTag(viewHolder);
++        } else {
++            viewHolder = (ViewHolder1) convertView.getTag();
++        }
++        // 数据适配
++        viewHolder.checkBox.setChecked(map_allCheckBoxSelectedStatus.get(position));
++        viewHolder.name.setText(mContactList.get(position).getDisplayName());
++        Log.i(TAG, mContactList.get(position).toString());
++        if (mContactList.get(position).getHasPhoneNumber()>0 && mContactList.get(position).getPhones().size()>0){
++            viewHolder.phoneNum.setText(mContactList.get(position).getPhones().get(0).phoneNumber);
++        }
+ 
+-	@Override
+-	public long getItemId(int position) {
+-		return position;
+-	}
++        return convertView;
++    }
+ 
+-	@Override
+-	public View getView(int position, View convertView, ViewGroup parent) {
+-		ViewHolder1 viewHolder;
+-		if (convertView == null) {
+-			convertView = LayoutInflater.from(context).inflate(R.layout.item_add_people, null);
+-			viewHolder = new ViewHolder1();
+-			viewHolder.checkBox = (CheckBox) convertView.findViewById(R.id.checkBox);
+-			viewHolder.name = (TextView) convertView.findViewById(R.id.tvName);
+-			viewHolder.phoneNum = (TextView) convertView.findViewById(R.id.tvPhoneNum);
+-			convertView.setTag(viewHolder);
+-		} else {
+-			viewHolder = (ViewHolder1) convertView.getTag();
+-		}
+-		// 数据适配
+-		viewHolder.checkBox.setChecked(map_allCheckBoxSelectedStatus.get(position));
+-		viewHolder.name.setText(peopleList.get(position).getDisplayName());
+-		viewHolder.phoneNum.setText(peopleList.get(position).getPhoneNum());
+-		return convertView;
+-	}
++    /**
++     * 设置数据
++     * @param infos
++     */
++    public void setData(List<ContactInfo> infos) {
++        mContactList.clear();
++        this.mContactList.addAll(infos);
++        this.map_allCheckBoxSelectedStatus = new HashMap<Integer, Boolean>();
++        // 初始化map_allCheckBoxSelectedStatus，默认value = false
++        for (int i = 0; i < mContactList.size(); i++) {
++            map_allCheckBoxSelectedStatus.put(i, false);
++        }
++        Log.i(TAG, "[setData] mcontactlist tostring = " + mContactList.toString());
++    }
+ 
+-	public class ViewHolder1 {
+-		public CheckBox checkBox;
+-		public TextView name, phoneNum;
+-	}
++    public class ViewHolder1 {
++        public CheckBox checkBox;
++        public TextView name, phoneNum;
++    }
+ 
+ }
+diff --git a/src/com/transage/privatespace/adapter/PeopleListViewAdapter.java b/src/com/transage/privatespace/adapter/PeopleListViewAdapter.java
+index 2358e08..44f8363 100755
+--- a/src/com/transage/privatespace/adapter/PeopleListViewAdapter.java
++++ b/src/com/transage/privatespace/adapter/PeopleListViewAdapter.java
+@@ -22,143 +22,148 @@ import android.widget.ImageButton;
+ import android.widget.TextView;
+ 
+ import com.transage.privatespace.R;
++import com.transage.privatespace.bean.ContactInfo;
+ import com.transage.privatespace.bean.People;
+ 
+ /**
+  * Created by dongrp on 2016/9/5.
+  */
+ public class PeopleListViewAdapter extends BaseAdapter {
+-	private Context context;
+-	private boolean isShowCheckBox = false;
+-	private List<People> listPrivatePeople;
+-	// 该map记录每一个item中的chengckBox的选中状态并根据状态进行设置，避免滑动的时候混乱错位
+-	public static HashMap<Integer, Boolean> map_allCheckBoxSelectedStatus;
+-
+-	public PeopleListViewAdapter(Context context, List<People> listPrivatePeople) {
+-		this.context = context;
+-		this.listPrivatePeople = listPrivatePeople;
+-		this.map_allCheckBoxSelectedStatus = new HashMap<Integer, Boolean>();
+-		initMapCheckStatus(listPrivatePeople);
+-
+-	}
+-
+-	/**
+-	 * 初始化 map_allCheckBoxSelectedStatus
+-	 */
+-	public static void initMapCheckStatus(List<People> listPrivatePeople) {
+-		// 初始化map_allCheckBoxSelectedStatus，默认value = false
+-		map_allCheckBoxSelectedStatus.clear();
+-		for (int i = 0; i < listPrivatePeople.size(); i++) {
+-			map_allCheckBoxSelectedStatus.put(i, false);
+-		}
+-	}
+-
+-	@Override
+-	public int getCount() {
+-		return listPrivatePeople.size();
+-	}
+-
+-	@Override
+-	public Object getItem(int position) {
+-		return listPrivatePeople.get(position);
+-	}
+-
+-	@Override
+-	public long getItemId(int position) {
+-		return position;
+-	}
+-
+-	@Override
+-	public View getView(final int position, View convertView, ViewGroup parent) {
+-		ViewHolder viewHolder;
+-		if (convertView == null) {
+-			convertView = LayoutInflater.from(context).inflate(R.layout.item_people, parent, false);
+-			viewHolder = new ViewHolder();
+-			viewHolder.checkBox = (CheckBox) convertView.findViewById(R.id.checkBox);
+-			viewHolder.tvName = (TextView) convertView.findViewById(R.id.tvName);
+-			viewHolder.tvPhoneNum = (TextView) convertView.findViewById(R.id.tvPhoneNum);
+-			viewHolder.phoneButton = (ImageButton) convertView.findViewById(R.id.phone_button);
+-			viewHolder.smsButton = (ImageButton) convertView.findViewById(R.id.sms_button);
+-			convertView.setTag(viewHolder);
+-		} else {
+-			viewHolder = (ViewHolder) convertView.getTag();
+-		}
+-		// 数据适配
+-		if (isShowCheckBox) {
+-			setScaleAni(viewHolder.checkBox, 0.0f, 1.0f, 200);
+-			viewHolder.checkBox.setVisibility(View.VISIBLE);
+-		} else {
+-			// setScaleAni(viewHolder.checkBox,1.0f,0.0f,200);
+-			viewHolder.checkBox.setVisibility(View.GONE);
+-		}
+-		viewHolder.checkBox.setChecked(map_allCheckBoxSelectedStatus.get(position));
+-		viewHolder.tvName.setText(listPrivatePeople.get(position).getDisplayName());
+-		viewHolder.tvPhoneNum.setText(listPrivatePeople.get(position).getPhoneNum());
+-		viewHolder.phoneButton.setOnClickListener(new View.OnClickListener() {
+-			@Override
+-			public void onClick(View v) {
+-				callPhoneOrSendSms(context, 1, listPrivatePeople.get(position).getPhoneNum());// 打电话
+-			}
+-		});
+-		viewHolder.smsButton.setOnClickListener(new View.OnClickListener() {
+-			@Override
+-			public void onClick(View v) {
+-				callPhoneOrSendSms(context, 2, listPrivatePeople.get(position).getPhoneNum());// 发短信
+-			}
+-		});
+-		return convertView;
+-	}
+-
+-	public class ViewHolder {
+-		public CheckBox checkBox;
+-		public TextView tvName, tvPhoneNum;
+-		public ImageButton phoneButton, smsButton;
+-	}
+-
+-	/**
+-	 * 方法：显示 与 隐藏checkBox
+-	 */
+-	public void showCheckBox(boolean isShowCheckBox) {
+-		this.isShowCheckBox = isShowCheckBox;
+-		notifyDataSetChanged();
+-	}
+-
+-	/**
+-	 * 方法：打电话 或 发短信
+-	 */
+-	public static void callPhoneOrSendSms(Context context, int type, String phoneNum) {
+-		Intent intent = null;
+-		if (type == 1) { // 打电话
+-			// 检查并申请CALL_PHONE权限
+-			if (ActivityCompat.checkSelfPermission(context, Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
+-				ActivityCompat.requestPermissions((Activity) context, new String[] { Manifest.permission.CALL_PHONE },
+-						1);// 申请打电话权限
+-				return;
+-			}
+-			intent = new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + phoneNum));
+-		} else if (type == 2) { // 发短信
+-			// 检查并申请SEND_SMS权限
+-			if (ActivityCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
+-				ActivityCompat.requestPermissions((Activity) context, new String[] { Manifest.permission.SEND_SMS }, 1);// 申请发短信权限
+-				return;
+-			}
+-			intent = new Intent(android.content.Intent.ACTION_SENDTO, Uri.parse("smsto:" + phoneNum));
+-		}
+-		context.startActivity(intent);
+-	}
+-
+-	/**
+-	 * 为控件添加缩放动画
+-	 */
+-	public static void setScaleAni(View V, float fromScale, float toScale, long ANITIME) {
+-		AnimationSet aniSet = new AnimationSet(true);
+-		// final int ANITIME = 500;
+-		// 尺寸变化动画，设置尺寸变化
+-		ScaleAnimation scaleAni = new ScaleAnimation(fromScale, toScale, fromScale, toScale,
+-				Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);
+-		scaleAni.setDuration(ANITIME); // 设置动画效果时间
+-		aniSet.addAnimation(scaleAni); // 将动画效果添加到动画集中
+-		V.startAnimation(aniSet); // 添加光效动画到控件
+-	}
++    private Context context;
++    private boolean isShowCheckBox = false;
++    private List<ContactInfo> mListPrivateContact;
++    // 该map记录每一个item中的chengckBox的选中状态并根据状态进行设置，避免滑动的时候混乱错位
++    public static HashMap<Integer, Boolean> map_allCheckBoxSelectedStatus;
++
++    public PeopleListViewAdapter(Context context, List<ContactInfo> listPrivateContact) {
++        this.context = context;
++        this.mListPrivateContact = listPrivateContact;
++        this.map_allCheckBoxSelectedStatus = new HashMap<Integer, Boolean>();
++        initMapCheckStatus(mListPrivateContact);
++    }
++
++    /**
++     * 初始化 map_allCheckBoxSelectedStatus
++     */
++    public static void initMapCheckStatus(List<ContactInfo> listPrivatePeople) {
++        // 初始化map_allCheckBoxSelectedStatus，默认value = false
++        map_allCheckBoxSelectedStatus.clear();
++        for (int i = 0; i < listPrivatePeople.size(); i++) {
++            map_allCheckBoxSelectedStatus.put(i, false);
++        }
++    }
++
++    @Override
++    public int getCount() {
++        return mListPrivateContact.size();
++    }
++
++    @Override
++    public Object getItem(int position) {
++        return mListPrivateContact.get(position);
++    }
++
++    @Override
++    public long getItemId(int position) {
++        return position;
++    }
++
++    @Override
++    public View getView(final int position, View convertView, ViewGroup parent) {
++        ViewHolder viewHolder;
++        if (convertView == null) {
++            convertView = LayoutInflater.from(context).inflate(R.layout.item_people, parent, false);
++            viewHolder = new ViewHolder();
++            viewHolder.checkBox = (CheckBox) convertView.findViewById(R.id.checkBox);
++            viewHolder.tvName = (TextView) convertView.findViewById(R.id.tvName);
++            viewHolder.tvPhoneNum = (TextView) convertView.findViewById(R.id.tvPhoneNum);
++            viewHolder.phoneButton = (ImageButton) convertView.findViewById(R.id.phone_button);
++            viewHolder.smsButton = (ImageButton) convertView.findViewById(R.id.sms_button);
++            convertView.setTag(viewHolder);
++        } else {
++            viewHolder = (ViewHolder) convertView.getTag();
++        }
++        // 数据适配
++        if (isShowCheckBox) {
++            setScaleAni(viewHolder.checkBox, 0.0f, 1.0f, 200);
++            viewHolder.checkBox.setVisibility(View.VISIBLE);
++        } else {
++            // setScaleAni(viewHolder.checkBox,1.0f,0.0f,200);
++            viewHolder.checkBox.setVisibility(View.GONE);
++        }
++
++        ContactInfo contactInfo = mListPrivateContact.get(position);
++
++        viewHolder.checkBox.setChecked(map_allCheckBoxSelectedStatus.get(position));
++        viewHolder.tvName.setText(contactInfo.getDisplayName());
++        if (contactInfo.getHasPhoneNumber()>0){
++            viewHolder.tvPhoneNum.setText(contactInfo.getPhones().get(0).phoneNumber);
++        }
++        viewHolder.phoneButton.setOnClickListener(new View.OnClickListener() {
++            @Override
++            public void onClick(View v) {
++                callPhoneOrSendSms(context, 1, contactInfo.getPhones().get(0).phoneNumber);// 打电话
++            }
++        });
++        viewHolder.smsButton.setOnClickListener(new View.OnClickListener() {
++            @Override
++            public void onClick(View v) {
++                callPhoneOrSendSms(context, 2, contactInfo.getPhones().get(0).phoneNumber);// 发短信
++            }
++        });
++        return convertView;
++    }
++
++    public class ViewHolder {
++        public CheckBox checkBox;
++        public TextView tvName, tvPhoneNum;
++        public ImageButton phoneButton, smsButton;
++    }
++
++    /**
++     * 方法：显示 与 隐藏checkBox
++     */
++    public void showCheckBox(boolean isShowCheckBox) {
++        this.isShowCheckBox = isShowCheckBox;
++        notifyDataSetChanged();
++    }
++
++    /**
++     * 方法：打电话 或 发短信
++     */
++    public static void callPhoneOrSendSms(Context context, int type, String phoneNum) {
++        Intent intent = null;
++        if (type == 1) { // 打电话
++            // 检查并申请CALL_PHONE权限
++            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
++                ActivityCompat.requestPermissions((Activity) context, new String[]{Manifest.permission.CALL_PHONE},
++                        1);// 申请打电话权限
++                return;
++            }
++            intent = new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + phoneNum));
++        } else if (type == 2) { // 发短信
++            // 检查并申请SEND_SMS权限
++            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
++                ActivityCompat.requestPermissions((Activity) context, new String[]{Manifest.permission.SEND_SMS}, 1);// 申请发短信权限
++                return;
++            }
++            intent = new Intent(android.content.Intent.ACTION_SENDTO, Uri.parse("smsto:" + phoneNum));
++        }
++        context.startActivity(intent);
++    }
++
++    /**
++     * 为控件添加缩放动画
++     */
++    public static void setScaleAni(View V, float fromScale, float toScale, long ANITIME) {
++        AnimationSet aniSet = new AnimationSet(true);
++        // final int ANITIME = 500;
++        // 尺寸变化动画，设置尺寸变化
++        ScaleAnimation scaleAni = new ScaleAnimation(fromScale, toScale, fromScale, toScale,
++                Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);
++        scaleAni.setDuration(ANITIME); // 设置动画效果时间
++        aniSet.addAnimation(scaleAni); // 将动画效果添加到动画集中
++        V.startAnimation(aniSet); // 添加光效动画到控件
++    }
+ 
+ }
+diff --git a/src/com/transage/privatespace/bean/ContactInfo.java b/src/com/transage/privatespace/bean/ContactInfo.java
+index be4c234..6b49965 100755
+--- a/src/com/transage/privatespace/bean/ContactInfo.java
++++ b/src/com/transage/privatespace/bean/ContactInfo.java
+@@ -1,50 +1,20 @@
+ package com.transage.privatespace.bean;
+ 
+-import java.io.BufferedReader;
+ import java.io.ByteArrayInputStream;
+-import java.io.FileInputStream;
+-import java.io.FileNotFoundException;
+-import java.io.FileOutputStream;
+-import java.io.IOException;
+-import java.io.InputStreamReader;
+-import java.io.OutputStreamWriter;
+-import java.io.UnsupportedEncodingException;
++import java.io.Serializable;
+ import java.util.ArrayList;
+ import java.util.List;
+ 
+-import com.transage.privatespace.vcard.provider.Contacts;
+-import com.transage.privatespace.vcard.pim.VDataBuilder;
+-import com.transage.privatespace.vcard.pim.VNode;
+-import com.transage.privatespace.vcard.pim.vcard.ContactStruct;
+-import com.transage.privatespace.vcard.pim.vcard.ContactStruct.ContactMethod;
+-import com.transage.privatespace.vcard.pim.vcard.ContactStruct.PhoneData;
+-import com.transage.privatespace.vcard.pim.vcard.VCardComposer;
+-import com.transage.privatespace.vcard.pim.vcard.VCardException;
+-import com.transage.privatespace.vcard.pim.vcard.VCardParser;
+-
+-import android.app.Activity;
+-import android.content.ContentUris;
+-import android.content.ContentValues;
+-import android.database.Cursor;
+ import android.graphics.Bitmap;
+ import android.graphics.BitmapFactory;
+-import android.net.Uri;
+-import android.os.Environment;
+ import android.provider.ContactsContract;
+-import android.provider.ContactsContract.CommonDataKinds.Email;
+-import android.provider.ContactsContract.CommonDataKinds.Phone;
+-import android.provider.ContactsContract.CommonDataKinds.StructuredName;
+-import android.provider.ContactsContract.RawContacts;
+-import android.provider.ContactsContract.RawContacts.Data;
+-import android.util.Log;
+-import android.widget.Toast;
+ 
+ /**
+  * 联系人信息包装类
+  * <p>
+  * Created by yanjie.xu on 2017/8/24.
+  */
+-public class ContactInfo {
++public class ContactInfo implements Serializable {
+     private static final String TAG = "ContactInfo";
+     private int contactId;
+     private int hasPhoneNumber;
+@@ -53,8 +23,9 @@ public class ContactInfo {
+     private byte[] photoData;
+     private Bitmap photo;
+     private List<RawContactInfo> rawContactInfos = new ArrayList<>();
++    private List<Phone> phones = new ArrayList<>();
+ 
+-    public static class RawContactInfo {
++    public static class RawContactInfo implements Serializable{
+         public int rawContactId;
+         public int contactId;
+         public String accountName;
+@@ -73,9 +44,9 @@ public class ContactInfo {
+         }
+     }
+ 
+-    public static class DataInfo {
++    public static class DataInfo implements Serializable{
++        public int id;
+         public String mimeType;
+-        public String type;
+         public String typeName;
+         public int rawContactId;
+         public String data1;
+@@ -98,7 +69,6 @@ public class ContactInfo {
+         public String toString() {
+             return "DataInfo{" +
+                     "mimeType='" + mimeType + '\'' +
+-                    ", type='" + type + '\'' +
+                     ", typeName='" + typeName + '\'' +
+                     ", rawContactId=" + rawContactId +
+                     ", data1='" + data1 + '\'' +
+@@ -120,6 +90,19 @@ public class ContactInfo {
+         }
+     }
+ 
++    public static class Phone implements Serializable{
++        public String phoneNumber;
++        public String typeName;
++
++        @Override
++        public String toString() {
++            return "Phone{" +
++                    "phoneNumber='" + phoneNumber + '\'' +
++                    ", typeName='" + typeName + '\'' +
++                    '}';
++        }
++    }
++
+     public List<RawContactInfo> getRawContactInfos() {
+         return rawContactInfos;
+     }
+@@ -168,16 +151,74 @@ public class ContactInfo {
+         this.photoData = photoData;
+     }
+ 
+-    public void addRawContact(RawContactInfo info){
++    /**
++     * 获取该联系人中的所有电话号码
++     * @return
++     */
++    public List<Phone> getPhones() {
++        phones.clear();
++        for (RawContactInfo rawContactInfo : rawContactInfos) {
++            for (DataInfo dataInfo : rawContactInfo.dataInfos) {
++                if (ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE.equals(dataInfo.mimeType)) {
++                    Phone phone = new Phone();
++                    phone.phoneNumber = dataInfo.data1;
++                    phone.typeName = dataInfo.typeName;
++                    phones.add(phone);
++                }
++            }
++        }
++        return phones;
++    }
++
++    /**
++     * 判断该联系人能否加入私密
++     * @return
++     */
++    public boolean isPrivateEnable() {
++        boolean enable = true;
++        for (RawContactInfo rawContactInfo : rawContactInfos) {
++            //如果联系人不是sim卡联系人则允许加入私密
++            if (rawContactInfo.accountName!=null && rawContactInfo.accountName.contains("SIM")){
++                enable = false;
++            }
++        }
++        return enable;
++    }
++
++    /**
++     * 获取所有rawContactId
++     * @return
++     */
++    public int[] getRawContactIds() {
++        int[] rci = new int[10];
++        int i = -1;
++        for (RawContactInfo rawContactInfo : rawContactInfos) {
++            if (i < 10){
++                i++;
++                rci[i] = rawContactInfo.rawContactId;
++            }
++        }
++        return rci;
++    }
++
++    public void setPhones(List<Phone> phones) {
++        this.phones = phones;
++    }
++
++    public void addRawContact(RawContactInfo info) {
+         rawContactInfos.add(info);
+     }
+ 
+-    public Bitmap getPhoto(){
+-        if (photo!=null){
++    /**
++     * 获取联系人头像图片
++     * @return
++     */
++    public Bitmap getPhoto() {
++        if (photo != null) {
+             return photo;
+         }
+ 
+-        if(photoData == null) {
++        if (photoData == null) {
+             return null;
+         }
+ 
+@@ -191,7 +232,10 @@ public class ContactInfo {
+         return "ContactInfo{" +
+                 "contactId=" + contactId +
+                 ", hasPhoneNumber=" + hasPhoneNumber +
++                ", photoFileId=" + photoFileId +
+                 ", displayName='" + displayName + '\'' +
++                ", rawContactInfos=" + rawContactInfos +
++                ", phones=" + phones +
+                 '}';
+     }
+ }
+diff --git a/src/com/transage/privatespace/database/DatabaseAdapter.java b/src/com/transage/privatespace/database/DatabaseAdapter.java
+index 1df9a45..07a1be3 100755
+--- a/src/com/transage/privatespace/database/DatabaseAdapter.java
++++ b/src/com/transage/privatespace/database/DatabaseAdapter.java
+@@ -8,6 +8,7 @@ import android.database.Cursor;
+ 
+ import com.transage.privatespace.bean.AppInfo;
+ import com.transage.privatespace.bean.CallRecord;
++import com.transage.privatespace.bean.ContactInfo;
+ import com.transage.privatespace.bean.People;
+ import com.transage.privatespace.bean.SmsInfo;
+ import com.transage.privatespace.gallery.photozoom.ImageItem;
+@@ -17,6 +18,7 @@ import java.util.ArrayList;
+ import java.util.List;
+ 
+ import android.database.MatrixCursor;
++import android.provider.ContactsContract;
+ import android.util.Log;
+ 
+ /**
+@@ -25,6 +27,92 @@ import android.util.Log;
+  */
+ 
+ public class DatabaseAdapter {
++    /**
++     * add by xyj 20170904
++     * 查询联系人sql
++     */
++    private static final String SQL_QUERY_CONTACT = "SELECT " +
++            PsDatabaseHelper.ContactsColumns._ID + "," +
++            PsDatabaseHelper.ContactsColumns.CONTACT_NAME + "," +
++            PsDatabaseHelper.ContactsColumns.HAS_PHONE_NUMBER + "," +
++            PsDatabaseHelper.ContactsColumns.PHOTO_FILE_ID +
++            " FROM " + PsDatabaseHelper.Tables.CONTACTS;
++
++    /**
++     * add by xyj 20170904
++     * 查询联系人通过id
++     */
++    private static final String SQL_QUERY_CONTACT_BY_CONTACTID = "SELECT " +
++            PsDatabaseHelper.ContactsColumns._ID + "," +
++            PsDatabaseHelper.ContactsColumns.CONTACT_NAME + "," +
++            PsDatabaseHelper.ContactsColumns.HAS_PHONE_NUMBER + "," +
++            PsDatabaseHelper.ContactsColumns.PHOTO_FILE_ID +
++            " FROM " + PsDatabaseHelper.Tables.CONTACTS + " WHERE " +
++            PsDatabaseHelper.ContactsColumns._ID + "=?";
++
++    /**
++     * add by xyj 20170904
++     * 通过contact_id查询raw联系人
++     */
++    private static final String SQL_QUERY_RAW_CONTACT_BY_CONTACTID = "SELECT " +
++            PsDatabaseHelper.RawContactsColumns._ID + "," +
++            PsDatabaseHelper.RawContactsColumns.CONTACT_ID + "," +
++            PsDatabaseHelper.RawContactsColumns.ACCOUNT_NAME + "," +
++            PsDatabaseHelper.RawContactsColumns.ACCOUNT_TYPE +
++            " FROM " + PsDatabaseHelper.Tables.RAW_CONTACTS + " WHERE " +
++            PsDatabaseHelper.RawContactsColumns.CONTACT_ID + "=?";
++
++    /**
++     * add by xyj 20170904
++     * 通过raw_contact_id查询联系人data数据
++     */
++    private static final String SQL_QUERY_DATA_BY_RAWCONTACTID = "SELECT " +
++            PsDatabaseHelper.DataColumns._ID + "," +
++            PsDatabaseHelper.DataColumns.MIME_TYPE + "," +
++            PsDatabaseHelper.DataColumns.TYPE_NAME + "," +
++            PsDatabaseHelper.DataColumns.RAW_CONTACT_ID + "," +
++            PsDatabaseHelper.DataColumns.DATA1 + "," +
++            PsDatabaseHelper.DataColumns.DATA2 + "," +
++            PsDatabaseHelper.DataColumns.DATA3 + "," +
++            PsDatabaseHelper.DataColumns.DATA4 + "," +
++            PsDatabaseHelper.DataColumns.DATA5 + "," +
++            PsDatabaseHelper.DataColumns.DATA6 + "," +
++            PsDatabaseHelper.DataColumns.DATA7 + "," +
++            PsDatabaseHelper.DataColumns.DATA8 + "," +
++            PsDatabaseHelper.DataColumns.DATA9 + "," +
++            PsDatabaseHelper.DataColumns.DATA10 + "," +
++            PsDatabaseHelper.DataColumns.DATA11 + "," +
++            PsDatabaseHelper.DataColumns.DATA12 + "," +
++            PsDatabaseHelper.DataColumns.DATA13 + "," +
++            PsDatabaseHelper.DataColumns.DATA14 + "," +
++            PsDatabaseHelper.DataColumns.DATA15 +
++            " FROM " + PsDatabaseHelper.Tables.DATA + " WHERE " +
++            PsDatabaseHelper.DataColumns.RAW_CONTACT_ID + "=?";
++
++    /**
++     * add by xyj 20170904
++     * 通过phone查询联系人data数据
++     */
++    private static final String QUERY_DATA_BY_PHONE = "SELECT " +
++            PsDatabaseHelper.DataColumns.RAW_CONTACT_ID + "," +
++            PsDatabaseHelper.DataColumns.MIME_TYPE + "," +
++            PsDatabaseHelper.DataColumns.DATA1 + " FROM " +
++            PsDatabaseHelper.Tables.DATA + " WHERE " +
++            PsDatabaseHelper.DataColumns.DATA1 + "=? and " +
++            PsDatabaseHelper.DataColumns.MIME_TYPE + "=?";
++
++    /**
++     * add by xyj 20170904
++     * 通过rawContactId查询联系人data数据
++     */
++    private static final String QUERY_DATA_BY_RAWCONTACTID = "SELECT " +
++            PsDatabaseHelper.DataColumns.RAW_CONTACT_ID + "," +
++            PsDatabaseHelper.DataColumns.MIME_TYPE + "," +
++            PsDatabaseHelper.DataColumns.DATA1 + " FROM " +
++            PsDatabaseHelper.Tables.DATA + " WHERE " +
++            PsDatabaseHelper.DataColumns.RAW_CONTACT_ID + "=? and " +
++            PsDatabaseHelper.DataColumns.MIME_TYPE + "=?";
++
+     private static final String TAG = "DatabaseAdapter";
+     private static final String VCF_FILE_PATH = "/test.vcf";
+     private Context mContext;
+@@ -99,131 +187,326 @@ public class DatabaseAdapter {
+     /**
+      * Contact操作
+      */
+-    public void addContact(People people) {
+-        ContentValues values = new ContentValues();
+-        values.put(PsDatabaseHelper.ContactsColumns.RAWCONTACT_ID, people.getRawContactId());
+-        values.put(PsDatabaseHelper.ContactsColumns.CONTACT_NAME, people.getDisplayName());
+-        values.put(PsDatabaseHelper.ContactsColumns.CONTACT_NUMBER, people.getPhoneNum()
+-                .replaceAll(" ", "").replaceAll("-", "").trim());
+-        insert(PsDatabaseHelper.Tables.CONTACTS, null, values);
+-    }
+-
+-    public void addContacts(List<People> peoples, boolean isVcf) {
+-        Log.i(TAG, "[addContacts]" + isVcf);
+-        if (isVcf) {
+-            List<People> peopleList = ImportExportUtils.readData(VCF_FILE_PATH);
+-            for (People people : peoples){
+-                peopleList.add(people);
+-                Log.i(TAG, "[addContacts] peopleList = " + peopleList.size());
+-            }
+-            //将联系人写入文件
+-            if (peopleList.size() > 0){
+-                ImportExportUtils.writeData(peopleList, VCF_FILE_PATH);
+-            }else {
+-                ImportExportUtils.removeDataFile(VCF_FILE_PATH);
++//    public void addContact(People people) {
++//        ContentValues values = new ContentValues();
++//        values.put(PsDatabaseHelper.ContactsColumns.RAWCONTACT_ID, people.getRawContactId());
++//        values.put(PsDatabaseHelper.ContactsColumns.CONTACT_NAME, people.getDisplayName());
++//        values.put(PsDatabaseHelper.ContactsColumns.CONTACT_NUMBER, people.getPhoneNum()
++//                .replaceAll(" ", "").replaceAll("-", "").trim());
++//        insert(PsDatabaseHelper.Tables.CONTACTS, null, values);
++//    }
++//
++//    public void addContacts(List<People> peoples, boolean isVcf) {
++//        Log.i(TAG, "[addContacts]" + isVcf);
++//        if (isVcf) {
++//            List<People> peopleList = ImportExportUtils.readData(VCF_FILE_PATH);
++//            for (People people : peoples){
++//                peopleList.add(people);
++//                Log.i(TAG, "[addContacts] peopleList = " + peopleList.size());
++//            }
++//            //将联系人写入文件
++//            if (peopleList.size() > 0){
++//                ImportExportUtils.writeData(peopleList, VCF_FILE_PATH);
++//            }else {
++//                ImportExportUtils.removeDataFile(VCF_FILE_PATH);
++//            }
++//        } else {
++//            peoples.forEach((People people) -> addContact(people));
++//        }
++//    }
++//    public void deleteContactsById(int id) {
++//        delete(PsDatabaseHelper.Tables.CONTACTS, PsDatabaseHelper.ContactsColumns._ID + "=?", new String[]{String.valueOf(id)});
++//    }
++
++    /**
++     * add by xyj 20170904
++     * 添加单个Contact到数据库
++     *
++     * @param info
++     */
++    public void addContact(ContactInfo info) {
++        ContentValues contactValues = new ContentValues();
++        contactValues.put(PsDatabaseHelper.ContactsColumns._ID, info.getContactId());
++        contactValues.put(PsDatabaseHelper.ContactsColumns.CONTACT_NAME, info.getDisplayName());
++        contactValues.put(PsDatabaseHelper.ContactsColumns.HAS_PHONE_NUMBER, info.getHasPhoneNumber());
++        contactValues.put(PsDatabaseHelper.ContactsColumns.PHOTO_FILE_ID, info.getPhotoFileId());
++        insert(PsDatabaseHelper.Tables.CONTACTS, null, contactValues);
++        List<ContactInfo.RawContactInfo> rawContactInfos = info.getRawContactInfos();
++        for (ContactInfo.RawContactInfo rawContactInfo : rawContactInfos) {
++            ContentValues rawContactInfoValues = new ContentValues();
++            rawContactInfoValues.put(PsDatabaseHelper.RawContactsColumns._ID, rawContactInfo.rawContactId);
++            rawContactInfoValues.put(PsDatabaseHelper.RawContactsColumns.CONTACT_ID, rawContactInfo.contactId);
++            rawContactInfoValues.put(PsDatabaseHelper.RawContactsColumns.ACCOUNT_NAME, rawContactInfo.accountName);
++            rawContactInfoValues.put(PsDatabaseHelper.RawContactsColumns.ACCOUNT_TYPE, rawContactInfo.accountType);
++            insert(PsDatabaseHelper.Tables.RAW_CONTACTS, null, rawContactInfoValues);
++            List<ContactInfo.DataInfo> dataInfos = rawContactInfo.dataInfos;
++            for (ContactInfo.DataInfo dataInfo : dataInfos) {
++                ContentValues dataInfoValues = new ContentValues();
++                dataInfoValues.put(PsDatabaseHelper.DataColumns.MIME_TYPE, dataInfo.mimeType);
++                dataInfoValues.put(PsDatabaseHelper.DataColumns.TYPE_NAME, dataInfo.typeName);
++                dataInfoValues.put(PsDatabaseHelper.DataColumns.RAW_CONTACT_ID, dataInfo.rawContactId);
++                dataInfoValues.put(PsDatabaseHelper.DataColumns.DATA1, dataInfo.data1);
++                dataInfoValues.put(PsDatabaseHelper.DataColumns.DATA2, dataInfo.data2);
++                dataInfoValues.put(PsDatabaseHelper.DataColumns.DATA3, dataInfo.data3);
++                dataInfoValues.put(PsDatabaseHelper.DataColumns.DATA4, dataInfo.data4);
++                dataInfoValues.put(PsDatabaseHelper.DataColumns.DATA5, dataInfo.data5);
++                dataInfoValues.put(PsDatabaseHelper.DataColumns.DATA6, dataInfo.data6);
++                dataInfoValues.put(PsDatabaseHelper.DataColumns.DATA7, dataInfo.data7);
++                dataInfoValues.put(PsDatabaseHelper.DataColumns.DATA8, dataInfo.data8);
++                dataInfoValues.put(PsDatabaseHelper.DataColumns.DATA9, dataInfo.data9);
++                dataInfoValues.put(PsDatabaseHelper.DataColumns.DATA10, dataInfo.data10);
++                dataInfoValues.put(PsDatabaseHelper.DataColumns.DATA11, dataInfo.data11);
++                dataInfoValues.put(PsDatabaseHelper.DataColumns.DATA12, dataInfo.data12);
++                dataInfoValues.put(PsDatabaseHelper.DataColumns.DATA13, dataInfo.data13);
++                dataInfoValues.put(PsDatabaseHelper.DataColumns.DATA14, dataInfo.data14);
++                dataInfoValues.put(PsDatabaseHelper.DataColumns.DATA15, dataInfo.data15);
++                insert(PsDatabaseHelper.Tables.DATA, null, dataInfoValues);
+             }
+-        } else {
+-            peoples.forEach((People people) -> addContact(people));
+         }
+     }
+ 
+-    public void deleteContactsById(int id) {
+-        delete(PsDatabaseHelper.Tables.CONTACTS, PsDatabaseHelper.ContactsColumns._ID + "=?", new String[]{String.valueOf(id)});
++    /**
++     * add by xyj 20170904
++     * 添加多个Contact到数据库
++     *
++     * @param contactInfoList
++     */
++    public void addContact(List<ContactInfo> contactInfoList) {
++        for (ContactInfo contactInfo : contactInfoList) {
++            addContact(contactInfo);
++        }
+     }
+ 
+-    public void deleteContactsByPhone(String phone, boolean isVcf) {
+-        if (isVcf){
+-            List<People> peopleList = ImportExportUtils.readData(VCF_FILE_PATH);
+-            for (int i = 0; i < peopleList.size(); i++) {
+-                //从内存list删除需要删除的联系人
+-                if (peopleList.get(i).getPhoneNum().equals(phone)) peopleList.remove(i);
+-            }
+-            //将操作完的联系人重新写入文件
+-            if (peopleList.size() > 0) {
+-                ImportExportUtils.writeData(peopleList, VCF_FILE_PATH);
+-            }else {
+-                ImportExportUtils.removeDataFile(VCF_FILE_PATH);
++//    public void deleteContactsByPhone(String phone, boolean isVcf) {
++//        if (isVcf) {
++//            List<People> peopleList = ImportExportUtils.readData(VCF_FILE_PATH);
++//            for (int i = 0; i < peopleList.size(); i++) {
++//                //从内存list删除需要删除的联系人
++//                if (peopleList.get(i).getPhoneNum().equals(phone)) peopleList.remove(i);
++//            }
++//            //将操作完的联系人重新写入文件
++//            if (peopleList.size() > 0) {
++//                ImportExportUtils.writeData(peopleList, VCF_FILE_PATH);
++//            } else {
++//                ImportExportUtils.removeDataFile(VCF_FILE_PATH);
++//            }
++//        } else {
++//            delete(PsDatabaseHelper.Tables.CONTACTS, PsDatabaseHelper.ContactsColumns.CONTACT_NUMBER + "=?", new String[]{String.valueOf(phone)});
++//        }
++//    }
++
++    /**
++     * 根据Id删除联系人
++     *
++     * @param id
++     */
++    public void deleteContactById(int id) {
++        ContactInfo info = getContactById(id);
++        Log.i(TAG, "[deleteContactById] getContactById(id) = " + info.toString());
++        if (info != null) {
++            delete(PsDatabaseHelper.Tables.CONTACTS, PsDatabaseHelper.ContactsColumns._ID + "=?", new String[]{String.valueOf(id)});
++        }
++        if (info.getRawContactInfos().size() > 0) {
++            for (ContactInfo.RawContactInfo rawContactInfo : info.getRawContactInfos()) {
++                int rawContactId = rawContactInfo.rawContactId;
++                delete(PsDatabaseHelper.Tables.RAW_CONTACTS, PsDatabaseHelper.RawContactsColumns.CONTACT_ID + "=?",
++                        new String[]{String.valueOf(id)});
++                delete(PsDatabaseHelper.Tables.DATA, PsDatabaseHelper.DataColumns.RAW_CONTACT_ID + "=?",
++                        new String[]{String.valueOf(rawContactInfo.rawContactId)});
+             }
+-        }else {
+-            delete(PsDatabaseHelper.Tables.CONTACTS, PsDatabaseHelper.ContactsColumns.CONTACT_NUMBER + "=?", new String[]{String.valueOf(phone)});
+         }
+     }
+ 
+-    public List<People> getContacts() {
+-        List<People> list = new ArrayList<>();
+-            String sql = "SELECT " +
+-                    PsDatabaseHelper.ContactsColumns._ID + "," +
+-                    PsDatabaseHelper.ContactsColumns.RAWCONTACT_ID + "," +
+-                    PsDatabaseHelper.ContactsColumns.CONTACT_NAME + "," +
+-                    PsDatabaseHelper.ContactsColumns.CONTACT_NUMBER +
+-                    " FROM " + PsDatabaseHelper.Tables.CONTACTS;
+-            Log.i(TAG, "sql = " + sql);
+-            Cursor cursor = query(sql, null);
+-            try {
+-                while (cursor.moveToNext()) {
+-                    People people = new People();
+-                    people.setId(cursor.getInt(0));
+-                    people.setRawContactId(cursor.getInt(1));
+-                    people.setDisplayName(cursor.getString(2));
+-                    people.setPhoneNum(cursor.getString(3));
+-                    Log.i(TAG, "[getContacts] people.toString = " + people.toString());
+-                    list.add(people);
+-                }
+-            } catch (Exception e) {
+-                e.printStackTrace();
+-            } finally {
+-                cursor.close();
+-            }
+-
+-        return list;
++    /**
++     * add by xyj 20170904
++     * 根据contactId获取联系人
++     *
++     * @param id
++     * @return
++     */
++    public ContactInfo getContactById(int id) {
++        ContactInfo info = new ContactInfo();
++        Cursor cursor = query(SQL_QUERY_CONTACT_BY_CONTACTID, new String[]{String.valueOf(id)});
++        while (cursor.moveToNext()) {
++            info.setContactId(cursor.getInt(cursor.getColumnIndex(PsDatabaseHelper.ContactsColumns._ID)));
++            info.setDisplayName(cursor.getString(cursor.getColumnIndex(PsDatabaseHelper.ContactsColumns.CONTACT_NAME)));
++            info.setHasPhoneNumber(cursor.getInt(cursor.getColumnIndex(PsDatabaseHelper.ContactsColumns.HAS_PHONE_NUMBER)));
++            info.setPhotoFileId(cursor.getInt(cursor.getColumnIndex(PsDatabaseHelper.ContactsColumns.PHOTO_FILE_ID)));
++            //根据contact_id查询所有RawContacts
++            getRawContact(info);
++            Log.i(TAG, "[getContacts] people.toString = " + info.toString());
++        }
++        cursor.close();
++        return info;
+     }
+ 
+-    public List<People> getContacts(boolean isVcf) {
+-        List<People> list = new ArrayList<>();
+-        if (isVcf) {
+-            list.addAll(ImportExportUtils.readData(VCF_FILE_PATH));
+-        } else {
+-            list.addAll(getContacts());
++    /**
++     * add by xyj 20170904
++     * 获取所有联系人
++     *
++     * @return
++     */
++    public List<ContactInfo> getContacts() {
++        List<ContactInfo> list = new ArrayList<>();
++        Cursor cursor = query(SQL_QUERY_CONTACT, null);
++        while (cursor.moveToNext()) {
++            ContactInfo info = new ContactInfo();
++            info.setContactId(cursor.getInt(cursor.getColumnIndex(PsDatabaseHelper.ContactsColumns._ID)));
++            info.setDisplayName(cursor.getString(cursor.getColumnIndex(PsDatabaseHelper.ContactsColumns.CONTACT_NAME)));
++            info.setHasPhoneNumber(cursor.getInt(cursor.getColumnIndex(PsDatabaseHelper.ContactsColumns.HAS_PHONE_NUMBER)));
++            info.setPhotoFileId(cursor.getInt(cursor.getColumnIndex(PsDatabaseHelper.ContactsColumns.PHOTO_FILE_ID)));
++            //根据contact_id查询所有RawContacts
++            getRawContact(info);
++            Log.i(TAG, "[getContacts] people.toString = " + info.toString());
++            list.add(info);
+         }
++        cursor.close();
++
+         return list;
+     }
+ 
+-    public Cursor getContactCursor(String selection, String[] selectionArgs) {
+-        String sql = "SELECT " +
+-                PsDatabaseHelper.ContactsColumns._ID + "," +
+-                PsDatabaseHelper.ContactsColumns.RAWCONTACT_ID + "," +
+-                PsDatabaseHelper.ContactsColumns.CONTACT_NAME + "," +
+-                PsDatabaseHelper.ContactsColumns.CONTACT_NUMBER + " FROM " +
+-                PsDatabaseHelper.Tables.CONTACTS + " WHERE " +
+-                selection;
+-        return query(sql, new String[]{selectionArgs[0].replaceAll(" ", "").replaceAll("-", "").trim()});
++    /**
++     * add by xyj 20170904
++     * 根据contact_id查询所有RawContacts
++     *
++     * @param info
++     */
++    private void getRawContact(ContactInfo info) {
++        Cursor cursor = query(SQL_QUERY_RAW_CONTACT_BY_CONTACTID, new String[]{String.valueOf(info.getContactId())});
++        while (cursor.moveToNext()) {
++            ContactInfo.RawContactInfo rawContactInfo = new ContactInfo.RawContactInfo();
++            rawContactInfo.rawContactId = cursor.getInt(cursor.getColumnIndex(PsDatabaseHelper.RawContactsColumns._ID));
++            rawContactInfo.contactId = cursor.getInt(cursor.getColumnIndex(PsDatabaseHelper.RawContactsColumns.CONTACT_ID));
++            rawContactInfo.accountName = cursor.getString(cursor.getColumnIndex(PsDatabaseHelper.RawContactsColumns.ACCOUNT_NAME));
++            rawContactInfo.accountType = cursor.getString(cursor.getColumnIndex(PsDatabaseHelper.RawContactsColumns.ACCOUNT_TYPE));
++            //根据rawContactId查询所有data
++            getData(rawContactInfo);
++            info.getRawContactInfos().add(rawContactInfo);
++        }
++
++        cursor.close();
+     }
+ 
+-    public Cursor getContactCursor(String selection, String[] selectionArgs, boolean isVcf) {
+-        if (isVcf){
+-            return getCursorByPeoples(selectionArgs[0], getContacts(true));
+-        }else{
+-            return getContactCursor(selection, selectionArgs);
++    /**
++     * add by xyj 20170904
++     * 根据rawContactId查询所有data
++     *
++     * @param rawContactInfo
++     */
++    private void getData(ContactInfo.RawContactInfo rawContactInfo) {
++        Cursor dataCursor = query(SQL_QUERY_DATA_BY_RAWCONTACTID, new String[]{String.valueOf(rawContactInfo.rawContactId)});
++        while (dataCursor.moveToNext()) {
++            ContactInfo.DataInfo dataInfo = new ContactInfo.DataInfo();
++            dataInfo.id = dataCursor.getInt(dataCursor.getColumnIndex(PsDatabaseHelper.DataColumns._ID));
++            dataInfo.mimeType = dataCursor.getString(dataCursor.getColumnIndex(PsDatabaseHelper.DataColumns.MIME_TYPE));
++            dataInfo.typeName = dataCursor.getString(dataCursor.getColumnIndex(PsDatabaseHelper.DataColumns.TYPE_NAME));
++            dataInfo.rawContactId = dataCursor.getInt(dataCursor.getColumnIndex(PsDatabaseHelper.DataColumns.RAW_CONTACT_ID));
++            dataInfo.data1 = dataCursor.getString(dataCursor.getColumnIndex(PsDatabaseHelper.DataColumns.DATA1));
++            dataInfo.data2 = dataCursor.getString(dataCursor.getColumnIndex(PsDatabaseHelper.DataColumns.DATA2));
++            dataInfo.data3 = dataCursor.getString(dataCursor.getColumnIndex(PsDatabaseHelper.DataColumns.DATA3));
++            dataInfo.data4 = dataCursor.getString(dataCursor.getColumnIndex(PsDatabaseHelper.DataColumns.DATA4));
++            dataInfo.data5 = dataCursor.getString(dataCursor.getColumnIndex(PsDatabaseHelper.DataColumns.DATA5));
++            dataInfo.data6 = dataCursor.getString(dataCursor.getColumnIndex(PsDatabaseHelper.DataColumns.DATA6));
++            dataInfo.data7 = dataCursor.getString(dataCursor.getColumnIndex(PsDatabaseHelper.DataColumns.DATA7));
++            dataInfo.data8 = dataCursor.getString(dataCursor.getColumnIndex(PsDatabaseHelper.DataColumns.DATA8));
++            dataInfo.data9 = dataCursor.getString(dataCursor.getColumnIndex(PsDatabaseHelper.DataColumns.DATA9));
++            dataInfo.data10 = dataCursor.getString(dataCursor.getColumnIndex(PsDatabaseHelper.DataColumns.DATA10));
++            dataInfo.data11 = dataCursor.getString(dataCursor.getColumnIndex(PsDatabaseHelper.DataColumns.DATA11));
++            dataInfo.data12 = dataCursor.getString(dataCursor.getColumnIndex(PsDatabaseHelper.DataColumns.DATA12));
++            dataInfo.data13 = dataCursor.getString(dataCursor.getColumnIndex(PsDatabaseHelper.DataColumns.DATA13));
++            dataInfo.data14 = dataCursor.getString(dataCursor.getColumnIndex(PsDatabaseHelper.DataColumns.DATA14));
++            dataInfo.data15 = dataCursor.getString(dataCursor.getColumnIndex(PsDatabaseHelper.DataColumns.DATA15));
++            rawContactInfo.dataInfos.add(dataInfo);
+         }
++
++        dataCursor.close();
+     }
+ 
+-    private Cursor getCursorByPeoples(String arg, List<People> contacts) {
++//    public List<People> getContacts(boolean isVcf) {
++//        List<People> list = new ArrayList<>();
++//        if (isVcf) {
++//            list.addAll(ImportExportUtils.readData(VCF_FILE_PATH));
++//        } else {
++//            list.addAll(getContacts());
++//        }
++//        return list;
++//    }
++
++    public List<ContactInfo> getContacts(boolean isVcf) {
++//        if (isVcf) {
++//            list.addAll(ImportExportUtils.readData(VCF_FILE_PATH));
++//        } else {
++        return getContacts();
++//        }
++    }
++
++    /**
++     * 根据条件和参数查找是否存在联系人
++     * 如果存在返回cursor
++     *
++     * @param selection
++     * @param arg
++     * @return
++     */
++    public Cursor getContactCursor(String selection, String arg) {
++        if (arg == null) {
++            return null;
++        }
++        String formartArg = arg.replaceAll(" ", "").replaceAll("-", "").trim();
+         String[] columnNames = new String[]{
+-                PsDatabaseHelper.ContactsColumns._ID,
+-                PsDatabaseHelper.ContactsColumns.RAWCONTACT_ID,
+-                PsDatabaseHelper.ContactsColumns.CONTACT_NAME,
+-                PsDatabaseHelper.ContactsColumns.CONTACT_NUMBER};
++                PsDatabaseHelper.DataColumns.RAW_CONTACT_ID,
++                PsDatabaseHelper.ContactsColumns.CONTACT_NAME};
+         MatrixCursor cursor = new MatrixCursor(columnNames);
+-        for (People people : contacts) {
+-            if (people.getPhoneNum().replaceAll(" ", "").replaceAll("-", "").trim()
+-                    .equals(arg.replaceAll(" ", "").replaceAll("-", "").trim())){
+-                Log.e(TAG, "getCursorByPeoples: arg = " + arg);
+-                cursor.addRow(people.getColumnData());
++
++        Cursor cursorPhone = query(QUERY_DATA_BY_PHONE,
++                new String[]{formartArg, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE});
++        while (cursorPhone.moveToNext()) {
++            int rawcontactid = cursorPhone.getInt(cursorPhone.getColumnIndex(PsDatabaseHelper.DataColumns.RAW_CONTACT_ID));
++            String phoneNum = cursorPhone.getString(cursorPhone.getColumnIndex(PsDatabaseHelper.DataColumns.DATA1));
++            Log.i(TAG, "[getContactCursor] rawcontactid = " + rawcontactid + " phoneNum = " + phoneNum);
++            if (rawcontactid > 0 && phoneNum != null && phoneNum.equals(formartArg)) {
++                Cursor cursorName = query(QUERY_DATA_BY_RAWCONTACTID,
++                        new String[]{String.valueOf(rawcontactid), ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE});
++                while (cursorName.moveToNext()) {
++                    String name = cursorName.getString(cursorName.getColumnIndex(PsDatabaseHelper.DataColumns.DATA1));
++                    if (name != null) {
++                        Object[] curArray = new Object[]{rawcontactid, name};//显示姓名
++                        cursor.addRow(curArray);//电话号码
++                        Log.i(TAG, "[getContactCursor] data1 = " + name +
++                                " cursorName.count = " + cursorName.getCount() + "cursor.count = " + cursor.getCount() +
++                                "cursor.columncount = " + cursor.getColumnCount());
++                    }
++                }
+             }
+         }
+         return cursor;
+     }
+ 
++    public Cursor getContactCursor(String selection, String[] selectionArgs, boolean isVcf) {
++//        if (isVcf) {
++//            return getCursorByPeoples(selectionArgs[0], getContacts(true));
++//        } else {
++        return getContactCursor(selection, selectionArgs[0]);
++//        }
++    }
++
++//    private Cursor getCursorByPeoples(String arg, List<People> contacts) {
++//        String[] columnNames = new String[]{
++//                PsDatabaseHelper.ContactsColumns._ID,
++//                PsDatabaseHelper.ContactsColumns.RAWCONTACT_ID,
++//                PsDatabaseHelper.ContactsColumns.CONTACT_NAME,
++//                PsDatabaseHelper.ContactsColumns.CONTACT_NUMBER};
++//        MatrixCursor cursor = new MatrixCursor(columnNames);
++//        for (People people : contacts) {
++//            if (people.getPhoneNum().replaceAll(" ", "").replaceAll("-", "").trim()
++//                    .equals(arg.replaceAll(" ", "").replaceAll("-", "").trim())) {
++//                Log.e(TAG, "getCursorByPeoples: arg = " + arg);
++//                cursor.addRow(people.getColumnData());
++//            }
++//        }
++//        return cursor;
++//    }
++
+     /**
+      * sms操作 20170707 add by wangmeng
+      */
+@@ -238,8 +521,8 @@ public class DatabaseAdapter {
+         values.put(PsDatabaseHelper.SmsColumns.SMS_READ, sms.getRead());
+         //Log.e("wangmeng","===add===threadId: "+sms.getThread_id());
+         //Log.e("wangmeng","===add===address: "+sms.getAddress());
+-       // Log.e("wangmeng","===add===body: "+sms.getBody());
+-        Log.e("wangmeng","===add===date: "+sms.getDate());
++        // Log.e("wangmeng","===add===body: "+sms.getBody());
++        Log.e("wangmeng", "===add===date: " + sms.getDate());
+         //Log.e("wangmeng","===add===type: "+sms.getType());
+         insert(PsDatabaseHelper.Tables.SMS, null, values);
+     }
+@@ -247,9 +530,11 @@ public class DatabaseAdapter {
+     public void deleteSmsByAddress(String address) {
+         delete(PsDatabaseHelper.Tables.SMS, PsDatabaseHelper.SmsColumns.SMS_ADDRESS + "=?", new String[]{address});
+     }
++
+     public void insertSms(ContentValues contentValues) {
+         insert(PsDatabaseHelper.Tables.SMS, null, contentValues);
+     }
++
+     public Cursor getSmsCursor(String selection, String[] selectionArgs) {
+         String sql = "SELECT " +
+                 PsDatabaseHelper.SmsColumns._ID + "," +
+@@ -264,43 +549,8 @@ public class DatabaseAdapter {
+                 selection;
+         return query(sql, new String[]{selectionArgs[0].replaceAll(" ", "").replaceAll("-", "").trim()});
+     }
+-    public List<SmsInfo> getSmsByNum(String phone){
+-        String sql = "SELECT " +
+-            PsDatabaseHelper.SmsColumns._ID + "," +
+-            PsDatabaseHelper.SmsColumns.THREAD_ID + "," +
+-            PsDatabaseHelper.SmsColumns.SMS_ADDRESS + "," +
+-            PsDatabaseHelper.SmsColumns.SMS_BODY + "," +
+-            PsDatabaseHelper.SmsColumns.SMS_DATE + "," +
+-            PsDatabaseHelper.SmsColumns.SMS_PERSON + "," +
+-            PsDatabaseHelper.SmsColumns.SMS_TYPE + "," +
+-            PsDatabaseHelper.SmsColumns.SMS_READ +
+-                " FROM " + PsDatabaseHelper.Tables.SMS +
+-                " WHERE " + PsDatabaseHelper.SmsColumns.SMS_ADDRESS + "=?" ;
+-        Log.i(TAG, "sql = " + sql);
+-        List<SmsInfo> list = new ArrayList<>();
+-        Cursor cursor = query(sql, new String[]{phone});
+-        try {
+-            while (cursor.moveToNext()) {
+-                SmsInfo sms = new SmsInfo();
+-                sms.setId(cursor.getInt(0));
+-                sms.setThread_id(cursor.getLong(1));
+-                sms.setAddress(cursor.getString(2));
+-                sms.setBody(cursor.getString(3));
+-                sms.setDate(cursor.getLong(4));
+-                sms.setPerson(cursor.getString(5));
+-                sms.setType(cursor.getInt(6));
+-                sms.setRead(cursor.getString(7));
+-                list.add(sms);
+-            }
+-        } catch (Exception e) {
+-            e.printStackTrace();
+-        } finally {
+-            cursor.close();
+-        }
+-        return list;
+-}
+-//add get first sms by wangmeng 20170902
+-    public List<SmsInfo> getLastSms(String phone) {
++
++    public List<SmsInfo> getSmsByNum(String phone) {
+         String sql = "SELECT " +
+                 PsDatabaseHelper.SmsColumns._ID + "," +
+                 PsDatabaseHelper.SmsColumns.THREAD_ID + "," +
+@@ -311,12 +561,12 @@ public class DatabaseAdapter {
+                 PsDatabaseHelper.SmsColumns.SMS_TYPE + "," +
+                 PsDatabaseHelper.SmsColumns.SMS_READ +
+                 " FROM " + PsDatabaseHelper.Tables.SMS +
+-                " WHERE " + PsDatabaseHelper.SmsColumns.SMS_ADDRESS + "=?" ;
++                " WHERE " + PsDatabaseHelper.SmsColumns.SMS_ADDRESS + "=?";
+         Log.i(TAG, "sql = " + sql);
+         List<SmsInfo> list = new ArrayList<>();
+-        Cursor cursor = query(sql,new String[]{phone});
++        Cursor cursor = query(sql, new String[]{phone});
+         try {
+-            if(cursor.moveToLast()) {
++            while (cursor.moveToNext()) {
+                 SmsInfo sms = new SmsInfo();
+                 sms.setId(cursor.getInt(0));
+                 sms.setThread_id(cursor.getLong(1));
+@@ -328,7 +578,6 @@ public class DatabaseAdapter {
+                 sms.setRead(cursor.getString(7));
+                 list.add(sms);
+             }
+-
+         } catch (Exception e) {
+             e.printStackTrace();
+         } finally {
+@@ -336,7 +585,9 @@ public class DatabaseAdapter {
+         }
+         return list;
+     }
+-    public List<SmsInfo> getSms() {
++
++    //add get first sms by wangmeng 20170902
++    public List<SmsInfo> getLastSms(String phone) {
+         String sql = "SELECT " +
+                 PsDatabaseHelper.SmsColumns._ID + "," +
+                 PsDatabaseHelper.SmsColumns.THREAD_ID + "," +
+@@ -346,12 +597,13 @@ public class DatabaseAdapter {
+                 PsDatabaseHelper.SmsColumns.SMS_PERSON + "," +
+                 PsDatabaseHelper.SmsColumns.SMS_TYPE + "," +
+                 PsDatabaseHelper.SmsColumns.SMS_READ +
+-                " FROM " + PsDatabaseHelper.Tables.SMS;
++                " FROM " + PsDatabaseHelper.Tables.SMS +
++                " WHERE " + PsDatabaseHelper.SmsColumns.SMS_ADDRESS + "=?";
+         Log.i(TAG, "sql = " + sql);
+         List<SmsInfo> list = new ArrayList<>();
+-        Cursor cursor = query(sql,null);
++        Cursor cursor = query(sql, new String[]{phone});
+         try {
+-            while (cursor.moveToNext()) {
++            if (cursor.moveToLast()) {
+                 SmsInfo sms = new SmsInfo();
+                 sms.setId(cursor.getInt(0));
+                 sms.setThread_id(cursor.getLong(1));
+@@ -363,6 +615,7 @@ public class DatabaseAdapter {
+                 sms.setRead(cursor.getString(7));
+                 list.add(sms);
+             }
++
+         } catch (Exception e) {
+             e.printStackTrace();
+         } finally {
+diff --git a/src/com/transage/privatespace/database/PsDatabaseHelper.java b/src/com/transage/privatespace/database/PsDatabaseHelper.java
+index e0ffcbc..cd63f02 100755
+--- a/src/com/transage/privatespace/database/PsDatabaseHelper.java
++++ b/src/com/transage/privatespace/database/PsDatabaseHelper.java
+@@ -12,6 +12,91 @@ import android.util.Log;
+ 
+ public class PsDatabaseHelper extends SQLiteOpenHelper {
+     private static final String TAG = "PsDatabaseHelper";
++
++    //执行创建私密应用表
++    private static final String SQL_CREATE_APPS_TABLE = "CREATE TABLE IF NOT EXISTS " + Tables.APPS + " (" +
++            AppsColumns._ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
++            AppsColumns.APP_NAME + " TEXT, " +
++            AppsColumns.PACKAGE_NAME + " TEXT" +
++            ");";
++
++    //执行创建私密联系人表
++    private static final String SQL_CREATE_CONTACTS_TABLE = "CREATE TABLE IF NOT EXISTS " + Tables.CONTACTS + " (" +
++            ContactsColumns._ID + " INTEGER," +
++            ContactsColumns.HAS_PHONE_NUMBER + " INTEGER, " +
++            ContactsColumns.CONTACT_NAME + " TEXT, " +
++            ContactsColumns.PHOTO_FILE_ID + " INTEGER" +
++            ");";
++
++    //执行创建Raw联系人表
++    private static final String SQL_CREATE_RAWCONTACTS_TABLE = "CREATE TABLE IF NOT EXISTS " + Tables.RAW_CONTACTS + " (" +
++            RawContactsColumns._ID + " INTEGER," +
++            RawContactsColumns.CONTACT_ID + " INTEGER, " +
++            RawContactsColumns.ACCOUNT_NAME + " TEXT, " +
++            RawContactsColumns.ACCOUNT_TYPE + " TEXT" +
++            ");";
++
++    //执行创建联系人data表
++    private static final String SQL_CREATE_DATA_TABLE = "CREATE TABLE IF NOT EXISTS " + Tables.DATA + " (" +
++            DataColumns._ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
++            DataColumns.RAW_CONTACT_ID + " INTEGER, " +
++            DataColumns.MIME_TYPE + " TEXT, " +
++            DataColumns.TYPE_NAME + " TEXT, " +
++            DataColumns.DATA1 + " TEXT, " +
++            DataColumns.DATA2 + " TEXT, " +
++            DataColumns.DATA3 + " TEXT, " +
++            DataColumns.DATA4 + " TEXT, " +
++            DataColumns.DATA5 + " TEXT, " +
++            DataColumns.DATA6 + " TEXT, " +
++            DataColumns.DATA7 + " TEXT, " +
++            DataColumns.DATA8 + " TEXT, " +
++            DataColumns.DATA9 + " TEXT, " +
++            DataColumns.DATA10 + " TEXT, " +
++            DataColumns.DATA11 + " TEXT, " +
++            DataColumns.DATA12 + " TEXT, " +
++            DataColumns.DATA13 + " TEXT, " +
++            DataColumns.DATA14 + " TEXT, " +
++            DataColumns.DATA15 + " TEXT" +
++            ");";
++
++    //执行创建私密短信表
++    private static final String SQL_CREATE_SMS_TABLE = "CREATE TABLE IF NOT EXISTS " + Tables.SMS + " (" +
++            SmsColumns._ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
++            SmsColumns.THREAD_ID + " INTEGER," +
++            SmsColumns.SMS_ADDRESS + " TEXT, " +
++            SmsColumns.SMS_BODY + " TEXT," +
++            SmsColumns.SMS_DATE + " TEXT," +
++            SmsColumns.SMS_PERSON + " TEXT," +
++            SmsColumns.SMS_TYPE + " TEXT," +
++            SmsColumns.SMS_READ + " TEXT" +
++            ");";
++
++    //执行创建私密通话记录表
++    private static final String SQL_CREATE_CALLRECORD_TABLE = "CREATE TABLE IF NOT EXISTS " + Tables.CALLRECORD + " (" +
++            CallRecordClumns._ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
++            CallRecordClumns.DATE + " INTEGER, " +
++            CallRecordClumns.NUMBER + " TEXT, " +
++            CallRecordClumns.NAME + " TEXT, " +
++            CallRecordClumns.TYPE + " INTEGER, " +
++            CallRecordClumns.DURATION + " INTEGER " +
++            ");";
++
++    //执行创建私密文件表 add by dongrp for CreateFilesTable  20170727
++    private static final String SQL_CREATE_FILES_TABLE = "CREATE TABLE IF NOT EXISTS " + Tables.FILES + " (" +
++            FilesClumns._ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
++            FilesClumns._DATA + " TEXT, " +
++            FilesClumns._SOURCE_DATA + " TEXT, " +
++            FilesClumns._SIZE + " INTEGER, " +
++            FilesClumns._DISPLAY_NAME + " TEXT, " +
++            FilesClumns.TITLE + " TEXT, " +
++            FilesClumns.DATE_ADDED + " INTEGER, " +
++            FilesClumns.MIME_TYPE + " TEXT, " +
++            FilesClumns.BUCKET_ID + " TEXT, " +
++            FilesClumns.BUCKET_DISPLAY_NAME + " TEXT, " +
++            FilesClumns.WIDTH + " INTEGER, " +
++            FilesClumns.HEIGHT + " INTEGER " +
++            ");";
++
+     private final static int VERSION = 1;
+     private final static String DB_NAME = "privatespace.db";
+     private Context mContext;
+@@ -20,6 +105,8 @@ public class PsDatabaseHelper extends SQLiteOpenHelper {
+     public interface Tables {
+         public static final String APPS = "apps";
+         public static final String CONTACTS = "contacts";
++        public static final String RAW_CONTACTS = "raw_contacts";//add by xyj 20170904
++        public static final String DATA = "data";//add by xyj 20170904
+         public static final String SMS = "sms";//wangmeng 20170707 add mms
+         public static final String CALLRECORD = "call_record";
+         public static final String FILES = "files";//add by dongrp 20170727
+@@ -33,9 +120,40 @@ public class PsDatabaseHelper extends SQLiteOpenHelper {
+ 
+     public interface ContactsColumns {
+         public static final String _ID = "id";
+-        public static final String RAWCONTACT_ID = "rawcontact_id";
++        public static final String HAS_PHONE_NUMBER = "has_phone_number";
++        public static final String PHOTO_FILE_ID = "photo_file_id";
+         public static final String CONTACT_NAME = "display_name";
+-        public static final String CONTACT_NUMBER = "contact_number";
++    }
++
++    //add by xyj 20170904
++    public interface RawContactsColumns {
++        public static final String _ID = "id";
++        public static final String CONTACT_ID = "contact_id";
++        public static final String ACCOUNT_NAME = "account_name";
++        public static final String ACCOUNT_TYPE = "account_type";
++    }
++
++    //add by xyj 20170904
++    public interface DataColumns {
++        public static final String _ID = "id";
++        public static final String MIME_TYPE = "mime_type";
++        public static final String TYPE_NAME = "type_name";
++        public static final String RAW_CONTACT_ID = "raw_contact_id";
++        public static final String DATA1 = "data1";
++        public static final String DATA2 = "data2";
++        public static final String DATA3 = "data3";
++        public static final String DATA4 = "data4";
++        public static final String DATA5 = "data5";
++        public static final String DATA6 = "data6";
++        public static final String DATA7 = "data7";
++        public static final String DATA8 = "data8";
++        public static final String DATA9 = "data9";
++        public static final String DATA10 = "data10";
++        public static final String DATA11 = "data11";
++        public static final String DATA12 = "data12";
++        public static final String DATA13 = "data13";
++        public static final String DATA14 = "data14";
++        public static final String DATA15 = "data15";
+     }
+ 
+     //wangmeng 20170707 add mms
+@@ -101,67 +219,25 @@ public class PsDatabaseHelper extends SQLiteOpenHelper {
+      */
+     private void createTable(SQLiteDatabase sqLiteDatabase) {
+         //执行创建私密应用表
+-        String sqlCreateAppsTable = "CREATE TABLE IF NOT EXISTS " + Tables.APPS + " (" +
+-                AppsColumns._ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
+-                AppsColumns.APP_NAME + " TEXT, " +
+-                AppsColumns.PACKAGE_NAME + " TEXT" +
+-                ");";
+-        Log.i(TAG, "sql = " + sqlCreateAppsTable);
+-        sqLiteDatabase.execSQL(sqlCreateAppsTable);
++        sqLiteDatabase.execSQL(SQL_CREATE_APPS_TABLE);
+ 
+         //执行创建私密联系人表
+-        String sqlCreateContactsTable = "CREATE TABLE IF NOT EXISTS " + Tables.CONTACTS + " (" +
+-                ContactsColumns._ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
+-                ContactsColumns.RAWCONTACT_ID + " INTEGER, " +
+-                ContactsColumns.CONTACT_NAME + " TEXT, " +
+-                ContactsColumns.CONTACT_NUMBER + " TEXT" +
+-                ");";
+-        Log.i(TAG, "sql = " + sqlCreateContactsTable);
+-        sqLiteDatabase.execSQL(sqlCreateContactsTable);
++        sqLiteDatabase.execSQL(SQL_CREATE_CONTACTS_TABLE);
++
++        //执行创建Raw联系人表
++        sqLiteDatabase.execSQL(SQL_CREATE_RAWCONTACTS_TABLE);
++
++        //执行创建联系人data表
++        sqLiteDatabase.execSQL(SQL_CREATE_DATA_TABLE);
+ 
+         //执行创建私密短信表
+-        String sqlCreateSmsTable = "CREATE TABLE IF NOT EXISTS " + Tables.SMS + " (" +
+-                SmsColumns._ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
+-                SmsColumns.THREAD_ID + " INTEGER," +
+-                SmsColumns.SMS_ADDRESS + " TEXT, " +
+-                SmsColumns.SMS_BODY + " TEXT," +
+-                SmsColumns.SMS_DATE + " TEXT," +
+-                SmsColumns.SMS_PERSON + " TEXT," +
+-                SmsColumns.SMS_TYPE + " TEXT," +
+-                SmsColumns.SMS_READ + " TEXT" +
+-                ");";
+-        Log.i(TAG, "sql = " + sqlCreateSmsTable);
+-        sqLiteDatabase.execSQL(sqlCreateSmsTable);
++        sqLiteDatabase.execSQL(SQL_CREATE_SMS_TABLE);
+ 
+         //执行创建私密通话记录表
+-        String sqlCreateCallRecordTable = "CREATE TABLE IF NOT EXISTS " + Tables.CALLRECORD + " (" +
+-                CallRecordClumns._ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
+-                CallRecordClumns.DATE + " INTEGER, " +
+-                CallRecordClumns.NUMBER + " TEXT, " +
+-                CallRecordClumns.NAME + " TEXT, " +
+-                CallRecordClumns.TYPE + " INTEGER, " +
+-                CallRecordClumns.DURATION + " INTEGER " +
+-                ");";
+-        Log.i(TAG, "sql = " + sqlCreateCallRecordTable);
+-        sqLiteDatabase.execSQL(sqlCreateCallRecordTable);
++        sqLiteDatabase.execSQL(SQL_CREATE_CALLRECORD_TABLE);
+ 
+         //执行创建私密文件表 add by dongrp for CreateFilesTable  20170727
+-        String sqlCreateFilesTable = "CREATE TABLE IF NOT EXISTS " + Tables.FILES + " (" +
+-                FilesClumns._ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
+-                FilesClumns._DATA + " TEXT, " +
+-                FilesClumns._SOURCE_DATA + " TEXT, " +
+-                FilesClumns._SIZE + " INTEGER, " +
+-                FilesClumns._DISPLAY_NAME + " TEXT, " +
+-                FilesClumns.TITLE + " TEXT, " +
+-                FilesClumns.DATE_ADDED + " INTEGER, " +
+-                FilesClumns.MIME_TYPE + " TEXT, " +
+-                FilesClumns.BUCKET_ID + " TEXT, " +
+-                FilesClumns.BUCKET_DISPLAY_NAME + " TEXT, " +
+-                FilesClumns.WIDTH + " INTEGER, " +
+-                FilesClumns.HEIGHT + " INTEGER " +
+-                ");";
+-        Log.i(TAG, "sql = " + sqlCreateFilesTable);
+-        sqLiteDatabase.execSQL(sqlCreateFilesTable);
++        sqLiteDatabase.execSQL(SQL_CREATE_FILES_TABLE);
+     }
+ 
+     @Override
+diff --git a/src/com/transage/privatespace/fragment/FG_PrivatePeople.java b/src/com/transage/privatespace/fragment/FG_PrivatePeople.java
+index 8dbfc14..ab0bc29 100755
+--- a/src/com/transage/privatespace/fragment/FG_PrivatePeople.java
++++ b/src/com/transage/privatespace/fragment/FG_PrivatePeople.java
+@@ -14,10 +14,12 @@ import android.view.animation.RotateAnimation;
+ import android.widget.AdapterView;
+ import android.widget.ImageButton;
+ import android.widget.ListView;
++import android.util.Log;
+ 
+ import com.transage.privatespace.R;
+ import com.transage.privatespace.activity.AddPeople;
+ import com.transage.privatespace.adapter.PeopleListViewAdapter;
++import com.transage.privatespace.bean.ContactInfo;
+ import com.transage.privatespace.bean.People;
+ import com.transage.privatespace.database.DatabaseAdapter;
+ import com.transage.privatespace.loader.PrivateSpaceLoader;
+@@ -33,14 +35,16 @@ import java.util.Map;
+  */
+ public class FG_PrivatePeople extends BaseFragment implements AdapterView.OnItemClickListener,
+         AdapterView.OnItemLongClickListener {
++    private static final String TAG = "FG_PrivatePeople";
++
+     private View view;
+     private ImageButton floatActionButton;
+     private boolean isShowCheckBox = false;
+     private DatabaseAdapter mDb;
+-    private ArrayList<People> listPrivatePeople = new ArrayList<People>();
++    private ArrayList<ContactInfo> mListPrivateContact = new ArrayList<ContactInfo>();
+     private PeopleListViewAdapter peopleListViewAdapter;
+-    public static HashMap<Integer, People> mapSelectedPeople = new HashMap<Integer, People>();
+-    public static ArrayList<People> listSelectedPeople = new ArrayList<People>();
++    public static HashMap<Integer, ContactInfo> mapSelectedContact = new HashMap<Integer, ContactInfo>();
++    public static ArrayList<ContactInfo> listSelectedContact = new ArrayList<ContactInfo>();
+ 
+     @Override
+     public void onCreate(@Nullable Bundle savedInstanceState) {
+@@ -119,8 +123,8 @@ public class FG_PrivatePeople extends BaseFragment implements AdapterView.OnItem
+      */
+     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
+     private void initData() {
+-        listPrivatePeople.clear();// 先清空,避免数据积累
+-        listPrivatePeople.addAll(mDb.getContacts(ImportExportUtils.isVcf(getContext())));
++        mListPrivateContact.clear();// 先清空,避免数据积累
++        mListPrivateContact.addAll(mDb.getContacts(ImportExportUtils.isVcf(getContext())));
+         /*SSStry {
+             String contactNumber = null;
+             String contactName;
+@@ -168,16 +172,16 @@ public class FG_PrivatePeople extends BaseFragment implements AdapterView.OnItem
+             @Override
+             public void onClick(View v) {
+                 if (isShowCheckBox) { // 批量解除私密联系人
+-                    listSelectedPeople.clear();
+-                    Iterator<Map.Entry<Integer, People>> iterator = mapSelectedPeople.entrySet().iterator();
++                    listSelectedContact.clear();
++                    Iterator<Map.Entry<Integer, ContactInfo>> iterator = mapSelectedContact.entrySet().iterator();
+                     while (iterator.hasNext()) {
+-                        Map.Entry<Integer, People> next = iterator.next();
+-                        listSelectedPeople.add(next.getValue());
++                        Map.Entry<Integer, ContactInfo> next = iterator.next();
++                        listSelectedContact.add(next.getValue());
+                     }
+                     //将listSelectedPeople中的联系人解除私密
+ //                    AddPeople.setPrivateContacts(listSelectedPeople, 0, getActivity().getContentResolver());
+ //                    PrivateSpaceUtils.executePrivateContacts(listSelectedPeople, 0, getActivity());
+-                    mLoader.loadPrivateContacts(listSelectedPeople, 0, getActivity());
++                    mLoader.loadPrivateContacts(listSelectedContact, 0, getActivity());
+                     isShowCheckBox = false;
+                     // 给floatActionButton添加旋转动画
+                     RotateAnimation rotateAnimation = new RotateAnimation(0.0f, -360.0f,
+@@ -193,7 +197,7 @@ public class FG_PrivatePeople extends BaseFragment implements AdapterView.OnItem
+         });
+         // listView 及其 适配器绑定、事件监听
+         ListView listView = (ListView) view.findViewById(R.id.listViewPeople);
+-        peopleListViewAdapter = new PeopleListViewAdapter(getActivity(), listPrivatePeople);
++        peopleListViewAdapter = new PeopleListViewAdapter(getActivity(), mListPrivateContact);
+         listView.setAdapter(peopleListViewAdapter);
+         listView.setOnItemClickListener(this);// 注册长按监听
+         listView.setOnItemLongClickListener(this);// 注册长按监听
+@@ -229,9 +233,10 @@ public class FG_PrivatePeople extends BaseFragment implements AdapterView.OnItem
+             viewHolder.checkBox.toggle();
+             PeopleListViewAdapter.map_allCheckBoxSelectedStatus.put(position, viewHolder.checkBox.isChecked());
+             if (viewHolder.checkBox.isChecked()) {
+-                mapSelectedPeople.put(position, listPrivatePeople.get(position));
++                mapSelectedContact.put(position, mListPrivateContact.get(position));
++                Log.i(TAG, "[onItemClick] mapSelectedContact.put = " + mListPrivateContact.get(position).toString());
+             } else {
+-                mapSelectedPeople.remove(position);
++                mapSelectedContact.remove(position);
+             }
+         }
+     }
+@@ -240,12 +245,13 @@ public class FG_PrivatePeople extends BaseFragment implements AdapterView.OnItem
+     @Override
+     public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+         isShowCheckBox = true;
+-        mapSelectedPeople.clear(); // 清空本地map
+-        peopleListViewAdapter.initMapCheckStatus(listPrivatePeople);// 适配器map全部置为false
++        mapSelectedContact.clear(); // 清空本地map
++        peopleListViewAdapter.initMapCheckStatus(mListPrivateContact);// 适配器map全部置为false
+         PeopleListViewAdapter.ViewHolder viewHolder = (PeopleListViewAdapter.ViewHolder) view.getTag();
+         viewHolder.checkBox.setChecked(true); // 长按的那一项选中
+         peopleListViewAdapter.map_allCheckBoxSelectedStatus.put(position, true);//选中长按项：更新适配器状态数据
+-        mapSelectedPeople.put(position, listPrivatePeople.get(position));// 选中长按项：更新本地数据
++        mapSelectedContact.put(position, mListPrivateContact.get(position));// 选中长按项：更新本地数据
++        Log.i(TAG, "[onItemClick] mapSelectedContact.put-firstput = " + mListPrivateContact.get(position).toString());
+         peopleListViewAdapter.showCheckBox(isShowCheckBox);
+         // 给floatActionButton添加属性翻转动画
+         /*ObjectAnimator.ofFloat(floatActionButton, "rotationY", 0.0F, 180.0F).setDuration(500).start();
+diff --git a/src/com/transage/privatespace/loader/PrivateSpaceLoader.java b/src/com/transage/privatespace/loader/PrivateSpaceLoader.java
+index 14cb9b6..05c57e2 100755
+--- a/src/com/transage/privatespace/loader/PrivateSpaceLoader.java
++++ b/src/com/transage/privatespace/loader/PrivateSpaceLoader.java
+@@ -5,10 +5,13 @@ import android.app.Activity;
+ import android.content.ContentProviderOperation;
+ import android.content.ContentProviderResult;
+ import android.content.ContentResolver;
++import android.content.ContentUris;
+ import android.content.ContentValues;
+ import android.content.Context;
+ import android.content.pm.PackageManager;
+ import android.database.Cursor;
++import android.graphics.Bitmap;
++import android.graphics.BitmapFactory;
+ import android.net.Uri;
+ import android.os.Environment;
+ import android.os.Handler;
+@@ -21,11 +24,13 @@ import android.util.Log;
+ import com.android.internal.telephony.SmsApplication;
+ import com.transage.privatespace.activity.PrivateContacts;
+ import com.transage.privatespace.bean.CallRecord;
++import com.transage.privatespace.bean.ContactInfo;
+ import com.transage.privatespace.bean.People;
+ import com.transage.privatespace.bean.SmsInfo;
+ import com.transage.privatespace.database.DatabaseAdapter;
+ import com.transage.privatespace.utils.ImportExportUtils;
+ 
++import java.io.ByteArrayOutputStream;
+ import java.io.File;
+ import java.text.SimpleDateFormat;
+ import java.util.ArrayList;
+@@ -34,6 +39,9 @@ import java.util.List;
+ import java.util.Locale;
+ import java.util.concurrent.ExecutorService;
+ import java.util.concurrent.Executors;
++
++import com.transage.privatespace.R;
++
+ /**
+  * Created by yanjie.xu on 2017/7/20.
+  */
+@@ -77,35 +85,45 @@ public class PrivateSpaceLoader {
+     /**
+      * 设置私密联系人
+      *
+-     * @param list_selectedPeople ：待加密/解密的联系人列表
+-     * @param isPrivate           ：1表示加为私密 ，0表示解除私密
+-     * @param activity            ：内容解析者
++     * @param list_selectedContact ：待加密/解密的联系人列表
++     * @param isPrivate            ：1表示加为私密 ，0表示解除私密
++     * @param activity             ：内容解析者
+      */
+-    public void loadPrivateContacts(List<People> list_selectedPeople, int isPrivate,  Activity activity) {
++    public void loadPrivateContacts(List<ContactInfo> list_selectedContact, int isPrivate, Activity activity) {
+         Log.i(TAG, "loadPrivateContacts()");
+         DatabaseAdapter databaseAdapter = new DatabaseAdapter(activity);
+         setDefaultSms(activity.getApplicationContext());//设置私密为默认短信
+         if (isPrivate == 0) {//解除私密
+-            for (People people : list_selectedPeople) {
++            for (ContactInfo contactInfo : list_selectedContact) {
+                 getThreadPool().execute(new Runnable() {
+                     @Override
+                     public void run() {
+                         //还原联系人到系统中
+-                        addContacts2Db(activity, people);
++                        addContacts2Db(activity, contactInfo);
+                         //删除私密联系人
+-                        databaseAdapter.deleteContactsByPhone(people.getPhoneNum(), ImportExportUtils.isVcf(activity));
++//                        databaseAdapter.deleteContactsByPhone(contactInfo.getPhoneNum(), ImportExportUtils.isVcf(activity));
++                        databaseAdapter.deleteContactById(contactInfo.getContactId());
+                         mHandler.sendEmptyMessage(REFRESHE_CONTACT);
+                     }
+                 });
+ 
++                //当检测到该联系人没有电话号码时不继续向下走
++                String phoneNumber = null;
++                if (contactInfo.getPhones().size() > 0) {
++                    phoneNumber = contactInfo.getPhones().get(0).phoneNumber;
++                }
++                if (phoneNumber == null) {
++                    continue;
++                }
++
+                 getThreadPool().execute(new Runnable() {
+                     @Override
+                     public void run() {
+                         //批量插入通话记录
+ //                        batchAddCallLogs(activity, databaseAdapter.getCallRecordsByNum(people.getPhoneNum()));
+-                        addCallLogs(activity, databaseAdapter.getCallRecordsByNum(people.getPhoneNum()));
++                        addCallLogs(activity, databaseAdapter.getCallRecordsByNum(contactInfo.getPhones().get(0).phoneNumber));
+                         //删除通话记录
+-                        databaseAdapter.deleteCallRecordByNum(people.getPhoneNum());
++                        databaseAdapter.deleteCallRecordByNum(contactInfo.getPhones().get(0).phoneNumber);
+                         mHandler.sendEmptyMessage(REFRESHE_CALLRECORD);
+                     }
+                 });
+@@ -113,37 +131,40 @@ public class PrivateSpaceLoader {
+                 getThreadPool().execute(new Runnable() {
+                     @Override
+                     public void run() {
+-                        String phoneNum = formatNumber(people.getPhoneNum());//格式化电话号码
++                        String phoneNum = formatNumber(contactInfo.getPhones().get(0).phoneNumber);//格式化电话号码
+                         //还原短信到数据库中
+-                        insertSmstoSystem(activity,databaseAdapter.getSmsByNum(phoneNum));
++                        insertSmstoSystem(activity, databaseAdapter.getSmsByNum(phoneNum));
+                         //删除私密短信
+                         new DatabaseAdapter(activity).deleteSmsByAddress(phoneNum);
+-                        databaseAdapter.deleteContactsById(people.getId());
+                         mHandler.sendEmptyMessage(REFRESHE_SMS);
+                     }
+                 });
+             }
+-        }else if (isPrivate == 1){//添加私密
++        } else if (isPrivate == 1) {//添加私密
+             getThreadPool().execute(new Runnable() {
+                 @Override
+                 public void run() {
+                     //添加联系人到私密
+-                    databaseAdapter.addContacts(list_selectedPeople, ImportExportUtils.isVcf(activity));
+-                    for (People people : list_selectedPeople) {
+-                        //删除联系人元数据
+-                        activity.getContentResolver().delete(ContactsContract.RawContacts.CONTENT_URI,
+-                                ContactsContract.Data._ID + "=?",
+-                                new String[]{String.valueOf(people.getRawContactId())});
++//                    databaseAdapter.addContacts(list_selectedPeople, ImportExportUtils.isVcf(activity));
++                    databaseAdapter.addContact(list_selectedContact);
++                    for (ContactInfo info : list_selectedContact) {
++                        int[] rawContactIds = info.getRawContactIds();
++                        for (int i = 0; i < rawContactIds.length; i++) {
++                            //删除联系人元数据
++                            activity.getContentResolver().delete(ContactsContract.RawContacts.CONTENT_URI,
++                                    ContactsContract.Data._ID + "=?",
++                                    new String[]{String.valueOf(rawContactIds[i])});
++                        }
+                         mHandler.sendEmptyMessage(REFRESHE_CONTACT);
+                     }
+                 }
+             });
+ 
+-            for (People people : list_selectedPeople) {
++            for (ContactInfo info : list_selectedContact) {
+                 getThreadPool().execute(new Runnable() {
+                     @Override
+                     public void run() {
+-                        addCallLogToPrivate(people, activity);
++                        addCallLogToPrivate(info, activity);
+                         mHandler.sendEmptyMessage(REFRESHE_CALLRECORD);
+                     }
+                 });
+@@ -152,22 +173,24 @@ public class PrivateSpaceLoader {
+                     @Override
+                     public void run() {
+                         //添加短信到私密 add by wangmeng 20170707
+-                        addSmstoPrivate(activity, people);
++                        addSmstoPrivate(activity, info);
+                         mHandler.sendEmptyMessage(REFRESHE_SMS);
+                     }
+                 });
+             }
+         }
+     }
+-	//wangmeng 20170802 setting default mms start
+-	public void setDefaultSms(Context context){
+-		Log.e("wangmeng","###setDefaultSms###### "+context.getPackageName());
+-		SmsApplication.setDefaultApplication(context.getPackageName(), context);
+-	}
+-	//wangmeng 20170802 setting default mms end
+-    public void addCallLogToPrivate(People people, Activity activity) {
++
++    //wangmeng 20170802 setting default mms start
++    public void setDefaultSms(Context context) {
++        Log.e("wangmeng", "###setDefaultSms###### " + context.getPackageName());
++        SmsApplication.setDefaultApplication(context.getPackageName(), context);
++    }
++
++    //wangmeng 20170802 setting default mms end
++    public void addCallLogToPrivate(ContactInfo contactInfo, Activity activity) {
+         DatabaseAdapter databaseAdapter = new DatabaseAdapter(activity);
+-        List<CallRecord> callRecords = getCallRecordsFromContectsProvider(people, activity);
++        List<CallRecord> callRecords = getCallRecordsFromContectsProvider(contactInfo, activity);
+         if (callRecords != null && !callRecords.isEmpty()) {
+             for (CallRecord callRecord : callRecords) {
+                 Log.i(TAG, "add callLog" + callRecord.toString());
+@@ -181,7 +204,7 @@ public class PrivateSpaceLoader {
+ 
+     }
+ 
+-    private List<CallRecord> getCallRecordsFromContectsProvider(People people, Activity activity) {
++    private List<CallRecord> getCallRecordsFromContectsProvider(ContactInfo contactInfo, Activity activity) {
+         // 检查并申请 READ_CALL_LOG 权限
+         if (ActivityCompat.checkSelfPermission(activity, Manifest.permission.WRITE_CALL_LOG) != PackageManager.PERMISSION_GRANTED) {
+             ActivityCompat.requestPermissions(activity, new String[]{Manifest.permission.WRITE_CALL_LOG}, 1);
+@@ -189,8 +212,8 @@ public class PrivateSpaceLoader {
+         }
+         List<CallRecord> callRecordsList = new ArrayList<CallRecord>();
+         ContentResolver resolver = activity.getContentResolver();
+-        String phone = people.getPhoneNum();
+-        Log.i(TAG, people.toString());
++        String phone = contactInfo.getPhones().get(0).phoneNumber;
++        Log.i(TAG, contactInfo.toString());
+         if (phone != null) {
+             /**
+              * @param uri 需要查询的URI，（这个URI是ContentProvider提供的）努力了
+@@ -233,6 +256,7 @@ public class PrivateSpaceLoader {
+         }
+         return callRecordsList;
+     }
++
+     //还原短信数据到系统中
+     public void insertSmstoSystem(Context context, List<SmsInfo> smsList) {
+         ContentValues values = new ContentValues();
+@@ -242,45 +266,48 @@ public class PrivateSpaceLoader {
+             values.put("body", sms.getBody());
+             values.put("date", String.valueOf(sms.getDate()));
+             values.put("type", String.valueOf(sms.getType()));
+-            values.put("read",sms.getRead());
++            values.put("read", sms.getRead());
+             context.getContentResolver().insert(Uri.parse("content://sms/"), values);
+         }
+     }
++
+     //格式化电话号码 add by wangmeng 20170821
+-    public String formatNumber(String number){
++    public String formatNumber(String number) {
+         String phoneNumStr = null;
+-        if(number.contains("+86")){
+-            phoneNumStr = number.replace("+86","").replaceAll(" ", "").replaceAll("-", "").trim();
+-        }else{
++        if (number.contains("+86")) {
++            phoneNumStr = number.replace("+86", "").replaceAll(" ", "").replaceAll("-", "").trim();
++        } else {
+             phoneNumStr = number.replaceAll(" ", "").replaceAll("-", "").trim();
+         }
+         return phoneNumStr;
+     }
++
+     //添加短信到私密 add by wangmeng 20170707
+-    public void addSmstoPrivate(Activity activity, People phone) {
++    public void addSmstoPrivate(Activity activity, ContactInfo contactInfo) {
+         // 1.先获取到所有私密联系人
+ //        ArrayList<People> listPrivatePeople = new ArrayList<People>();
+ //        listPrivatePeople.addAll(new DatabaseAdapter(activity).getContacts());
+         //Log.e("wangmeng","=====111111111========>");
+         // 2.获取私密联系人的短信记录
+         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("MM-dd HH:mm", Locale.getDefault());
+-        String[] projection = new String[]{"_id", "thread_id", "address", "person", "body", "date", "type","read"};
++        String[] projection = new String[]{"_id", "thread_id", "address", "person", "body", "date", "type", "read"};
+ //        for (int i = 0; i < listPrivatePeople.size(); i++) {
+ //            String phone = listPrivatePeople.get(i).getPhoneNum();
+-        if (phone != null) {
+-            Log.e("wangmeng","=====222222222========>");
++        if (contactInfo != null) {
++            Log.e("wangmeng", "=====222222222========>");
+ //            Cursor cursor2 = activity.getContentResolver().query(Uri.parse("content://sms/"), projection,
+ //                    "address=?", new String[]{phone.getPhoneNum()}, "date desc");
+-            String phoneNum = formatNumber(phone.getPhoneNum());
+-            Cursor cursor2 = activity.getContentResolver().query(Uri.parse("content://sms/"), projection , "address"+"  LIKE ? ",
+-                    new String[] { "%" + phoneNum + "%" }, "date asc");
+-            Log.e("wangmeng","=====phone.getPhoneNum========>"+phoneNum);
+-            Log.e("wangmeng","=====cursor2========>"+cursor2);
+-            Log.e("wangmeng","=====cursor2.moveToFirst========>"+cursor2.moveToFirst());
++            String phoneNum = formatNumber(contactInfo.getPhones().get(0).phoneNumber);
++            Cursor cursor2 = activity.getContentResolver().query(Uri.parse("content://sms/"), projection, "address" + "  LIKE ? ",
++                    new String[]{"%" + phoneNum + "%"}, "date asc");
++            Log.e("wangmeng", "=====phone.getPhoneNum========>" + phoneNum);
++            Log.e("wangmeng", "=====cursor2========>" + cursor2);
++            Log.e("wangmeng", "=====cursor2.moveToFirst========>" + cursor2.moveToFirst());
++
+             if (cursor2 != null && cursor2.moveToFirst()) {
+                 // ArrayList<Sms> listSms = new ArrayList<Sms>();
+                 do {
+-                    Log.e("wangmeng","=====333333========>");
++                    Log.e("wangmeng", "=====333333========>");
+                     int id = cursor2.getInt(cursor2.getColumnIndex("_id"));
+                     long threadId = cursor2.getLong(cursor2.getColumnIndex("thread_id"));
+                     String address = cursor2.getString(cursor2.getColumnIndex("address"));// 手机号码
+@@ -292,23 +319,23 @@ public class PrivateSpaceLoader {
+ //                        Log.e("wangmeng","======threadId: "+threadId);
+ //                        Log.e("wangmeng","======address: "+address);
+ //                        Log.e("wangmeng","======body: "+body);
+-                    Log.e("wangmeng","======date: "+date);
+-                    Log.e("wangmeng","======read: "+read);
++                    Log.e("wangmeng", "======date: " + date);
++                    Log.e("wangmeng", "======read: " + read);
+ //                        Log.e("wangmeng","======type: "+type);
+                     // 添加一条短息数据到listSms
+                     SmsInfo sms = new SmsInfo();
+                     sms.setId(id);
+                     sms.setThread_id(threadId);
+                     sms.setAddress(formatNumber(address));
+-                    sms.setPerson(phone.getDisplayName());
++                    sms.setPerson(contactInfo.getDisplayName());
+                     sms.setBody(body);
+                     sms.setDate(date);
+                     sms.setType(type);
+                     sms.setRead(read);
+                     new DatabaseAdapter(activity).addSms(sms);
+-					//wangmeng delete mms data
+-					int result = activity.getContentResolver().delete(Uri.parse("content://sms/"), "address = ?", new String[]{address});
+-					Log.e("wangmeng","=======result======>"+result);
++                    //wangmeng delete mms data
++                    int result = activity.getContentResolver().delete(Uri.parse("content://sms/"), "address = ?", new String[]{address});
++                    Log.e("wangmeng", "=======result======>" + result);
+                 } while (cursor2.moveToNext());
+                 cursor2.close();
+             }
+@@ -320,54 +347,68 @@ public class PrivateSpaceLoader {
+      * 在同一个事务中完成联系人各项数据的添加
+      * 使用ArrayList<ContentProviderOperation>，把每步操作放在它的对象中执行
+      */
+-    private void addContacts2Db(Context context, People people) {
++    private void addContacts2Db(Context context, ContactInfo contactInfo) {
++        List<ContactInfo.RawContactInfo> rawContactInfos = contactInfo.getRawContactInfos();
+         Uri uri = Uri.parse("content://com.android.contacts/raw_contacts");
+         ContentResolver resolver = context.getContentResolver();
+         // 第一个参数：内容提供者的主机名
+         // 第二个参数：要执行的操作
+         ArrayList<ContentProviderOperation> operations = new ArrayList<ContentProviderOperation>();
+ 
+-        // 操作1.添加Google账号，这里值为null，表示不添加
+-        ContentProviderOperation operation = ContentProviderOperation.newInsert(uri)
+-                .withValue("account_name", null)// account_name:Google账号
+-                .build();
+-
+-        // 操作2.添加data表中name字段
+-        uri = Uri.parse("content://com.android.contacts/data");
+-        ContentProviderOperation operation2 = ContentProviderOperation.newInsert(uri)
+-                // 第二个参数int previousResult:表示上一个操作的位于operations的第0个索引，
+-                // 所以能够将上一个操作返回的raw_contact_id作为该方法的参数
+-                .withValueBackReference("raw_contact_id", 0)
+-                .withValue("mimetype", "vnd.android.cursor.item/name")
+-                .withValue("data2", people.getDisplayName())
+-                .build();
+-
+-        // 操作3.添加data表中phone字段
+-        uri = Uri.parse("content://com.android.contacts/data");
+-        ContentProviderOperation operation3 = ContentProviderOperation.newInsert(uri)
+-                .withValueBackReference("raw_contact_id", 0)
+-                .withValue("mimetype", "vnd.android.cursor.item/phone_v2")
+-                .withValue("data2", "2")
+-                .withValue("data1", people.getPhoneNum())
+-                .build();
+-
+-        // 操作4.添加data表中的Email字段
+-//        uri = Uri.parse("content://com.android.contacts/data");
+-//        ContentProviderOperation operation4 = ContentProviderOperation
+-//                .newInsert(uri).withValueBackReference("raw_contact_id", 0)
+-//                .withValue("mimetype", "vnd.android.cursor.item/email_v2")
+-//                .withValue("data2", "2")
+-//                .withValue("data1", "zhouguoping@qq.com").build();
+-
+-        operations.add(operation);
+-        operations.add(operation2);
+-        operations.add(operation3);
+-//        operations.add(operation4);
+-
+-        try {
+-            resolver.applyBatch("com.android.contacts", operations);
+-        } catch (Exception e) {
+-            e.printStackTrace();
++        for (ContactInfo.RawContactInfo rawInfo : rawContactInfos) {
++            // 操作1.添加Google账号，这里值为null，表示不添加
++            ContentValues values = new ContentValues();
++            values.put(ContactsContract.RawContacts.ACCOUNT_TYPE, rawInfo.accountType);
++            values.put(ContactsContract.RawContacts.ACCOUNT_NAME, rawInfo.accountName);
++            Log.i(TAG, "[addContacts2Db] insert rawInfo.accountName begin = " + rawInfo.accountName);
++            long contactId = 0;
++            Uri uriInsert = null;
++            try {
++                uriInsert = resolver.insert(uri, values);
++                Log.i(TAG, "[addContacts2Db] insert uriInsert = " + uriInsert);
++            } catch (IllegalArgumentException e) {
++                e.printStackTrace();
++            }
++            if (uriInsert != null) {
++                contactId = ContentUris.parseId(uriInsert);
++            }
++
++            Log.i(TAG, "[addContacts2Db] insert rawInfo.accountName end = " + rawInfo.accountName);
++
++            for (ContactInfo.DataInfo data : rawInfo.dataInfos) {
++                ContentValues values1 = new ContentValues();
++                uri = Uri.parse("content://com.android.contacts/data");
++                values1.put(ContactsContract.Data.RAW_CONTACT_ID, contactId);
++                values1.put(ContactsContract.Data.MIMETYPE, data.mimeType);
++                values1.put(ContactsContract.Data.DATA1, data.data1);
++                values1.put(ContactsContract.Data.DATA2, data.data2);
++                values1.put(ContactsContract.Data.DATA3, data.data3);
++                values1.put(ContactsContract.Data.DATA4, data.data4);
++                values1.put(ContactsContract.Data.DATA5, data.data5);
++                values1.put(ContactsContract.Data.DATA6, data.data6);
++                values1.put(ContactsContract.Data.DATA7, data.data7);
++                values1.put(ContactsContract.Data.DATA8, data.data8);
++                values1.put(ContactsContract.Data.DATA9, data.data9);
++                values1.put(ContactsContract.Data.DATA10, data.data10);
++                values1.put(ContactsContract.Data.DATA11, data.data11);
++                values1.put(ContactsContract.Data.DATA12, data.data12);
++                values1.put(ContactsContract.Data.DATA13, data.data13);
++                values1.put(ContactsContract.Data.DATA14, data.data14);
++                if (!data.mimeType.equals(ContactsContract.CommonDataKinds.Phone.MIMETYPE)) {
++                    values1.put(ContactsContract.Data.DATA15, data.data15);
++                } else {
++                    // 向data表插入头像数据
++                    Bitmap sourceBitmap = BitmapFactory.decodeResource(context.getResources(),
++                            R.mipmap.ic_launcher);
++                    final ByteArrayOutputStream os = new ByteArrayOutputStream();
++                    // 将Bitmap压缩成PNG编码，质量为100%存储
++                    sourceBitmap.compress(Bitmap.CompressFormat.PNG, 100, os);
++                    byte[] avatar = os.toByteArray();
++                    values.put(ContactsContract.Data.DATA15, avatar);
++                }
++                Log.i(TAG, "[addContacts2Db] insert data.mimetype = " + data.mimeType);
++                resolver.insert(uri, values1);
++            }
+         }
+     }
+ 
+@@ -441,7 +482,7 @@ public class PrivateSpaceLoader {
+         return mHandler;
+     }
+ 
+-    public ExecutorService getThreadPool() {
++    public static ExecutorService getThreadPool() {
+         return Executors.newCachedThreadPool();
+     }
+ 
+diff --git a/src/com/transage/privatespace/provider/PrivateProvider.java b/src/com/transage/privatespace/provider/PrivateProvider.java
+index c13fd22..cdd2296 100755
+--- a/src/com/transage/privatespace/provider/PrivateProvider.java
++++ b/src/com/transage/privatespace/provider/PrivateProvider.java
+@@ -79,7 +79,7 @@ public class PrivateProvider extends ContentProvider{
+ 
+     @Override
+     public Uri insert(Uri uri, ContentValues contentValues) {
+-        Log.i(TAG, "insert contentValues = " + contentValues.toString());
++        Log.i(TAG, "uri = " +uri.toString()+ "insert contentValues = " + contentValues.toString());
+         switch (uriMatcher.match(uri)) {
+             case MATCH_PHONE:
+                 //insert手机号码
+diff --git a/src/com/transage/privatespace/utils/ContactUtils.java b/src/com/transage/privatespace/utils/ContactUtils.java
+index 262dfbe..a3d6ba3 100755
+--- a/src/com/transage/privatespace/utils/ContactUtils.java
++++ b/src/com/transage/privatespace/utils/ContactUtils.java
+@@ -33,6 +33,7 @@ import com.transage.privatespace.bean.ContactInfo;
+ import com.transage.privatespace.R;
+ 
+ /**
++ * 手机联系人操作帮助类
+  * Created by yanjie.xu on 2017/8/24.
+  */
+ 
+@@ -48,11 +49,11 @@ public class ContactUtils {
+     // ContactsContract.Contacts.CONTENT_URI= content://com.android.contacts/contacts;
+     // ContactsContract.Data.CONTENT_URI = content://com.android.contacts/data;
+ 
+-    public void getContacts() {
++    public List<ContactInfo> getContacts() {
+         Cursor cur = context.getContentResolver().query(Contacts.CONTENT_URI, null, null, null, null);
+         if (cur.moveToFirst()) {
+-            ContactInfo info = new ContactInfo();
+             do {
++                ContactInfo info = new ContactInfo();
+                 // 获取联系人id号
+                 int id = cur.getInt(cur.getColumnIndex(Contacts._ID));
+                 // 获取联系人姓名
+@@ -72,16 +73,17 @@ public class ContactUtils {
+                 }else {
+ //                    contactPhoto = BitmapFactory.decodeResource(getResources(), R.drawable.contact_photo);
+                 }
+-
+                 info.setContactId(id);
+                 info.setDisplayName(displayName);
+                 info.setHasPhoneNumber(phoneCount);
+ 
+                 getRawContact(id, info);
+-
++                Log.i(TAG, "info = " + info.toString());
+                 mContactInfos.add(info);
+             } while (cur.moveToNext());
+         }
++
++        return mContactInfos;
+     }
+ 
+     public void getRawContact(int contactId, ContactInfo info) {
+@@ -108,7 +110,6 @@ public class ContactUtils {
+                 rawContactInfo.accountType = account_type;
+                 rawContactInfo.accountName = account_name;
+                 getContactData(_id, rawContactInfo);
+-                Log.i(TAG, "rawContactInfo = " + rawContactInfo.toString());
+                 info.addRawContact(rawContactInfo);
+             } while (rawContactCursor.moveToNext());
+             // 设置联系人电话信息
+@@ -140,22 +141,29 @@ public class ContactUtils {
+                 Data.RAW_CONTACT_ID + "=?",
+                 new String[]{String.valueOf(rawContactId)},
+                 Data.RAW_CONTACT_ID);
+-        Log.i(TAG, "ContactUtil:cursor.getCount() = " + cursor.getCount());
+         int numm = 0;
++        Log.i(TAG, "datainfo cursor getcount = " + cursor.getCount());
+         while (cursor.moveToNext()) {
+             contactId = cursor.getInt(cursor
+                     .getColumnIndex(Data.RAW_CONTACT_ID));
+-            if (oldrid != contactId) {
+-                numm++;
+-                oldrid = contactId;
+-            }
++//            if (oldrid != contactId) {
++//                numm++;
++//                oldrid = contactId;
++//            }
+             ContactInfo.DataInfo dataInfo = new ContactInfo.DataInfo();
+             mimetype = cursor.getString(cursor.getColumnIndex(Data.MIMETYPE)); // 取得mimetype类型,扩展的数据都在这个类型里面
+             type = cursor.getString(cursor.getColumnIndex(Data.DATA2));
+             dataInfo.rawContactId = contactId;
+             dataInfo.mimeType = mimetype;
+-            dataInfo.type = type;
++            dataInfo.data1 = cursor.getString(cursor.getColumnIndex(Data.DATA1));
+             dataInfo.data2 = type;
++            try{
++                //type可已转化为int时，通过getLabelNameByType获取typename
++                dataInfo.typeName = getLabelNameByType(Integer.parseInt(type));
++            }catch (NumberFormatException e){
++                //type无法转化为int时，直接赋值给typename
++                dataInfo.typeName = type;
++            }
+             // 1.1,拿到联系人的各种名字
+             if (StructuredName.CONTENT_ITEM_TYPE.equals(mimetype)) {
+                 dataInfo.data1 = cursor.getString(cursor
+@@ -179,7 +187,8 @@ public class ContactUtils {
+             }
+             // 1.2 获取各种电话信息
+             if (Phone.CONTENT_ITEM_TYPE.equals(mimetype)) {
+-                dataInfo.data1 = cursor.getString(cursor.getColumnIndex(Phone.NUMBER));
++                dataInfo.data1 = cursor.getString(cursor.getColumnIndex(Phone.NUMBER)).
++                        replaceAll(" ", "").replaceAll("-", "").trim();
+             }
+             //查找Email信息
+             if (Email.CONTENT_ITEM_TYPE.equals(mimetype)) {
+@@ -231,11 +240,15 @@ public class ContactUtils {
+                 dataInfo.data10 = cursor.getString(cursor
+                         .getColumnIndex(StructuredPostal.COUNTRY));
+             }
++            //查找头像数据
+             if (Photo.CONTENT_ITEM_TYPE.equals(mimetype)){
+                 dataInfo.data14 = cursor.getString(cursor.getColumnIndex(Photo.PHOTO_FILE_ID));
+-                dataInfo.data15 = cursor.getString(cursor.getColumnIndex(Photo.PHOTO));
++                byte[] buff = cursor.getBlob(cursor.getColumnIndex(Photo.PHOTO));
++                if (buff != null){
++                    dataInfo.data15 = new String(buff);
++                }
+             }
+-            Log.i(TAG, "dataInfo = " + dataInfo.toString());
++//            Log.i(TAG, "dataInfo = " + dataInfo.toString());
+             info.dataInfos.add(dataInfo);
+         }
+         cursor.close();
+@@ -271,6 +284,8 @@ public class ContactUtils {
+     public static String getLabelNameByType(int type) {
+         //通过type获取typelabel字符串
+         int typeLabelResource = Phone.getTypeLabelResource(type);
+-        return context.getResources().getString(typeLabelResource);
++        String string = context.getResources().getString(typeLabelResource);
++//        Log.i(TAG, "[getLabelNameByType] type = " + type + " string = " + string);
++        return string;
+     }
+ }

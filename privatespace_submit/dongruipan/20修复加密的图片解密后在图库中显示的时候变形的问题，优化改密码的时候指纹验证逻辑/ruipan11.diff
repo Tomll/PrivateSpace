@@ -1,0 +1,247 @@
+diff --git a/src/com/transage/privatespace/activity/Login.java b/src/com/transage/privatespace/activity/Login.java
+index d098be9..5e30646 100755
+--- a/src/com/transage/privatespace/activity/Login.java
++++ b/src/com/transage/privatespace/activity/Login.java
+@@ -312,8 +312,17 @@ public class Login extends Activity implements View.OnClickListener, CompoundBut
+         public void handleMessage(android.os.Message msg) {
+             switch (msg.what) {
+                 case MSG_FINGER_AUTH_SUCCESS:
+-                    startActivity(new Intent(Login.this, Main.class));
+-                    finish();
++                    if (resetPrivateMarkFromAdvancedSetup) { // 验证成功后：修改密码
++                        isChangePrivateMark = true;
++                        textView1.setText(getString(R.string.set_private_mark));
++                        textView2.setText(getString(R.string.please_set_private_mark));
++                        textView3.setVisibility(View.GONE);
++                        frameLayout2.setVisibility(View.VISIBLE);
++                        editText1.setText(null);
++                    } else { // 验证成功后：日常登录
++                        startActivity(new Intent(Login.this, Main.class));
++                        finish();
++                    }
+                     break;
+                 case MSG_FINGER_AUTH_FAIL:
+                     // No action required... fingerprint will allow up to 5 of these
+diff --git a/src/com/transage/privatespace/database/DatabaseAdapter.java b/src/com/transage/privatespace/database/DatabaseAdapter.java
+index 491c9f4..c395563 100755
+--- a/src/com/transage/privatespace/database/DatabaseAdapter.java
++++ b/src/com/transage/privatespace/database/DatabaseAdapter.java
+@@ -400,7 +400,7 @@ public class DatabaseAdapter {
+ 
+ 
+     /**
+-     * 获取数据库中图片 操作
++     * 获取私密数据库中图片数据的操作
+      */
+     public ArrayList<ImageItem> getPhoto() {
+         String sql = "SELECT * " + " FROM " + PsDatabaseHelper.Tables.FILES;
+@@ -420,6 +420,8 @@ public class DatabaseAdapter {
+                     imageItem.setMimeType(cursor.getString(7));
+                     imageItem.setBucketId(cursor.getString(8));
+                     imageItem.setBucket_display_name(cursor.getString(9));
++                    imageItem.setWidth(cursor.getString(10));
++                    imageItem.setHeight(cursor.getString(11));
+                     list.add(imageItem);
+                 } while (cursor.moveToNext());
+             }
+diff --git a/src/com/transage/privatespace/database/PsDatabaseHelper.java b/src/com/transage/privatespace/database/PsDatabaseHelper.java
+index 3180db6..6f7a174 100755
+--- a/src/com/transage/privatespace/database/PsDatabaseHelper.java
++++ b/src/com/transage/privatespace/database/PsDatabaseHelper.java
+@@ -70,6 +70,8 @@ public class PsDatabaseHelper extends SQLiteOpenHelper {
+         public static final String MIME_TYPE = "mime_type";
+         public static final String BUCKET_ID = "bucket_id";
+         public static final String BUCKET_DISPLAY_NAME = "bucket_display_name";
++        public static final String WIDTH = "width";
++        public static final String HEIGHT = "height";
+     }
+ 
+     public PsDatabaseHelper(Context context, String name, SQLiteDatabase.CursorFactory factory, int version) {
+@@ -152,7 +154,9 @@ public class PsDatabaseHelper extends SQLiteOpenHelper {
+                 FilesClumns.DATE_ADDED + " INTEGER, " +
+                 FilesClumns.MIME_TYPE + " TEXT, " +
+                 FilesClumns.BUCKET_ID + " TEXT, " +
+-                FilesClumns.BUCKET_DISPLAY_NAME + " TEXT " +
++                FilesClumns.BUCKET_DISPLAY_NAME + " TEXT, " +
++                FilesClumns.WIDTH + " INTEGER, " +
++                FilesClumns.HEIGHT + " INTEGER " +
+                 ");";
+         Log.i(TAG, "sql = " + sqlCreateFilesTable);
+         sqLiteDatabase.execSQL(sqlCreateFilesTable);
+diff --git a/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java b/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
+index f1e5322..e736dd4 100755
+--- a/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
++++ b/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
+@@ -345,7 +345,7 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+         //删除密文件
+         File file = new File(item.getImagePath());
+         file.delete();
+-        //删除数据库中该条文件记录
++        //删除私密数据库中该条文件记录
+         databaseAdapter.deletePhoto(item.getImageId());
+ 
+         //还原文件条目到系统数据库中
+@@ -360,6 +360,8 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+         contentValues.put(MediaStore.Images.Media.MIME_TYPE, item.getMimeType());
+         contentValues.put(MediaStore.Images.Media.BUCKET_ID, item.getBucketId());
+         contentValues.put(MediaStore.Images.Media.BUCKET_DISPLAY_NAME, item.getBucket_display_name());
++        contentValues.put(MediaStore.Images.Media.WIDTH,item.getWidth());
++        contentValues.put(MediaStore.Images.Media.HEIGHT,item.getHeight());
+         contentResolver.insert(baseUri, contentValues);
+     }
+ 
+diff --git a/src/com/transage/privatespace/gallery/photozoom/Album.java b/src/com/transage/privatespace/gallery/photozoom/Album.java
+index 1986440..0d0b972 100755
+--- a/src/com/transage/privatespace/gallery/photozoom/Album.java
++++ b/src/com/transage/privatespace/gallery/photozoom/Album.java
+@@ -192,7 +192,7 @@ public class Album extends AppCompatActivity implements OnClickListener {
+         //删除明文件
+         File file = new File(item.getImagePath());
+         file.delete();
+-        //删除数据库中该条明文件记录
++        //删除系统数据库中该条明文件记录
+         Uri baseUri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+         contentResolver.delete(baseUri, "_id=?", new String[]{item.getImageId()});
+         //将加密后的文件条目插入私密数据库
+@@ -208,6 +208,8 @@ public class Album extends AppCompatActivity implements OnClickListener {
+         contentValues.put(PsDatabaseHelper.FilesClumns.MIME_TYPE,item.getMimeType());
+         contentValues.put(PsDatabaseHelper.FilesClumns.BUCKET_ID,item.getBucketId());
+         contentValues.put(PsDatabaseHelper.FilesClumns.BUCKET_DISPLAY_NAME,item.getBucket_display_name());
++        contentValues.put(PsDatabaseHelper.FilesClumns.WIDTH,Integer.valueOf(item.getWidth()));
++        contentValues.put(PsDatabaseHelper.FilesClumns.HEIGHT,Integer.valueOf(item.getHeight()));
+         databaseAdapter.insertPhoto(contentValues);
+     }
+ 
+diff --git a/src/com/transage/privatespace/gallery/photozoom/AlbumHelper.java b/src/com/transage/privatespace/gallery/photozoom/AlbumHelper.java
+index 3d6057f..08e2fe0 100755
+--- a/src/com/transage/privatespace/gallery/photozoom/AlbumHelper.java
++++ b/src/com/transage/privatespace/gallery/photozoom/AlbumHelper.java
+@@ -6,7 +6,6 @@ import android.database.Cursor;
+ import android.provider.MediaStore.Audio.Albums;
+ import android.provider.MediaStore.Images.Media;
+ import android.provider.MediaStore.Images.Thumbnails;
+-import android.util.Log;
+ 
+ import java.util.ArrayList;
+ import java.util.HashMap;
+@@ -113,9 +112,9 @@ public class AlbumHelper {
+ 				numOfSongs = cur.getInt(numOfSongsColumn);
+ 
+ 				// Do something with the values.
+-				Log.i(TAG, _id + " album:" + album + " albumArt:" + albumArt
++				/*Log.i(TAG, _id + " album:" + album + " albumArt:" + albumArt
+ 						+ "albumKey: " + albumKey + " artist: " + artist
+-						+ " numOfSongs: " + numOfSongs + "---");
++						+ " numOfSongs: " + numOfSongs + "---");*/
+ 				HashMap<String, String> hash = new HashMap<String, String>();
+ 				hash.put("_id", _id + "");
+ 				hash.put("album", album);
+@@ -139,7 +138,7 @@ public class AlbumHelper {
+ 
+ 		String columns[] = new String[] { Media._ID, Media.BUCKET_ID,
+ 				Media.PICASA_ID, Media.DATA, Media.DISPLAY_NAME, Media.TITLE,
+-				Media.SIZE, Media.BUCKET_DISPLAY_NAME ,Media.DATE_ADDED,Media.MIME_TYPE};
++				Media.SIZE, Media.BUCKET_DISPLAY_NAME ,Media.DATE_ADDED,Media.MIME_TYPE,Media.WIDTH,Media.HEIGHT};
+ 		Cursor cur = cr.query(Media.EXTERNAL_CONTENT_URI, columns, null, null, Media.DATE_ADDED+" desc");
+ 		bucketList.clear();//add by dongrp
+ 		if (cur.moveToFirst()) {
+@@ -154,6 +153,8 @@ public class AlbumHelper {
+ 			int picasaIdIndex = cur.getColumnIndexOrThrow(Media.PICASA_ID);
+ 			int dateAddedIdIndex = cur.getColumnIndexOrThrow(Media.DATE_ADDED);
+ 			int mimeTypeIdIndex = cur.getColumnIndexOrThrow(Media.MIME_TYPE);
++			int widthIndex = cur.getColumnIndexOrThrow(Media.WIDTH);
++			int heightIndex = cur.getColumnIndexOrThrow(Media.HEIGHT);
+ //			int totalNum = cur.getCount();
+ 
+ 			do {
+@@ -167,11 +168,13 @@ public class AlbumHelper {
+ 				String picasaId = cur.getString(picasaIdIndex);
+ 				String dateAdded = cur.getString(dateAddedIdIndex);
+ 				String mimeType = cur.getString(mimeTypeIdIndex);
++				String width = cur.getString(widthIndex);
++				String height = cur.getString(heightIndex);
+ 
+-				Log.i(TAG, _id + ", bucketId: " + bucketId + ", picasaId: "
++				/*Log.i(TAG, _id + ", bucketId: " + bucketId + ", picasaId: "
+ 						+ picasaId + " name:" + name + " path:" + path
+ 						+ " title: " + title + " size: " + size + " bucket: "
+-						+ bucketName + "---");
++						+ bucketName + "---");*/
+ 
+ 				ImageBucket bucket = bucketList.get(bucketId);
+ 				if (bucket == null) {
+@@ -192,6 +195,8 @@ public class AlbumHelper {
+ 				imageItem.setMimeType(mimeType);
+ 				imageItem.setSize(size);
+ 				imageItem.setTitle(title);
++				imageItem.setWidth(width);
++				imageItem.setHeight(height);
+ 				bucket.imageList.add(imageItem);
+ 
+ 			} while (cur.moveToNext());
+@@ -203,17 +208,17 @@ public class AlbumHelper {
+ 			Entry<String, ImageBucket> entry = (Entry<String, ImageBucket>) itr
+ 					.next();
+ 			ImageBucket bucket = entry.getValue();
+-			Log.d(TAG, entry.getKey() + ", " + bucket.bucketName + ", "
+-					+ bucket.count + " ---------- ");
++			/*Log.d(TAG, entry.getKey() + ", " + bucket.bucketName + ", "
++					+ bucket.count + " ---------- ");*/
+ 			for (int i = 0; i < bucket.imageList.size(); ++i) {
+ 				ImageItem image = bucket.imageList.get(i);
+-				Log.d(TAG, "----- " + image.imageId + ", " + image.imagePath
+-						+ ", " + image.thumbnailPath);
++				/*Log.d(TAG, "----- " + image.imageId + ", " + image.imagePath
++						+ ", " + image.thumbnailPath);*/
+ 			}
+ 		}
+ 		hasBuildImagesBucketList = true;
+ 		long endTime = System.currentTimeMillis();
+-		Log.d(TAG, "use time: " + (endTime - startTime) + " ms");
++		//Log.d(TAG, "use time: " + (endTime - startTime) + " ms");
+ 	}
+ 
+ 
+@@ -234,7 +239,7 @@ public class AlbumHelper {
+ 
+ 	String getOriginalImagePath(String image_id) {
+ 		String path = null;
+-		Log.i(TAG, "---(^o^)----" + image_id);
++		//Log.i(TAG, "---(^o^)----" + image_id);
+ 		String[] projection = { Media._ID, Media.DATA };
+ 		Cursor cursor = cr.query(Media.EXTERNAL_CONTENT_URI, projection,
+ 				Media._ID + "=" + image_id, null, null);
+diff --git a/src/com/transage/privatespace/gallery/photozoom/ImageItem.java b/src/com/transage/privatespace/gallery/photozoom/ImageItem.java
+index 18974d3..839e3f9 100755
+--- a/src/com/transage/privatespace/gallery/photozoom/ImageItem.java
++++ b/src/com/transage/privatespace/gallery/photozoom/ImageItem.java
+@@ -24,6 +24,7 @@ public class ImageItem implements Serializable {
+ 	public String mimeType;
+ 	public String bucketId;
+ 	public String bucket_display_name;
++	public String width,height;
+ 
+ 	
+ 	public String getImageId() {
+@@ -117,6 +118,21 @@ public class ImageItem implements Serializable {
+ 		this.bucket_display_name = bucket_display_name;
+ 	}
+ 
++	public String getWidth() {
++		return width;
++	}
++
++	public void setWidth(String width) {
++		this.width = width;
++	}
++
++	public String getHeight() {
++		return height;
++	}
++
++	public void setHeight(String height) {
++		this.height = height;
++	}
+ 
+ 	public String toString() {
+ 		return "ImageItem{" +

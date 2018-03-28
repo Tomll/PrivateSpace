@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:app="http://schemas.android.com/apk/res-auto"
+          package="com.transage.privatespace"
+          android:sharedUserId="android.uid.system">
+
+    <uses-sdk
+        android:minSdkVersion="19"
+        android:targetSdkVersion="23"/>
+
+    <uses-permission android:name="android.permission.WRITE_SETTINGS"/>
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.READ_CONTACTS"/>
+    <uses-permission android:name="android.permission.WRITE_CONTACTS"/>
+    <uses-permission android:name="android.permission.CALL_PHONE"/>
+    <uses-permission android:name="android.permission.READ_CALL_LOG"/>
+    <uses-permission android:name="android.permission.WRITE_CALL_LOG"/>
+    <uses-permission android:name="android.permission.SEND_SMS"/>
+    <uses-permission android:name="android.permission.READ_SMS"/>
+    <uses-permission android:name="android.permission.USE_FINGERPRINT"/>
+    <uses-permission android:name="android.permission.WRITE_SMS"/>
+    <uses-permission android:name="android.permission.RECEIVE_SMS"/>
+    <permission android:name="android.permission.UPDATE_APP_OPS_STATS"
+                android:protectionLevel="signature|privileged|installer" />
+    <permission android:name="android.permission.SET_PREFERRED_APPLICATIONS"
+                android:protectionLevel="signature"/>
+
+    <application
+        android:name=".PrivateSpaceApplication"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/AppBaseTheme">
+        <!--wangmeng 20170802 begin-->
+        <receiver
+            android:name=".SmsReceiver"
+            android:permission="android.permission.BROADCAST_SMS">
+            <intent-filter>
+                <action android:name="android.provider.Telephony.SMS_DELIVER" />
+            </intent-filter>
+        </receiver>
+        <!-- BroadcastReceiver that listens for incoming MMS messages -->
+        <receiver
+            android:name=".MmsReceiver"
+            android:permission="android.permission.BROADCAST_WAP_PUSH">
+            <intent-filter>
+                <action android:name="android.provider.Telephony.WAP_PUSH_DELIVER" />
+                <data android:mimeType="application/vnd.wap.mms-message" />
+            </intent-filter>
+        </receiver>
+        <service android:name=".HeadlessSmsSendService"
+            android:permission="android.permission.SEND_RESPOND_VIA_MESSAGE"
+            android:exported="true" >
+            <intent-filter>
+                <action android:name="android.intent.action.RESPOND_VIA_MESSAGE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="sms" />
+                <data android:scheme="smsto" />
+                <!--<data android:scheme="mms" />
+                <data android:scheme="mmsto" />-->
+            </intent-filter>
+        </service>
+        <!--wangmeng 20170802 end-->
+        <!-- Activity -->
+        <activity
+            android:name=".activity.BaseActivity"/>
+        <activity
+            android:name=".activity.Main"
+            android:screenOrientation="portrait"/>
+        <activity
+            android:name=".activity.AdvancedSetup"
+            android:screenOrientation="portrait"/>
+        <activity
+            android:name=".activity.Login"
+            android:excludeFromRecents="true"
+            android:screenOrientation="portrait"
+            android:theme="@style/AppStartLoad"
+            android:windowSoftInputMode="stateHidden|stateAlwaysHidden">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".activity.AddApp"
+            android:screenOrientation="portrait"/>
+        <activity
+            android:name=".gallery.photozoom.Album"
+            android:screenOrientation="portrait"/>
+        <activity
+            android:name=".gallery.videozoom.VideoAlbum"
+            android:screenOrientation="portrait"/>
+        <activity
+            android:name=".gallery.photozoom.Folders"
+            android:screenOrientation="portrait"/>
+        <activity
+            android:name=".gallery.photozoom.Gallery"/>
+        <activity
+            android:name=".gallery.videozoom.VideoActivity"/>
+        <activity
+            android:name=".gallery.activity.PrivateAlbum"
+            android:screenOrientation="portrait"/>
+        <activity
+            android:name=".gallery.videozoom.PrivateVideoAlbum"
+            android:screenOrientation="portrait"/>
+        <activity
+            android:name=".gallery.activity.GalleryMainActivity"
+            android:screenOrientation="portrait"/>
+        <activity
+            android:name=".activity.SecurityQuestion"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="stateAlwaysVisible"/>
+        <activity
+            android:name=".activity.PrivateContacts"
+            android:screenOrientation="portrait">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.SENDTO" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="sms" />
+                <data android:scheme="smsto" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".activity.AddContacts"
+            android:screenOrientation="portrait"/>
+        <activity
+            android:name=".activity.ContactDetailActivity"
+            android:screenOrientation="portrait"/>
+
+        <activity
+            android:name=".activity.EmptyActivity"
+            android:noHistory="true"
+            android:theme="@style/ThemeTransparentBackground"/>
+        <provider
+            android:name=".provider.PrivateProvider"
+            android:exported="true"
+            android:authorities="com.transage.privatespace"/>
+        <activity
+            android:name=".activity.PrivateSms"
+            android:screenOrientation="portrait"/>
+        <activity
+            android:name=".activity.UseHelp"
+            android:screenOrientation="portrait"/>
+        <activity
+            android:name=".activity.CallRecordDetailActivity"
+            android:screenOrientation="portrait"/>
+    </application>
+
+</manifest>

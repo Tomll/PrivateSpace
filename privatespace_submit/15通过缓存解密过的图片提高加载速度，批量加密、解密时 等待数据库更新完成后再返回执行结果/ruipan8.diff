@@ -1,0 +1,448 @@
+diff --git a/src/com/transage/privatespace/fragment/FG_PrivatePeople.java b/src/com/transage/privatespace/fragment/FG_PrivatePeople.java
+index a3000e0..2bfbd96 100755
+--- a/src/com/transage/privatespace/fragment/FG_PrivatePeople.java
++++ b/src/com/transage/privatespace/fragment/FG_PrivatePeople.java
+@@ -1,6 +1,5 @@
+ package com.transage.privatespace.fragment;
+ 
+-import android.animation.ObjectAnimator;
+ import android.annotation.TargetApi;
+ import android.content.Intent;
+ import android.os.Build;
+@@ -10,6 +9,8 @@ import android.view.KeyEvent;
+ import android.view.LayoutInflater;
+ import android.view.View;
+ import android.view.ViewGroup;
++import android.view.animation.Animation;
++import android.view.animation.RotateAnimation;
+ import android.widget.AdapterView;
+ import android.widget.ImageButton;
+ import android.widget.ListView;
+@@ -76,9 +77,12 @@ public class FG_PrivatePeople extends BaseFragment implements AdapterView.OnItem
+                     if (isShowCheckBox) {
+                         isShowCheckBox = false;
+                         peopleListViewAdapter.showCheckBox(false);
+-                        // 给floatActionButton添加属性翻转动画
+-                        ObjectAnimator.ofFloat(floatActionButton, "rotationY", 0.0F, -180.0F).setDuration(500).start();
+-                        floatActionButton.setImageResource(R.mipmap.add);
++                        // 给floatActionButton添加旋转动画
++                        RotateAnimation rotateAnimation = new RotateAnimation(0.0f, -360.0f,
++                                Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);
++                        rotateAnimation.setFillAfter(true);
++                        rotateAnimation.setDuration(500);
++                        floatActionButton.startAnimation(rotateAnimation);
+                     } else {
+                         getActivity().finish();
+                     }
+@@ -175,9 +179,12 @@ public class FG_PrivatePeople extends BaseFragment implements AdapterView.OnItem
+ //                    PrivateSpaceUtils.executePrivateContacts(listSelectedPeople, 0, getActivity());
+                     mLoader.loadPrivateContacts(listSelectedPeople, 0, getActivity());
+                     isShowCheckBox = false;
+-                    // 给floatActionButton添加属性翻转动画
+-                    ObjectAnimator.ofFloat(floatActionButton, "rotationY", 0.0F, -180.0F).setDuration(500).start();
+-                    floatActionButton.setImageResource(R.mipmap.add);
++                    // 给floatActionButton添加旋转动画
++                    RotateAnimation rotateAnimation = new RotateAnimation(0.0f, -360.0f,
++                            Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);
++                    rotateAnimation.setFillAfter(true);
++                    rotateAnimation.setDuration(500);
++                    floatActionButton.startAnimation(rotateAnimation);
+                 } else { // 添加
+ //                    startActivity(new Intent(getActivity(), AddPeople.class));
+                     startActivityForResult(new Intent(getActivity(), AddPeople.class), 111);
+@@ -241,19 +248,19 @@ public class FG_PrivatePeople extends BaseFragment implements AdapterView.OnItem
+         mapSelectedPeople.put(position, listPrivatePeople.get(position));// 选中长按项：更新本地数据
+         peopleListViewAdapter.showCheckBox(isShowCheckBox);
+         // 给floatActionButton添加属性翻转动画
+-        ObjectAnimator.ofFloat(floatActionButton, "rotationY", 0.0F, 180.0F).setDuration(500).start();
+-        floatActionButton.setImageResource(R.mipmap.delete);
++        /*ObjectAnimator.ofFloat(floatActionButton, "rotationY", 0.0F, 180.0F).setDuration(500).start();
++        floatActionButton.setImageResource(R.mipmap.delete);*/
+         // 第一个参数fromDegrees为动画起始时的旋转角度
+         // 第二个参数toDegrees为动画旋转到的角度
+         // 第三个参数pivotXType为动画在X轴相对于物件位置类型
+         // 第四个参数pivotXValue为动画相对于物件的X坐标的开始位置
+         // 第五个参数pivotXType为动画在Y轴相对于物件位置类型
+         // 第六个参数pivotYValue为动画相对于物件的Y坐标的开始位置
+-        // RotateAnimation rotateAnimation = new RotateAnimation(0.0f, +45.0f,
+-        // Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);
+-        // rotateAnimation.setFillAfter(true);
+-        // rotateAnimation.setDuration(500);
+-        // floatActionButton.startAnimation(rotateAnimation);
++         RotateAnimation rotateAnimation = new RotateAnimation(0.0f, +315.0f,
++         Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);
++         rotateAnimation.setFillAfter(true);
++         rotateAnimation.setDuration(500);
++         floatActionButton.startAnimation(rotateAnimation);
+         return true;
+     }
+ 
+diff --git a/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java b/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
+index ef545a0..c53355e 100755
+--- a/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
++++ b/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
+@@ -38,7 +38,7 @@ import java.util.concurrent.Future;
+  * 私密相册界面
+  */
+ 
+-public class PrivateAlbum extends AppCompatActivity implements View.OnClickListener,AbsListView.OnScrollListener {
++public class PrivateAlbum extends AppCompatActivity implements View.OnClickListener, AbsListView.OnScrollListener {
+     private GridView gridView;
+     public static ArrayList<ImageItem> dateList;
+     private PrivateAlbumGridViewAdapter privateAlbumGridViewAdapter;
+@@ -54,13 +54,24 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+         setContentView(R.layout.activity_private_album);
+         executorService = Executors.newCachedThreadPool();//创建一个缓存线程池
+         databaseAdapter = new DatabaseAdapter(PrivateAlbum.this);//数据库操作工具类
++    }
++
++    @Override
++    protected void onResume() {
++        super.onResume();
+         init();
+     }
+ 
++    @Override
++    protected void onDestroy() {
++        super.onDestroy();
++        clearCacheDirectory(new File("/data/data/" + getPackageName() + "/files/cache/"));
++    }
++
+     /**
+      * 组件、适配器等各项初始化
+      */
+-    public void init(){
++    public void init() {
+         findViewById(R.id.checkbox_select_all).setOnClickListener(this);
+         findViewById(R.id.button_back).setOnClickListener(this);
+         findViewById(R.id.button_min).setOnClickListener(this);
+@@ -76,9 +87,9 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+             public void run() {
+                 int firstVisiblePosition = gridView.getFirstVisiblePosition();
+                 int lastVisiblePosition = gridView.getLastVisiblePosition();
+-                List<ImageItem> listImageItem = dateList.subList(firstVisiblePosition, lastVisiblePosition+1);
++                List<ImageItem> listImageItem = dateList.subList(firstVisiblePosition, lastVisiblePosition + 1);
+                 ArrayList<File> files = decryptFileListForCache(listImageItem);
+-                for (int i=0 ; i<files.size();i++){
++                for (int i = 0; i < files.size(); i++) {
+                     ImageView imageView = (ImageView) gridView.getChildAt(i).findViewById(R.id.image_view);
+                     Glide.with(PrivateAlbum.this).load(files.get(i)).into(imageView);
+                 }
+@@ -87,12 +98,13 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+     }
+ 
+     public void onScrollStateChanged(AbsListView view, int scrollState) {
+-        if (scrollState == SCROLL_STATE_IDLE){
++        if (scrollState == SCROLL_STATE_IDLE) {
+             List<ImageItem> listImageItem = dateList.subList(mFirstVisibleItem, (mFirstVisibleItem + mVisibleItemCount));
++
+             visibleImageDecryptionTask = new VisibleImageDecryptionTask(listImageItem);
+             visibleImageDecryptionTask.execute();
+         } else if (scrollState == SCROLL_STATE_TOUCH_SCROLL) {
+-            if (null != visibleImageDecryptionTask  && !visibleImageDecryptionTask.isCancelled()
++            if (null != visibleImageDecryptionTask && !visibleImageDecryptionTask.isCancelled()
+                     && visibleImageDecryptionTask.getStatus() == AsyncTask.Status.RUNNING) {
+                 visibleImageDecryptionTask.cancel(true);//设置异步任务的cancle状态为true
+                 visibleImageDecryptionTask = null;
+@@ -151,32 +163,11 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+         }
+     }
+ 
+-
+-
+-    //清空缓存文件夹
+-    private void delectCacheDirectory(File file) {
+-        File flist[] = file.listFiles();
+-        if (flist == null || flist.length == 0) {
+-            return;
+-        }
+-        for (File f : flist) {
+-            if (f.isDirectory()) {
+-                //这里将列出所有的文件夹
+-                delectCacheDirectory(f);
+-            } else {
+-                //这里将列出所有的文件
+-                //Log.d("PrivateAlbumGridViewAda", f.getAbsolutePath());
+-                f.delete();//删除文件
+-            }
+-        }
+-        return;
+-    }
+-
+     /**
+      * 解密当前屏幕显示的文件（存放在一个缓存文件夹中）
+      */
+     public ArrayList<File> decryptFileListForCache(final List<ImageItem> arrayList) {
+-        delectCacheDirectory(new File("/data/data/" + getPackageName() + "/files/cache/"));
++//        clearCacheDirectory(new File("/data/data/" + getPackageName() + "/files/cache/"));
+ 
+         ArrayList<File> list = new ArrayList<>();
+         list.clear();
+@@ -187,6 +178,13 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+             final String privImagePath = item.getImagePath();
+             String fileName = privImagePath.substring(privImagePath.lastIndexOf("/") + 1);
+             final String imagePath = "/data/data/" + getPackageName() + "/files/cache/" + fileName;
++
++            File file = new File(imagePath);
++            if (file.exists()) {
++                list.add(file);
++                continue;
++            }
++
+             Future<File> future = executorService.submit(new Callable<File>() {
+                 @Override
+                 public File call() throws Exception {
+@@ -208,6 +206,24 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+         return list;
+     }
+ 
++    //清空缓存文件夹
++    private void clearCacheDirectory(File file) {
++        File flist[] = file.listFiles();
++        if (flist == null || flist.length == 0) {
++            return;
++        }
++        for (File f : flist) {
++            if (f.isDirectory()) {
++                //这里将列出所有的文件夹
++                clearCacheDirectory(f);
++            } else {
++                //这里将列出所有的文件
++                //Log.d("PrivateAlbumGridViewAda", f.getAbsolutePath());
++                f.delete();//删除文件
++            }
++        }
++        return;
++    }
+ 
+     @Override
+     public void onClick(View view) {
+@@ -220,7 +236,7 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+                 privateAlbumGridViewAdapter.selectAll(((CheckBox) view).isChecked());
+                 break;
+             case R.id.button_min:
+-                if(privateAlbumGridViewAdapter.getSelectedData().size() == 0){
++                if (privateAlbumGridViewAdapter.getSelectedData().size() == 0) {
+                     Toast.makeText(this, "请至少选择一张图片", Toast.LENGTH_SHORT).show();
+                     break;
+                 }
+@@ -233,12 +249,12 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+         }
+     }
+ 
+-
+     /**
+      * 批量解密异步任务
+      */
+     public class DecryptionTask extends AsyncTask<Void, Void, Boolean> {
+         private ArrayList<ImageItem> listPrivFliePath;
++        int startSize;
+ 
+         public DecryptionTask(ArrayList<ImageItem> listPrivFliePath) {
+             this.listPrivFliePath = listPrivFliePath;
+@@ -249,6 +265,8 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+         @Override
+         protected void onPreExecute() {
+             super.onPreExecute();
++            startSize = getApplicationContext().getContentResolver()
++                    .query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, null, null, null, null).getCount();
+             progressDialog.setMessage("正在解密，请稍后...");
+             progressDialog.show();
+         }
+@@ -256,9 +274,16 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+         @Override
+         protected Boolean doInBackground(Void... params) {
+             boolean result = false;
+-            //Log.d("dongrp", "解密开始:" + System.currentTimeMillis());
+             result = decryptFileList(listPrivFliePath); //解密文件集合
+-            //Log.d("dongrp", "解密结束:" + System.currentTimeMillis());
++            while (result && getApplicationContext().getContentResolver().
++                    query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, null, null, null, null).getCount()
++                    != (startSize + listPrivFliePath.size())) {
++                try {
++                    Thread.sleep(2000);
++                } catch (InterruptedException e) {
++                    e.printStackTrace();
++                }
++            }
+             return result;
+         }
+ 
+@@ -273,13 +298,12 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+     }
+ 
+ 
+-
+     boolean result = true;
++
+     /**
+      * 解密文件集合
+      */
+     public boolean decryptFileList(final ArrayList<ImageItem> arrayList) {
+-        long l2 = System.currentTimeMillis();
+         for (final ImageItem item : arrayList) {
+             final String privImagePath = item.getImagePath(); //这个私密文件的绝对路径
+             //解密后：文件原来的路径
+@@ -289,15 +313,13 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+                 public void run() {
+                     boolean b = AESEncryptionUtil.decryptFile(privImagePath, imagePath);
+                     if (b) {//解密成功，删除私密文件
+-                        delete(item,imagePath,getContentResolver());
++                        delete(item, imagePath, getContentResolver());
+                     } else {//解密失败，设置结果为false
+                         result = b;
+                     }
+                 }
+             });
+         }
+-        long l = System.currentTimeMillis();
+-        Log.d("dongrp", "jei mi 循环耗时:" + (l - l2) + " ms");
+         return result;
+     }
+ 
+@@ -305,7 +327,7 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+     /**
+      * 密文件删除、私密数据库记录删除、还原文件条目到系统数据库
+      */
+-    public static void delete(ImageItem item,String imagePath,ContentResolver contentResolver) {
++    public static void delete(ImageItem item, String imagePath, ContentResolver contentResolver) {
+         //删除密文件
+         File file = new File(item.getImagePath());
+         file.delete();
+@@ -315,36 +337,19 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+         //还原文件条目到系统数据库中
+         Uri baseUri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+         ContentValues contentValues = new ContentValues();
+-        contentValues.put(MediaStore.Images.Media._ID,item.getImageId());
+-        contentValues.put(MediaStore.Images.Media.DATA,imagePath);
+-        contentValues.put(MediaStore.Images.Media.SIZE,item.getSize());
+-        contentValues.put(MediaStore.Images.Media.DISPLAY_NAME,item.getDisplayName());
+-        contentValues.put(MediaStore.Images.Media.TITLE,item.getTitle());
+-        contentValues.put(MediaStore.Images.Media.DATE_ADDED,item.getDateAdded());
+-        contentValues.put(MediaStore.Images.Media.MIME_TYPE,item.getMimeType());
+-        contentValues.put(MediaStore.Images.Media.BUCKET_ID,item.getBucketId());
+-        contentValues.put(MediaStore.Images.Media.BUCKET_DISPLAY_NAME,item.getBucket_display_name());
+-        contentResolver.insert(baseUri,contentValues);
++        contentValues.put(MediaStore.Images.Media._ID, item.getImageId());
++        contentValues.put(MediaStore.Images.Media.DATA, imagePath);
++        contentValues.put(MediaStore.Images.Media.SIZE, item.getSize());
++        contentValues.put(MediaStore.Images.Media.DISPLAY_NAME, item.getDisplayName());
++        contentValues.put(MediaStore.Images.Media.TITLE, item.getTitle());
++        contentValues.put(MediaStore.Images.Media.DATE_ADDED, item.getDateAdded());
++        contentValues.put(MediaStore.Images.Media.MIME_TYPE, item.getMimeType());
++        contentValues.put(MediaStore.Images.Media.BUCKET_ID, item.getBucketId());
++        contentValues.put(MediaStore.Images.Media.BUCKET_DISPLAY_NAME, item.getBucket_display_name());
++        contentResolver.insert(baseUri, contentValues);
+     }
+ 
+ 
+-
+-
+-
+-
+-
+-
+-
+-
+-
+-
+-
+-
+-
+-
+-
+-
+-
+     /**
+      * 使用递归方法遍历文件夹中所有文件,耗时50ms左右，速度还是很快的
+      */
+@@ -369,5 +374,4 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+     }*/
+ 
+ 
+-
+ }
+diff --git a/src/com/transage/privatespace/gallery/adapter/PrivateAlbumGridViewAdapter.java b/src/com/transage/privatespace/gallery/adapter/PrivateAlbumGridViewAdapter.java
+index d2bec1f..05076a9 100755
+--- a/src/com/transage/privatespace/gallery/adapter/PrivateAlbumGridViewAdapter.java
++++ b/src/com/transage/privatespace/gallery/adapter/PrivateAlbumGridViewAdapter.java
+@@ -9,10 +9,12 @@ import android.widget.BaseAdapter;
+ import android.widget.CheckBox;
+ import android.widget.ImageView;
+ 
++import com.bumptech.glide.Glide;
+ import com.transage.privatespace.R;
+ import com.transage.privatespace.gallery.photozoom.Gallery;
+ import com.transage.privatespace.gallery.photozoom.ImageItem;
+ 
++import java.io.File;
+ import java.util.ArrayList;
+ 
+ /**
+@@ -127,7 +129,16 @@ public class PrivateAlbumGridViewAdapter extends BaseAdapter {
+             cache.displayBmp(viewHolder.imageView, item.thumbnailPath, item.imagePath,callback);
+         }*/
+ 
+-        viewHolder.imageView.setImageResource(R.drawable.plugin_camera_no_pictures);
++        String privImagePath = listPrivFlies.get(position).getImagePath();
++        String fileName = privImagePath.substring(privImagePath.lastIndexOf("/") + 1);
++        String imagePath = "/data/data/" + mContext.getPackageName() + "/files/cache/" + fileName;
++        File file = new File(imagePath);
++        if (file.exists()){
++            Glide.with(mContext).load(file).into(viewHolder.imageView);
++        }else {
++            viewHolder.imageView.setImageResource(R.drawable.plugin_camera_no_pictures);
++        }
++
+         viewHolder.checkBox.setTag(position);
+         viewHolder.checkBox.setOnClickListener(new View.OnClickListener() {
+             @Override
+diff --git a/src/com/transage/privatespace/gallery/photozoom/Album.java b/src/com/transage/privatespace/gallery/photozoom/Album.java
+index d971000..64e967a 100755
+--- a/src/com/transage/privatespace/gallery/photozoom/Album.java
++++ b/src/com/transage/privatespace/gallery/photozoom/Album.java
+@@ -44,11 +44,8 @@ public class Album extends AppCompatActivity implements OnClickListener {
+     protected void onCreate(Bundle savedInstanceState) {
+         super.onCreate(savedInstanceState);
+         setContentView(R.layout.activity_album);
+-
+         executorService = Executors.newFixedThreadPool(20);//创建一个缓存线程池
+         databaseAdapter = new DatabaseAdapter(Album.this);//数据库操作工具类
+-
+-//        init();
+     }
+ 
+     /**
+@@ -129,6 +126,7 @@ public class Album extends AppCompatActivity implements OnClickListener {
+ 
+     public class EncryptionTask extends AsyncTask<Void, Void, Boolean> {
+         private ArrayList<ImageItem> mImageArrayList;
++        int startSize;
+ 
+         public EncryptionTask(ArrayList<ImageItem> imageArrayList) {
+             this.mImageArrayList = imageArrayList;
+@@ -139,6 +137,7 @@ public class Album extends AppCompatActivity implements OnClickListener {
+         @Override
+         protected void onPreExecute() {
+             super.onPreExecute();
++            startSize = databaseAdapter.getPhoto().size();
+             progressDialog.setMessage("正在加密，请稍后...");
+             progressDialog.show();
+         }
+@@ -146,9 +145,14 @@ public class Album extends AppCompatActivity implements OnClickListener {
+         @Override
+         protected Boolean doInBackground(Void... params) {
+             boolean result = false;
+-            //Log.d("dongrp", "加密开始:" + System.currentTimeMillis());
+             result = encryptFileList(mImageArrayList); //加密文件集合
+-            //Log.d("dongrp", "加密结束:" + System.currentTimeMillis());
++            while (result && databaseAdapter.getPhoto().size() != (startSize + mImageArrayList.size())) {
++                try {
++                    Thread.sleep(2000);
++                } catch (InterruptedException e) {
++                    e.printStackTrace();
++                }
++            }
+             return result;
+         }
+ 

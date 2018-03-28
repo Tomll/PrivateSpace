@@ -1,0 +1,315 @@
+diff --git a/src/com/transage/privatespace/activity/PrivateContacts.java b/src/com/transage/privatespace/activity/PrivateContacts.java
+index 0def6b3..3885a2a 100755
+--- a/src/com/transage/privatespace/activity/PrivateContacts.java
++++ b/src/com/transage/privatespace/activity/PrivateContacts.java
+@@ -1,7 +1,10 @@
+ package com.transage.privatespace.activity;
+ 
+ import android.content.Intent;
++import android.database.ContentObserver;
++import android.net.Uri;
+ import android.os.Bundle;
++import android.os.Handler;
+ import android.support.annotation.Nullable;
+ import android.support.v4.app.Fragment;
+ import android.support.v4.app.FragmentActivity;
+@@ -9,12 +12,11 @@ import android.support.v4.app.FragmentPagerAdapter;
+ import android.support.v4.content.ContextCompat;
+ import android.support.v4.view.ViewPager;
+ import android.support.v4.view.ViewPager.OnPageChangeListener;
++import android.util.Log;
+ import android.view.View;
+ import android.view.Window;
+ import android.view.WindowManager;
+ import android.widget.TextView;
+-import android.widget.Toast;
+-
+ import com.transage.privatespace.R;
+ import com.transage.privatespace.bean.People;
+ import com.transage.privatespace.fragment.BaseFragment;
+@@ -23,8 +25,8 @@ import com.transage.privatespace.fragment.FG_PrivatePeople;
+ import com.transage.privatespace.fragment.FG_PrivateSms;
+ import com.transage.privatespace.loader.OnLoadListener;
+ import com.transage.privatespace.loader.PrivateSpaceLoader;
++import com.transage.privatespace.provider.PrivateObserver;
+ 
+-import java.io.Serializable;
+ import java.util.ArrayList;
+ import java.util.List;
+ 
+@@ -33,11 +35,15 @@ import java.util.List;
+  * 3个Fragment,通过ViewPager进行切换
+  */
+ public class PrivateContacts extends FragmentActivity implements View.OnClickListener, OnPageChangeListener, OnLoadListener {
++    private static final String TAG= "PrivateContacts_Private";
++    private static final String URI_PRIVATE_SPACE= "content://com.transage.privatespace.provider.PrivateProvider";
++
+     private List<BaseFragment> listFragment = new ArrayList<BaseFragment>(); // fragment集合
+     private List<String> listTitle = new ArrayList<String>(); // tab名称集合
+     private List<TextView> listTab = new ArrayList<TextView>(); // tab集合
+     private ViewPager viewPager;
+     private PrivateSpaceLoader mLoader;
++    private ContentObserver mObserver;
+ 
+     @Override
+     protected void onCreate(@Nullable Bundle savedInstanceState) {
+@@ -47,6 +53,11 @@ public class PrivateContacts extends FragmentActivity implements View.OnClickLis
+         getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);//透明状态栏
+         setContentView(R.layout.activity_private_contacts);
+         mLoader = new PrivateSpaceLoader(this);
++        //注册内容观察者，监听PrivateProvider
++        if (mObserver == null){
++            mObserver = new PrivateObserver(mLoader.getmHandler());
++            getContentResolver().registerContentObserver(Uri.parse(URI_PRIVATE_SPACE), true, mObserver);
++        }
+         initData();
+         initView();
+     }
+@@ -62,6 +73,13 @@ public class PrivateContacts extends FragmentActivity implements View.OnClickLis
+         super.onActivityResult(requestCode, resultCode, data);
+     }
+ 
++    @Override
++    protected void onDestroy() {
++        //取消注册内容观察者，监听PrivateProvider
++        getContentResolver().unregisterContentObserver(mObserver);
++        super.onDestroy();
++    }
++
+     /**
+      * 初始化data
+      */
+@@ -164,7 +182,6 @@ public class PrivateContacts extends FragmentActivity implements View.OnClickLis
+         }
+     }
+ 
+-
+     @Override
+     public void onLoadComplete(LoadTag loadTag) {
+         listFragment.get(loadTag.getValue()).refresh();
+diff --git a/src/com/transage/privatespace/loader/PrivateSpaceLoader.java b/src/com/transage/privatespace/loader/PrivateSpaceLoader.java
+index 8635ed8..80c972e 100755
+--- a/src/com/transage/privatespace/loader/PrivateSpaceLoader.java
++++ b/src/com/transage/privatespace/loader/PrivateSpaceLoader.java
+@@ -38,9 +38,10 @@ import java.util.concurrent.Executors;
+ public class PrivateSpaceLoader {
+     private static final String TAG = "PrivateSpaceLoader";
+ 
+-    private static final int REFRESHE_CALLRECORD = 1101;
+-    private static final int REFRESHE_CONTACT = 1102;
+-    private static final int REFRESHE_SMS = 1103;
++    public static final int REFRESHE_CALLRECORD = 1101;
++    public static final int REFRESHE_CONTACT = 1102;
++    public static final int REFRESHE_SMS = 1103;
++    public static final int PRIVATE_OBSERVER = 1104;
+ 
+     //数据加载监听器
+     private static PrivateContacts mLoadListener;
+@@ -50,6 +51,7 @@ public class PrivateSpaceLoader {
+             OnLoadListener.LoadTag tag = OnLoadListener.LoadTag.CONTACT;
+             switch (msg.what) {
+                 case REFRESHE_CALLRECORD:
++                case PRIVATE_OBSERVER:
+                     tag = OnLoadListener.LoadTag.CALLRECORD;
+                     break;
+                 case REFRESHE_CONTACT:
+@@ -135,7 +137,7 @@ public class PrivateSpaceLoader {
+                 getThreadPool().execute(new Runnable() {
+                     @Override
+                     public void run() {
+-                        addCallLogToPrivate(list_selectedPeople, activity);
++                        addCallLogToPrivate(people, activity);
+                         mHandler.sendEmptyMessage(REFRESHE_CALLRECORD);
+                     }
+                 });
+@@ -155,9 +157,9 @@ public class PrivateSpaceLoader {
+ 
+     }
+ 
+-    public void addCallLogToPrivate(List<People> list_selectedPeople, Activity activity) {
++    public void addCallLogToPrivate(People people, Activity activity) {
+         DatabaseAdapter databaseAdapter = new DatabaseAdapter(activity);
+-        List<CallRecord> callRecords = getCallRecordsFromContectsProvider(list_selectedPeople, activity);
++        List<CallRecord> callRecords = getCallRecordsFromContectsProvider(people, activity);
+         if (callRecords != null && !callRecords.isEmpty()) {
+             for (CallRecord callRecord : callRecords) {
+                 Log.i(TAG, "add callLog" + callRecord.toString());
+@@ -171,7 +173,7 @@ public class PrivateSpaceLoader {
+ 
+     }
+ 
+-    private List<CallRecord> getCallRecordsFromContectsProvider(List<People> list_selectedPeople, Activity activity) {
++    private List<CallRecord> getCallRecordsFromContectsProvider(People people, Activity activity) {
+         // 检查并申请 READ_CALL_LOG 权限
+         if (ActivityCompat.checkSelfPermission(activity, Manifest.permission.WRITE_CALL_LOG) != PackageManager.PERMISSION_GRANTED) {
+             ActivityCompat.requestPermissions(activity, new String[]{Manifest.permission.WRITE_CALL_LOG}, 1);
+@@ -179,52 +181,48 @@ public class PrivateSpaceLoader {
+         }
+         List<CallRecord> callRecordsList = new ArrayList<CallRecord>();
+         ContentResolver resolver = activity.getContentResolver();
+-
+-        for (int i = 0; i < list_selectedPeople.size(); i++) {
+-            String phone = list_selectedPeople.get(i).getPhoneNum();
+-            Log.i(TAG, list_selectedPeople.get(i).toString());
+-            if (phone != null) {
+-                /**
+-                 * @param uri 需要查询的URI，（这个URI是ContentProvider提供的）努力了
+-                 * @param projection 需要查询的字段
+-                 * @param selection sql语句where之后的语句
+-                 * @param selectionArgs ?占位符代表的数据
+-                 * @param sortOrder 排序方式
+-                 */
+-                Cursor recordCursor = resolver.query(CallLog.Calls.CONTENT_URI, // 查询通话记录的URI
+-                        new String[]{CallLog.Calls._ID,
+-                                CallLog.Calls.CACHED_NAME,// 通话记录的联系人
+-                                CallLog.Calls.NUMBER,// 通话记录的电话号码
+-                                CallLog.Calls.DATE,// 通话记录的日期
+-                                CallLog.Calls.DURATION,// 通话时长
+-                                CallLog.Calls.TYPE}// 通话类型
+-                        , CallLog.Calls.NUMBER + "= ?",
+-                        new String[]{phone.replaceAll(" ", "").trim()},
+-                        CallLog.Calls.DEFAULT_SORT_ORDER// 按照时间逆序排列，最近打的最先显示
+-                );
+-                if (recordCursor != null && recordCursor.moveToFirst()) {
+-                    do {
+-                        int callLogId = recordCursor.getInt(0);
+-                        String name = recordCursor.getString(1);
+-                        String phoneNum = recordCursor.getString(2);
+-                        long date = recordCursor.getLong(3);
+-                        int duration = recordCursor.getInt(4);
+-                        int type = recordCursor.getInt(5);
+-
+-                        // 添加数据到list
+-                        CallRecord callRecord = new CallRecord();
+-                        callRecord.setDate(date);
+-                        callRecord.setPhoneNum(phoneNum);
+-                        callRecord.setName(name);
+-                        callRecord.setType(type);
+-                        callRecord.setDuration(duration);
+-                        callRecordsList.add(callRecord);
+-                    }while (recordCursor.moveToNext());
+-                    recordCursor.close();
+-                }
++        String phone = people.getPhoneNum();
++        Log.i(TAG, people.toString());
++        if (phone != null) {
++            /**
++             * @param uri 需要查询的URI，（这个URI是ContentProvider提供的）努力了
++             * @param projection 需要查询的字段
++             * @param selection sql语句where之后的语句
++             * @param selectionArgs ?占位符代表的数据
++             * @param sortOrder 排序方式
++             */
++            Cursor recordCursor = resolver.query(CallLog.Calls.CONTENT_URI, // 查询通话记录的URI
++                    new String[]{CallLog.Calls._ID,
++                            CallLog.Calls.CACHED_NAME,// 通话记录的联系人
++                            CallLog.Calls.NUMBER,// 通话记录的电话号码
++                            CallLog.Calls.DATE,// 通话记录的日期
++                            CallLog.Calls.DURATION,// 通话时长
++                            CallLog.Calls.TYPE}// 通话类型
++                    , CallLog.Calls.NUMBER + "= ?",
++                    new String[]{phone.replaceAll(" ", "").trim()},
++                    CallLog.Calls.DEFAULT_SORT_ORDER// 按照时间逆序排列，最近打的最先显示
++            );
++            if (recordCursor != null && recordCursor.moveToFirst()) {
++                do {
++                    int callLogId = recordCursor.getInt(0);
++                    String name = recordCursor.getString(1);
++                    String phoneNum = recordCursor.getString(2);
++                    long date = recordCursor.getLong(3);
++                    int duration = recordCursor.getInt(4);
++                    int type = recordCursor.getInt(5);
++
++                    // 添加数据到list
++                    CallRecord callRecord = new CallRecord();
++                    callRecord.setDate(date);
++                    callRecord.setPhoneNum(phoneNum);
++                    callRecord.setName(name);
++                    callRecord.setType(type);
++                    callRecord.setDuration(duration);
++                    callRecordsList.add(callRecord);
++                } while (recordCursor.moveToNext());
++                recordCursor.close();
+             }
+         }
+-
+         return callRecordsList;
+     }
+ 
+@@ -394,6 +392,10 @@ public class PrivateSpaceLoader {
+         }
+     }
+ 
++    public Handler getmHandler() {
++        return mHandler;
++    }
++
+     public ExecutorService getThreadPool() {
+         return Executors.newCachedThreadPool();
+     }
+diff --git a/src/com/transage/privatespace/provider/PrivateObserver.java b/src/com/transage/privatespace/provider/PrivateObserver.java
+new file mode 100755
+index 0000000..69eb7eb
+--- /dev/null
++++ b/src/com/transage/privatespace/provider/PrivateObserver.java
+@@ -0,0 +1,33 @@
++package com.transage.privatespace.provider;
++
++import android.database.ContentObserver;
++import android.os.Handler;
++import android.util.Log;
++
++import com.transage.privatespace.loader.PrivateSpaceLoader;
++
++/**
++ * 监听数据库变化
++ *
++ * Created by yanjie.xu on 2017/7/27.
++ */
++
++public class PrivateObserver extends ContentObserver {
++    private static final String TAG= "PrivateObserver";
++
++    private Handler mHandler;
++
++    public PrivateObserver(Handler handler) {
++        super(handler);
++        this.mHandler = handler;
++    }
++
++    @Override
++    public void onChange(boolean selfChange) {
++        super.onChange(selfChange);
++        if (mHandler != null){
++            mHandler.sendEmptyMessage(PrivateSpaceLoader.PRIVATE_OBSERVER);
++            Log.i(TAG, "onChange selfChange" + selfChange);
++        }
++    }
++}
+diff --git a/src/com/transage/privatespace/provider/PrivateProvider.java b/src/com/transage/privatespace/provider/PrivateProvider.java
+index 6cc660d..894eb63 100755
+--- a/src/com/transage/privatespace/provider/PrivateProvider.java
++++ b/src/com/transage/privatespace/provider/PrivateProvider.java
+@@ -22,12 +22,14 @@ public class PrivateProvider extends ContentProvider{
+     public boolean onCreate() {
+         if (mDbAdapter == null){
+             mDbAdapter = new DatabaseAdapter(getContext());
++            android.util.Log.i(TAG, "onCreate");
+         }
+         return false;
+     }
+ 
+     @Override
+     public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs, String sortOrder) {
++        android.util.Log.i(TAG, "query uri = " + uri.toString());
+         return mDbAdapter.getContactCursor(selection, selectionArgs);
+     }
+ 
+@@ -40,6 +42,7 @@ public class PrivateProvider extends ContentProvider{
+     public Uri insert(Uri uri, ContentValues contentValues) {
+         android.util.Log.i(TAG, "insert contentValues = " + contentValues.toString());
+         mDbAdapter.insertCallLog(contentValues);
++        getContext().getContentResolver().notifyChange(uri, null);
+         return uri;
+     }
+ 

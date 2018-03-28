@@ -1,0 +1,445 @@
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index 5e5cd34..a26124f 100755
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -8,6 +8,7 @@
+         android:targetSdkVersion="23"/>
+ 
+     <uses-permission android:name="android.permission.WRITE_SETTINGS"/>
++    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"/>
+     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+     <uses-permission android:name="android.permission.READ_CONTACTS"/>
+@@ -17,7 +18,7 @@
+     <uses-permission android:name="android.permission.WRITE_CALL_LOG"/>
+     <uses-permission android:name="android.permission.SEND_SMS"/>
+     <uses-permission android:name="android.permission.READ_SMS"/>
+-	<uses-permission android:name="android.permission.USE_FINGERPRINT"/>
++    <uses-permission android:name="android.permission.USE_FINGERPRINT"/>
+ 
+     <application
+         android:allowBackup="true"
+diff --git a/res/layout/activity_login.xml b/res/layout/activity_login.xml
+index 12aeb78..0a94165 100755
+--- a/res/layout/activity_login.xml
++++ b/res/layout/activity_login.xml
+@@ -45,6 +45,7 @@
+             android:inputType="textPassword"
+             android:maxLength="6"
+             android:paddingStart="10dp"
++            android:textColorHint="@color/lightgrey"
+             android:textColor="@color/colorAccent"
+             android:textSize="16sp"/>
+ 
+@@ -77,6 +78,7 @@
+             android:inputType="textPassword"
+             android:maxLength="6"
+             android:paddingStart="10dp"
++            android:textColorHint="@color/lightgrey"
+             android:textColor="@color/colorAccent"
+             android:textSize="16sp"/>
+ 
+diff --git a/res/layout/item_album_gridview.xml b/res/layout/item_album_gridview.xml
+index 6dac58b..82e6fa7 100755
+--- a/res/layout/item_album_gridview.xml
++++ b/res/layout/item_album_gridview.xml
+@@ -9,20 +9,18 @@
+         android:layout_height="match_parent"
+         android:layout_gravity="center"
+         android:adjustViewBounds="true"
+-        android:background="@drawable/plugin_camera_no_pictures"
++        android:background="@color/greytext"
+         android:scaleType="centerCrop"/>
+ 
+-    <RelativeLayout
+-        android:id="@+id/toggle"
+-        android:layout_width="match_parent"
+-        android:layout_height="match_parent">
+-
+-        <CheckBox
+-            android:id="@+id/choosedbt"
+-            android:layout_width="wrap_content"
+-            android:layout_height="wrap_content"
+-            android:layout_alignParentRight="true"
+-            android:layout_alignParentTop="true"/>
+-    </RelativeLayout>
++    <CheckBox
++        android:id="@+id/checkBox"
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"
++        android:layoutDirection="rtl"
++        android:gravity="top"
++        android:paddingBottom="30dp"
++        android:paddingEnd="30dp"
++        android:layout_alignParentTop="true"
++        android:layout_alignParentEnd="true"/>
+ 
+ </RelativeLayout>
+\ No newline at end of file
+diff --git a/res/layout/item_private_album_gridview.xml b/res/layout/item_private_album_gridview.xml
+index 1d35c72..1bbee69 100755
+--- a/res/layout/item_private_album_gridview.xml
++++ b/res/layout/item_private_album_gridview.xml
+@@ -11,17 +11,15 @@
+         android:adjustViewBounds="true"
+         android:scaleType="centerCrop"/>
+ 
+-    <RelativeLayout
+-        android:id="@+id/toggle"
+-        android:layout_width="match_parent"
+-        android:layout_height="match_parent">
+-
+-        <CheckBox
+-            android:id="@+id/choosedbt"
+-            android:layout_width="wrap_content"
+-            android:layout_height="wrap_content"
+-            android:layout_alignParentRight="true"
+-            android:layout_alignParentTop="true"/>
+-    </RelativeLayout>
++    <CheckBox
++        android:id="@+id/checkBox"
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"
++        android:layoutDirection="rtl"
++        android:gravity="top"
++        android:paddingBottom="30dp"
++        android:paddingEnd="30dp"
++        android:layout_alignParentTop="true"
++        android:layout_alignParentEnd="true"/>
+ 
+ </RelativeLayout>
+\ No newline at end of file
+diff --git a/src/com/transage/privatespace/activity/Login.java b/src/com/transage/privatespace/activity/Login.java
+index ba2a964..d098be9 100755
+--- a/src/com/transage/privatespace/activity/Login.java
++++ b/src/com/transage/privatespace/activity/Login.java
+@@ -3,6 +3,7 @@ package com.transage.privatespace.activity;
+ import android.annotation.SuppressLint;
+ import android.annotation.TargetApi;
+ import android.app.Activity;
++import android.content.ContentResolver;
+ import android.content.Context;
+ import android.content.Intent;
+ import android.content.SharedPreferences;
+@@ -11,11 +12,9 @@ import android.os.Build;
+ import android.os.Bundle;
+ import android.os.CancellationSignal;
+ import android.os.Handler;
++import android.os.UserHandle;
++import android.provider.Settings;
+ import android.support.annotation.Nullable;
+-import android.support.v7.app.AppCompatActivity;
+-import android.support.v7.widget.DefaultItemAnimator;
+-import android.support.v7.widget.LinearLayoutManager;
+-import android.support.v7.widget.RecyclerView;
+ import android.text.TextUtils;
+ import android.text.method.HideReturnsTransformationMethod;
+ import android.text.method.PasswordTransformationMethod;
+@@ -31,11 +30,14 @@ import android.widget.EditText;
+ import android.widget.FrameLayout;
+ import android.widget.TextView;
+ import android.widget.Toast;
+-import android.os.UserHandle;
+ 
+ import com.transage.privatespace.R;
+ import com.transage.privatespace.utils.Util_Often_Use;
+ 
++import java.io.UnsupportedEncodingException;
++import java.security.MessageDigest;
++import java.security.NoSuchAlgorithmException;
++
+ /**
+  * Created by dongrp on 2016/8/16. 登录界面
+  */
+@@ -46,12 +48,13 @@ public class Login extends Activity implements View.OnClickListener, CompoundBut
+     private FrameLayout frameLayout2;
+     private EditText editText1, editText2;
+     private CheckBox checkBox1, checkBox2;
++    private ContentResolver contentResolver;
+     public static SharedPreferences sp;
+     public static SharedPreferences.Editor editor;
+-    public static final String PrivateMark70963 = "PrivateMark70963";
+-    public static final String FirstRun = "FIRST_RUN";
+-    public static final String ChangePrivateMarkFromAdvancedSetup = "CHANGE_PRIVATE_MARK1";
+-    public static final String ChangePrivateMarkFromSecurityQuestionActivity = "CHANGE_PRIVATE_MARK2";
++    public static final String PRIVATE_SPACE_PWD = "private_space_password";
++    public static final String FirstRun = "first_run";
++    public static final String ChangePrivateMarkFromAdvancedSetup = "change_private_mark1";
++    public static final String ChangePrivateMarkFromSecurityQuestionActivity = "change_private_mark2";
+     private boolean isFirstRun = true; // 本地全局标志：程序是否是第一次运行
+     public static boolean isChangePrivateMark = false; // 本地全局标志：是否修改密码
+     private boolean resetPrivateMarkFromAdvancedSetup = false; // AdvancedSetupActivity发送过来的是否修改密码的标志
+@@ -69,6 +72,13 @@ public class Login extends Activity implements View.OnClickListener, CompoundBut
+         mFingerprintManager = (FingerprintManager) getSystemService(Context.FINGERPRINT_SERVICE);
+         initData();
+         initView();
++
++    }
++
++    @Override
++    protected void onResume() {
++        super.onResume();
++        //注册指纹监听
+         if(!isFirstRun && sp.getBoolean("enterByPrivateFingerprint",false)){
+             retryFingerprint();
+         }
+@@ -78,11 +88,12 @@ public class Login extends Activity implements View.OnClickListener, CompoundBut
+      * 初始化数据
+      */
+     private void initData() {
++        contentResolver = getContentResolver();
+         sp = getPreferences(MODE_PRIVATE);
+         editor = sp.edit();
++        isFirstRun = sp.getBoolean(FirstRun, true);
+         resetPrivateMarkFromAdvancedSetup = getIntent().getBooleanExtra(ChangePrivateMarkFromAdvancedSetup, false);
+-        resetPrivateMarkFromSecurityQuestion = getIntent().getBooleanExtra(
+-                ChangePrivateMarkFromSecurityQuestionActivity, false);
++        resetPrivateMarkFromSecurityQuestion = getIntent().getBooleanExtra(ChangePrivateMarkFromSecurityQuestionActivity, false);
+         if (resetPrivateMarkFromSecurityQuestion) {
+             isChangePrivateMark = true;
+         }
+@@ -91,7 +102,6 @@ public class Login extends Activity implements View.OnClickListener, CompoundBut
+     /**
+      * 初始化view
+      */
+-    @TargetApi(Build.VERSION_CODES.M)
+     private void initView() {
+         textView1 = (TextView) findViewById(R.id.textView1);// 标题
+         textView2 = (TextView) findViewById(R.id.textView2);// 提示信息
+@@ -102,14 +112,11 @@ public class Login extends Activity implements View.OnClickListener, CompoundBut
+         editText2 = (EditText) findViewById(R.id.editText2);
+         editText1.setOnEditorActionListener(this);
+         editText2.setOnEditorActionListener(this);
+-        editText1.setHintTextColor(getColor(R.color.lightgrey));
+-        editText2.setHintTextColor(getColor(R.color.lightgrey));
+         checkBox1 = (CheckBox) findViewById(R.id.checkBox1);
+         checkBox2 = (CheckBox) findViewById(R.id.checkBox2);
+         checkBox1.setOnCheckedChangeListener(this);
+         checkBox2.setOnCheckedChangeListener(this);
+         // 根据isFirstRun和isChangePrivateMark的状态值，决定所展示的布局
+-        isFirstRun = sp.getBoolean(FirstRun, true);
+         if (!isFirstRun && !isChangePrivateMark) { // 日常登录
+             textView1.setText(getString(R.string.confirm_private_mark));
+             textView2.setText(getString(R.string.login_by_private_mark_or_private_fingerprint));
+@@ -158,7 +165,7 @@ public class Login extends Activity implements View.OnClickListener, CompoundBut
+      */
+     public void loginOrResetPwd() {
+         if (!isFirstRun && !isChangePrivateMark) { // 日常登录
+-            if (editText1.getText().toString().trim().equals(sp.getString(PrivateMark70963, ""))) { // 验证成功
++            if (md5(md5(editText1.getText().toString().trim())).equals(Settings.Global.getString(contentResolver,PRIVATE_SPACE_PWD))) { // 验证成功
+                 if (resetPrivateMarkFromAdvancedSetup) { // 验证成功后：修改密码
+                     isChangePrivateMark = true;
+                     textView1.setText(getString(R.string.set_private_mark));
+@@ -175,15 +182,13 @@ public class Login extends Activity implements View.OnClickListener, CompoundBut
+                 editText1.setText(null);
+             }
+         } else if (!isFirstRun && isChangePrivateMark) { // 日常修改密码
+-            editor.putString(PrivateMark70963, editText1.getText().toString().trim());
+-            editor.commit();
++            Settings.Global.putString(contentResolver,PRIVATE_SPACE_PWD,md5(md5(editText1.getText().toString().trim())));
+             isChangePrivateMark = false;
+-            Util_Often_Use.toastShort(this, getString(R.string.successful_reset_private_mark));// 密码修改成功
++            Util_Often_Use.toastShort(this, getString(R.string.successful_reset_private_mark));
+             finish();// finish()后露出第一个登录界面 或 高级设置界面
+         } else if (isFirstRun) { // 第一次运行app
+-            editor.putString(PrivateMark70963, editText1.getText().toString().trim());
+-            editor.commit();
+-            Util_Often_Use.toastShort(this, getString(R.string.successful_set_private_mark));// 第一次成功创建密码
++            Settings.Global.putString(contentResolver,PRIVATE_SPACE_PWD,md5(md5(editText1.getText().toString().trim())));
++            Util_Often_Use.toastShort(this, getString(R.string.successful_set_private_mark));
+             startActivity(new Intent(Login.this, SecurityQuestion.class));
+             finish();
+         }
+@@ -244,6 +249,26 @@ public class Login extends Activity implements View.OnClickListener, CompoundBut
+         }
+     }
+ 
++    /**
++     * MD5 加密算法
++     */
++    public static String md5(String string) {
++        byte[] hash;
++        try {
++            hash = MessageDigest.getInstance("MD5").digest(string.getBytes("UTF-8"));
++        } catch (NoSuchAlgorithmException e) {
++            throw new RuntimeException("Huh, MD5 should be supported?", e);
++        } catch (UnsupportedEncodingException e) {
++            throw new RuntimeException("Huh, UTF-8 should be supported?", e);
++        }
++        StringBuilder hex = new StringBuilder(hash.length * 2);
++        for (byte b : hash) {
++            if ((b & 0xFF) < 0x10) hex.append("0");
++            hex.append(Integer.toHexString(b & 0xFF));
++        }
++        return hex.toString();
++    }
++
+     // 返回键
+     @Override
+     public void onBackPressed() {
+diff --git a/src/com/transage/privatespace/activity/SecurityQuestion.java b/src/com/transage/privatespace/activity/SecurityQuestion.java
+index 1569150..e6edce7 100755
+--- a/src/com/transage/privatespace/activity/SecurityQuestion.java
++++ b/src/com/transage/privatespace/activity/SecurityQuestion.java
+@@ -30,7 +30,7 @@ public class SecurityQuestion extends Activity implements View.OnClickListener,
+     private Button button;
+     private ArrayList<String> list = new ArrayList<String>();
+     ArrayAdapter<String> adapter;
+-    public static String SelectedPosition = "SELECTED_POSITION"; // 记录选择的密保问题的位置
++    public static String SelectedPosition = "selected_position"; // 记录选择的密保问题的位置
+ 
+     @Override
+     protected void onCreate(@Nullable Bundle savedInstanceState) {
+diff --git a/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java b/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
+index c53355e..022b5f4 100755
+--- a/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
++++ b/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
+@@ -83,6 +83,14 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+         gridView.setAdapter(privateAlbumGridViewAdapter);//绑定适配器
+         gridView.setOnScrollListener(this);//设置滑动监听
+         //由于滑动才会加载数据，所以刚进入页面的时候，需要主动加载第一页的数据
++        loadFirstScreenImage();
++
++    }
++
++    /**
++     * 加载首屏数据的方法
++     */
++    public void loadFirstScreenImage(){
+         gridView.post(new Runnable() {
+             public void run() {
+                 int firstVisiblePosition = gridView.getFirstVisiblePosition();
+@@ -91,7 +99,7 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+                 ArrayList<File> files = decryptFileListForCache(listImageItem);
+                 for (int i = 0; i < files.size(); i++) {
+                     ImageView imageView = (ImageView) gridView.getChildAt(i).findViewById(R.id.image_view);
+-                    Glide.with(PrivateAlbum.this).load(files.get(i)).into(imageView);
++                    Glide.with(PrivateAlbum.this).load(files.get(i)).placeholder(R.color.greytext).into(imageView);
+                 }
+             }
+         });
+@@ -158,7 +166,7 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+             super.onPostExecute(files);
+             for (int i = 0; i < mVisibleItemCount; i++) {
+                 ImageView imageView = (ImageView) gridView.getChildAt(i).findViewById(R.id.image_view);
+-                Glide.with(PrivateAlbum.this).load(files.get(i)).into(imageView);
++                Glide.with(PrivateAlbum.this).load(files.get(i)).placeholder(R.color.greytext).into(imageView);
+             }
+         }
+     }
+@@ -291,6 +299,7 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+         protected void onPostExecute(Boolean result) {
+             super.onPostExecute(result);
+             privateAlbumGridViewAdapter.refreshDataAfterDecrypt();
++            loadFirstScreenImage();
+             String showMessage = result ? "解密成功" : "部分文件解密失败！";
+             Toast.makeText(PrivateAlbum.this, showMessage, Toast.LENGTH_SHORT).show();
+             progressDialog.dismiss();
+diff --git a/src/com/transage/privatespace/gallery/adapter/PrivateAlbumGridViewAdapter.java b/src/com/transage/privatespace/gallery/adapter/PrivateAlbumGridViewAdapter.java
+index 05076a9..b33e1ca 100755
+--- a/src/com/transage/privatespace/gallery/adapter/PrivateAlbumGridViewAdapter.java
++++ b/src/com/transage/privatespace/gallery/adapter/PrivateAlbumGridViewAdapter.java
+@@ -110,7 +110,7 @@ public class PrivateAlbumGridViewAdapter extends BaseAdapter {
+             viewHolder = new PrivateAlbumGridViewAdapter.ViewHolder();
+             convertView = LayoutInflater.from(mContext).inflate(R.layout.item_private_album_gridview, parent, false);
+             viewHolder.imageView = (ImageView) convertView.findViewById(R.id.image_view);
+-            viewHolder.checkBox = (CheckBox) convertView.findViewById(R.id.choosedbt);
++            viewHolder.checkBox = (CheckBox) convertView.findViewById(R.id.checkBox);
+             convertView.setTag(viewHolder);
+         } else {
+             viewHolder = (PrivateAlbumGridViewAdapter.ViewHolder) convertView.getTag();
+@@ -136,10 +136,9 @@ public class PrivateAlbumGridViewAdapter extends BaseAdapter {
+         if (file.exists()){
+             Glide.with(mContext).load(file).into(viewHolder.imageView);
+         }else {
+-            viewHolder.imageView.setImageResource(R.drawable.plugin_camera_no_pictures);
++            viewHolder.imageView.setImageResource(R.color.greytext);
+         }
+ 
+-        viewHolder.checkBox.setTag(position);
+         viewHolder.checkBox.setOnClickListener(new View.OnClickListener() {
+             @Override
+             public void onClick(View view) {
+diff --git a/src/com/transage/privatespace/gallery/photozoom/Album.java b/src/com/transage/privatespace/gallery/photozoom/Album.java
+index 64e967a..1986440 100755
+--- a/src/com/transage/privatespace/gallery/photozoom/Album.java
++++ b/src/com/transage/privatespace/gallery/photozoom/Album.java
+@@ -48,16 +48,6 @@ public class Album extends AppCompatActivity implements OnClickListener {
+         databaseAdapter = new DatabaseAdapter(Album.this);//数据库操作工具类
+     }
+ 
+-    /**
+-     * 创建广播接收器broadcastReceiver：接收广播 刷新适配器
+-     */
+-/*    BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
+-        @Override
+-        public void onReceive(Context context, Intent intent) {
+-            gridImageAdapter.notifyDataSetChanged();
+-        }
+-    };*/
+-
+     @Override
+     protected void onResume() {
+         super.onResume();
+@@ -68,9 +58,6 @@ public class Album extends AppCompatActivity implements OnClickListener {
+      * view初始化
+      */
+     private void init() {
+-        //注册广播接收器broadcastReceiver（接收画廊 界面发送过来的广播）
+-/*        IntentFilter filter = new IntentFilter("data.broadcast.action");
+-        registerReceiver(broadcastReceiver, filter);*/
+         findViewById(R.id.checkbox_select_all).setOnClickListener(this);
+         findViewById(R.id.button_back).setOnClickListener(this);
+         findViewById(R.id.button_add).setOnClickListener(this);
+@@ -83,7 +70,6 @@ public class Album extends AppCompatActivity implements OnClickListener {
+     @Override
+     protected void onDestroy() {
+         super.onDestroy();
+-//        unregisterReceiver(broadcastReceiver);
+         Bimp.tempSelectBitmap.clear();//退出清空 Bimp.tempSelectBitmap
+         if (null != progressDialog && progressDialog.isShowing()) {
+             progressDialog.dismiss();
+@@ -167,7 +153,6 @@ public class Album extends AppCompatActivity implements OnClickListener {
+ 
+     }
+ 
+-
+     /**
+      * 加密文件集合
+      *
+diff --git a/src/com/transage/privatespace/gallery/photozoom/AlbumGridViewAdapter.java b/src/com/transage/privatespace/gallery/photozoom/AlbumGridViewAdapter.java
+index 5531e0b..23a86ac 100755
+--- a/src/com/transage/privatespace/gallery/photozoom/AlbumGridViewAdapter.java
++++ b/src/com/transage/privatespace/gallery/photozoom/AlbumGridViewAdapter.java
+@@ -110,7 +110,7 @@ public class AlbumGridViewAdapter extends BaseAdapter {
+ 			viewHolder = new ViewHolder();
+ 			convertView = LayoutInflater.from(context).inflate(R.layout.item_album_gridview, parent, false);
+ 			viewHolder.imageView = (ImageView) convertView.findViewById(R.id.image_view);
+-			viewHolder.checkBox = (CheckBox) convertView.findViewById(R.id.choosedbt);
++			viewHolder.checkBox = (CheckBox) convertView.findViewById(R.id.checkBox);
+ 			convertView.setTag(viewHolder);
+ 		} else {
+ 			viewHolder = (ViewHolder) convertView.getTag();
+@@ -121,7 +121,7 @@ public class AlbumGridViewAdapter extends BaseAdapter {
+ 		else
+ 			path = "camera_default";
+ 		if (path.contains("camera_default")) {
+-			viewHolder.imageView.setImageResource(R.drawable.plugin_camera_no_pictures);
++			viewHolder.imageView.setImageResource(R.color.greytext);
+ 		} else {
+ 			final ImageItem item = dataList.get(position);
+ 			viewHolder.imageView.setTag(item.imagePath);
+diff --git a/src/com/transage/privatespace/gallery/photozoom/Gallery.java b/src/com/transage/privatespace/gallery/photozoom/Gallery.java
+index 6a78770..fa5b482 100755
+--- a/src/com/transage/privatespace/gallery/photozoom/Gallery.java
++++ b/src/com/transage/privatespace/gallery/photozoom/Gallery.java
+@@ -148,6 +148,9 @@ public class Gallery extends AppCompatActivity implements OnClickListener, OnPag
+         String privImagePath = imagePath.replaceFirst("/storage/emulated/0", "/data/data/" + getPackageName() + "/files/storage/emulated/0");
+         boolean b = AESEncryptionUtil.encryptFile(imagePath, privImagePath);
+         if (b) {//成功
++            if (Bimp.tempSelectBitmap.contains(Album.dataList.get(location))){
++                Bimp.tempSelectBitmap.remove(Album.dataList.get(location));
++            }
+             Album.dataList.remove(location);
+             //adapter.notifyDataSetChanged(); 在异步任务的子线程中不能刷新UI线程，所以注释了
+             Album.delete(item, privImagePath, getContentResolver());

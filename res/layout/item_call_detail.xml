@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="70dp"
+    android:orientation="vertical">
+
+
+    <ImageView
+        android:id="@+id/item_call_type_img"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="10dp"
+        android:layout_centerVertical="true"
+        android:layout_alignParentStart="true" />
+
+    <TextView
+        android:id="@+id/item_call_type"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="@color/black"
+        android:layout_marginTop="5dp"
+        android:textSize="16sp"
+        android:layout_alignParentTop="true"
+        android:layout_toEndOf="@+id/item_call_type_img"
+        android:layout_marginStart="12dp" />
+
+    <TextView
+        android:id="@+id/item_call_data"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="@color/greytext"
+        android:textSize="14sp"
+        android:layout_centerVertical="true"
+        android:layout_alignStart="@+id/item_call_type" />
+
+    <TextView
+        android:id="@+id/item_call_time_long"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="@color/greytext"
+        android:textSize="14sp"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="5dp"
+        android:layout_alignStart="@+id/item_call_data" />
+</RelativeLayout>

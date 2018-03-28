@@ -1,0 +1,23 @@
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index eb4e3f3..aee97fa 100755
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -30,7 +30,7 @@
+     <application
+         android:name=".PrivateSpaceApplication"
+         android:allowBackup="true"
+-        android:icon="@mipmap/logo"
++        android:icon="@mipmap/ic_launcher"
+         android:label="@string/app_name"
+         android:supportsRtl="true"
+         android:theme="@style/AppBaseTheme">
+@@ -92,6 +92,9 @@
+             android:name=".gallery.photozoom.Album"
+             android:screenOrientation="portrait"/>
+         <activity
++            android:name=".gallery.videozoom.VideoAlbum"
++            android:screenOrientation="portrait"/>
++        <activity
+             android:name=".gallery.photozoom.Folders"
+             android:screenOrientation="portrait"/>
+         <activity

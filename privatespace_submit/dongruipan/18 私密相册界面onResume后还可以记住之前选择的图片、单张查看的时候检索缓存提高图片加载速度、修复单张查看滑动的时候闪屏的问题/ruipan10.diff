@@ -1,0 +1,164 @@
+diff --git a/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java b/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
+index 022b5f4..f1e5322 100755
+--- a/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
++++ b/src/com/transage/privatespace/gallery/activity/PrivateAlbum.java
+@@ -21,6 +21,7 @@ import com.bumptech.glide.Glide;
+ import com.transage.privatespace.R;
+ import com.transage.privatespace.database.DatabaseAdapter;
+ import com.transage.privatespace.gallery.adapter.PrivateAlbumGridViewAdapter;
++import com.transage.privatespace.gallery.photozoom.Bimp;
+ import com.transage.privatespace.gallery.photozoom.ImageItem;
+ import com.transage.privatespace.gallery.util.AESEncryptionUtil;
+ 
+@@ -54,6 +55,9 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+         setContentView(R.layout.activity_private_album);
+         executorService = Executors.newCachedThreadPool();//创建一个缓存线程池
+         databaseAdapter = new DatabaseAdapter(PrivateAlbum.this);//数据库操作工具类
++        //为实现onResume后还能记住选中的照片，所以必须在onResume之前初始化数据
++        // 这样Bimp.tempSelectBitmap 和 dateList操作的就是同一批数据
++        dateList = databaseAdapter.getPhoto();
+     }
+ 
+     @Override
+@@ -65,6 +69,7 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+     @Override
+     protected void onDestroy() {
+         super.onDestroy();
++        Bimp.tempSelectBitmap.clear();
+         clearCacheDirectory(new File("/data/data/" + getPackageName() + "/files/cache/"));
+     }
+ 
+@@ -76,7 +81,7 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+         findViewById(R.id.button_back).setOnClickListener(this);
+         findViewById(R.id.button_min).setOnClickListener(this);
+ 
+-        dateList = databaseAdapter.getPhoto();//数据
++//        dateList = databaseAdapter.getPhoto();//数据
+         Log.d("PrivateAlbum", "dateList.size():" + dateList.size());
+         gridView = (GridView) findViewById(R.id.album_GridView);//组件
+         privateAlbumGridViewAdapter = new PrivateAlbumGridViewAdapter(PrivateAlbum.this, dateList);//适配器
+@@ -244,11 +249,11 @@ public class PrivateAlbum extends AppCompatActivity implements View.OnClickListe
+                 privateAlbumGridViewAdapter.selectAll(((CheckBox) view).isChecked());
+                 break;
+             case R.id.button_min:
+-                if (privateAlbumGridViewAdapter.getSelectedData().size() == 0) {
++                if (Bimp.tempSelectBitmap.size() == 0) {
+                     Toast.makeText(this, "请至少选择一张图片", Toast.LENGTH_SHORT).show();
+                     break;
+                 }
+-                DecryptionTask decryptionTask = new DecryptionTask(privateAlbumGridViewAdapter.getSelectedData());
++                DecryptionTask decryptionTask = new DecryptionTask(Bimp.tempSelectBitmap);
+                 decryptionTask.execute();
+                 break;
+             default:
+diff --git a/src/com/transage/privatespace/gallery/adapter/PrivateAlbumGridViewAdapter.java b/src/com/transage/privatespace/gallery/adapter/PrivateAlbumGridViewAdapter.java
+index b33e1ca..2cc3284 100755
+--- a/src/com/transage/privatespace/gallery/adapter/PrivateAlbumGridViewAdapter.java
++++ b/src/com/transage/privatespace/gallery/adapter/PrivateAlbumGridViewAdapter.java
+@@ -11,6 +11,7 @@ import android.widget.ImageView;
+ 
+ import com.bumptech.glide.Glide;
+ import com.transage.privatespace.R;
++import com.transage.privatespace.gallery.photozoom.Bimp;
+ import com.transage.privatespace.gallery.photozoom.Gallery;
+ import com.transage.privatespace.gallery.photozoom.ImageItem;
+ 
+@@ -23,7 +24,6 @@ import java.util.ArrayList;
+ 
+ public class PrivateAlbumGridViewAdapter extends BaseAdapter {
+ 
+-    private final String TAG = getClass().getSimpleName();
+     private ArrayList<ImageItem> listPrivFlies = new ArrayList<ImageItem>();
+     private ArrayList<ImageItem> selectedDataList = new ArrayList<ImageItem>();
+     private Context mContext;
+@@ -43,9 +43,9 @@ public class PrivateAlbumGridViewAdapter extends BaseAdapter {
+      * @param isSelectedAll
+      */
+     public void selectAll(boolean isSelectedAll){
+-        selectedDataList.clear();
++        Bimp.tempSelectBitmap.clear();
+         if (isSelectedAll){
+-            selectedDataList.addAll(listPrivFlies);
++            Bimp.tempSelectBitmap.addAll(listPrivFlies);
+         }
+         notifyDataSetChanged();
+     }
+@@ -63,16 +63,16 @@ public class PrivateAlbumGridViewAdapter extends BaseAdapter {
+      * @return
+      */
+     public ArrayList<ImageItem> getSelectedData(){
+-        return selectedDataList;
++        return Bimp.tempSelectBitmap;
+     }
+ 
+     /**
+      * 解密完成后，刷新适配器的方法
+      */
+     public void refreshDataAfterDecrypt(){
+-        listPrivFlies.removeAll(selectedDataList);
++        listPrivFlies.removeAll(Bimp.tempSelectBitmap);
+         notifyDataSetChanged();
+-        selectedDataList.clear();
++        Bimp.tempSelectBitmap.clear();
+     }
+ 
+ 
+@@ -143,14 +143,14 @@ public class PrivateAlbumGridViewAdapter extends BaseAdapter {
+             @Override
+             public void onClick(View view) {
+                 if (viewHolder.checkBox.isChecked()){
+-                    selectedDataList.add(listPrivFlies.get(position));
++                    Bimp.tempSelectBitmap.add(listPrivFlies.get(position));
+                 }else {
+-                    selectedDataList.remove(listPrivFlies.get(position));
++                    Bimp.tempSelectBitmap.remove(listPrivFlies.get(position));
+                 }
+             }
+         });
+         //防止滑动的时候由于控件复用而导致数据错乱，所以控件的适配必须有数据源中的内容决定
+-        if (selectedDataList.contains(listPrivFlies.get(position))) {
++        if (Bimp.tempSelectBitmap.contains(listPrivFlies.get(position))) {
+             viewHolder.checkBox.setChecked(true);
+         } else {
+             viewHolder.checkBox.setChecked(false);
+diff --git a/src/com/transage/privatespace/gallery/photozoom/Gallery.java b/src/com/transage/privatespace/gallery/photozoom/Gallery.java
+index fa5b482..3b4d207 100755
+--- a/src/com/transage/privatespace/gallery/photozoom/Gallery.java
++++ b/src/com/transage/privatespace/gallery/photozoom/Gallery.java
+@@ -169,6 +169,9 @@ public class Gallery extends AppCompatActivity implements OnClickListener, OnPag
+         String imagePath = privImagePath.replaceFirst("/data/data/" + getPackageName() + "/files/storage/emulated/0", "/storage/emulated/0");
+         boolean b = AESEncryptionUtil.decryptFile(privImagePath, imagePath);
+         if (b){
++            if (Bimp.tempSelectBitmap.contains(PrivateAlbum.dateList.get(location))){
++                Bimp.tempSelectBitmap.remove(PrivateAlbum.dateList.get(location));
++            }
+             PrivateAlbum.dateList.remove(location);
+             PrivateAlbum.delete(item,imagePath,getContentResolver());
+             return true;
+diff --git a/src/com/transage/privatespace/gallery/photozoom/GalleryViewPagerAdapter.java b/src/com/transage/privatespace/gallery/photozoom/GalleryViewPagerAdapter.java
+index 9cf4426..535a4c9 100755
+--- a/src/com/transage/privatespace/gallery/photozoom/GalleryViewPagerAdapter.java
++++ b/src/com/transage/privatespace/gallery/photozoom/GalleryViewPagerAdapter.java
+@@ -52,14 +52,17 @@ public class GalleryViewPagerAdapter extends PagerAdapter {
+ 			String privImagePath = item.getImagePath();
+ 			String fileName = privImagePath.substring(privImagePath.lastIndexOf("/") + 1);
+ 			String imagePath = "/data/data/" + mContext.getPackageName() + "/files/cache/" + fileName;
+-			File file = AESEncryptionUtil.decryptFile2(privImagePath, imagePath);
+-			Glide.with(mContext).load(file).into(photoView);
+-//			photoView.setImageBitmap(Bimp.handleBitmap(file.getAbsolutePath()));
++			//缓存文件夹中如果有该文件，就不需要再次解密了
++			File cacheFile = new File(imagePath);
++			if (cacheFile.exists()){
++				Glide.with(mContext).load(cacheFile).into(photoView);
++			}else {
++				File file = AESEncryptionUtil.decryptFile2(privImagePath, imagePath);
++				Glide.with(mContext).load(file).into(photoView);
++			}
+ 		}else {
+-//			photoView.setImageBitmap(Bimp.handleBitmap(((ImageItem)Album.dataList.get(position)).getImagePath()));
+ 			Glide.with(mContext).load(((ImageItem)Album.dataList.get(position)).getImagePath()).into(photoView);
+ 		}
+-		photoView.setBackgroundColor(0xff000000);
+ 		photoView.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+ 		container.addView(photoView);
+ 		return photoView;
